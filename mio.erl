@@ -23,6 +23,7 @@ mio_accept(Listen) ->
     spawn(?MODULE, process_command, [Sock]),
     mio_accept(Listen).
 
+% test
 process_command(Sock) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
