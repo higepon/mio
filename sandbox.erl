@@ -1,7 +1,7 @@
 -module(sandbox).
 -export([start/0]).
 -import(lists, [map/2, reverse/1]).
-
+-import(memcach).
 -include_lib("stdlib/include/qlc.hrl").
 -record(store, {key, value}).
 
@@ -148,6 +148,8 @@ create_table() ->
     %% range
     ["article2"] = mio_get_sorted("bbs1", "bbs2.3", bbs_index, {limit, 2}),
 
-
+    %% memcache interface
+    memcache:test(),
 
     mnesia:stop().
+
