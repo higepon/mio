@@ -1,7 +1,9 @@
 -module(sandbox).
 -export([start/0]).
 -import(lists, [map/2, reverse/1]).
--import(memcach).
+-import(memcache).
+-import(miodb).
+
 -include_lib("stdlib/include/qlc.hrl").
 -record(store, {key, value}).
 
@@ -150,6 +152,7 @@ create_table() ->
 
     %% memcache interface
     memcache:test(),
+    miodb:test(),
 
     mnesia:stop().
 
