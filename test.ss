@@ -3,7 +3,7 @@
 
 (let ([m (guard
           [c (#t (error "can't connect to mio\nTry \n % erlc mio.erl\n % erl -noshell -s mio start  "))]
-          (memcache-connect "localhost" "11211"))])
+          (memcache-connect "localhost" "11121"))])
   (set m "hello" "world")
   (test* 'get '((hello . "world")) (get m "hello"))
   (memcache-close m))
