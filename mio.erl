@@ -6,9 +6,10 @@
 -module(mio).
 -export([start/0, mio/1, process_command/1]).
 -import(mio).
+-import(lists, [reverse/1]).
 
 start() ->
-    register(mio, spawn(?MODULE, mio, [11211])).
+    register(mio, spawn(?MODULE, mio, [11121])).
 
 mio(Port) ->
     miodb:new(item),
@@ -32,9 +33,15 @@ process_command(Sock) ->
             case Token of
                 ["get", Key] ->
                     process_get(Sock, Key);
+                ["get/s", Key1, Key2, Index, Limit] ->
+                    process_get_s(Sock, Key1, Key2, Index, Limit);
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, Key, Flags, Expire, Bytes),
+                    inet:setopts(Sock,[{packet, line}]);
+                ["set/s", Key, Index, Flags, Expire, Bytes] ->
+                    inet:setopts(Sock,[{packet, raw}]),
+                    process_set_s(Sock, Key, list_to_atom(Index), Flags, Expire, Bytes),
                     inet:setopts(Sock,[{packet, line}]);
                 ["delete", Key] ->
                     process_delete(Sock, Key);
@@ -58,6 +65,22 @@ process_get(Sock, Key) ->
                                  [Key, size(Value), Value]))
     end.
 
+process_values([[Key, Value]|More]) ->
+    io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
+                  [Key, size(Value), Value, process_values(More)]);
+process_values([]) ->
+    "END\r\n".
+
+process_get_s(Sock, Key1, Key2, Index, Limit) ->
+    {LimitNum, _} = string:to_integer(Limit),
+    case miodb:get_values_with_index(item, Key1, Key2, list_to_atom(Index), {limit, LimitNum}) of
+        no_exists ->
+            gen_tcp:send(Sock, "END\r\n");
+        Values ->
+            gen_tcp:send(Sock, process_values(Values))
+    end.
+
+
 process_set(Sock, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
@@ -68,6 +91,21 @@ process_set(Sock, Key, _Flags, _Expire, Bytes) ->
                                     end),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->
+            ok;
+        Error ->
+            io:fwrite("Error: ~p\n", [Error])
+    end,
+    gen_tcp:recv(Sock, 2).
+
+process_set_s(Sock, Key, Index, _Flags, _Expire, Bytes) ->
+    case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
+        {ok, Value} ->
+            io:fwrite("bytesOK"),
+            miodb:set_value_with_index(item, Key, Value, Index),
+            io:fwrite("bytes2OK"),
+            gen_tcp:send(Sock, "STORED\r\n");
+        {error, closed} ->
+            io:fwrite("closed\n"),
             ok;
         Error ->
             io:fwrite("Error: ~p\n", [Error])

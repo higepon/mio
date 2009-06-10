@@ -88,7 +88,7 @@ expire(Name, Epoch) ->
                             if
                                 (Expire /= 0) and (Expire < Epoch) ->
                                     io:format("Key = ~p Expire\n", [Key]),
-                                    delete(test, Key);
+                                    delete(Name, Key);
                                 true ->
                                     true
                             end
