@@ -1,9 +1,10 @@
 (library (skip graph)
   (export make-skip-graph skip-graph-add! skip-graph-level0
-          make-node node-key node-value node-append0! skip-graph-level0-key->list skip-graph-level1-key->list
-          node-next0 node-prev0 node-membership
+          make-node node-key node-value node-append! skip-graph-level0-key->list skip-graph-level1-key->list
+          node-next node-prev node-membership node-search
           )
   (import (rnrs)
+          (mosh)
           (mosh control))
 
 (define-record-type skip-graph
@@ -16,48 +17,81 @@
      (lambda ()
        (c #f #f #f)))))
 
-(define (node0->list root)
+(define (node-search-with-level level start key)
+  (cond
+   [(= (node-key start) key)
+    (values #t start)]
+   [(> (node-key start) key)
+    ;; search to left
+    (let loop ([node start])
+      (format #t "level=~d node=~a\n" level (node-key node))
+      (cond
+       [(= (node-key node) key)
+        (display "[1]")
+        (values #t node)]
+       [(< (node-key (node-prev level node)) key)
+        (display "[2]")
+        (values #f node)]
+       [(not (node-prev level node))
+        (display "[3]")
+        (values #f node)]
+       [else
+        (display "[4]")
+        (loop (node-prev level node))]))]
+   [else
+    ;; search to right
+    (let loop ([node start])
+      (cond
+       [(= (node-key node) key)
+        (values #t node)]
+       [(> (node-key (node-next level node)) key)
+        (values #f node)]
+       [(not (node-next level node))
+        (values #f node)]
+       [else
+        (loop (node-next level node))]))]))
+
+(define (node-search start key)
+  (let-values (([found? value] (node-search-with-level 1 start key)))
+    (if found?
+        value
+        (let-values (([found? value] (node-search-with-level 0 start key)))
+          (if found?
+              value
+              #f)))))
+
+(define (node->list level root)
   (let loop ([node root]
              [ret '()])
     (if node
-        (loop (node-next0 node) (cons node ret))
+        (loop (node-next level node) (cons node ret))
         (reverse ret))))
 
-(define (node1->list root)
-  (let loop ([node root]
-             [ret '()])
-    (if node
-        (loop (node-next1 node) (cons node ret))
-        (reverse ret))))
-
-(define (node0-key->list root)
-  (map node-key (node0->list root)))
-
-(define (node1-key->list root)
-  (map node-key (node1->list root)))
-
+(define (node-key->list level root)
+  (map node-key (node->list level root)))
 
 (define (skip-graph-level0-key->list sg)
-  (node0-key->list (skip-graph-level0 sg)))
+  (node-key->list 0 (skip-graph-level0 sg)))
 
 (define (skip-graph-level1-key->list sg)
   (list
-   (node1-key->list (skip-graph-level10 sg))
-   (node1-key->list (skip-graph-level11 sg))))
+   (node-key->list 1 (skip-graph-level10 sg))
+   (node-key->list 1 (skip-graph-level11 sg))))
 
+;; todo refactoring
 (define (skip-graph-add! sg node)
   (aif (skip-graph-level0 sg)
-       (skip-graph-level0-set! sg (node-insert0! it node))
+       (skip-graph-level0-set! sg (node-insert! 0 it node))
        (skip-graph-level0-set! sg node))
   (cond
    [(zero? (node-membership node))
     (aif (skip-graph-level10 sg)
-         (skip-graph-level10-set! sg (node-insert10! it node))
+         (skip-graph-level10-set! sg (node-insert! 1 it node))
          (skip-graph-level10-set! sg node))
     ]
    [else
     (aif (skip-graph-level11 sg)
-         (skip-graph-level11-set! sg (node-insert11! it node))
+         (skip-graph-level11-set! sg (node-insert! 1 it node))
          (skip-graph-level11-set! sg node))
     ]))
 
@@ -77,69 +111,52 @@
    (immutable key)
    (immutable value)
    (immutable membership)
-   (mutable prev0)
-   (mutable prev1)
-   (mutable next0)
-   (mutable next1))
+   (mutable prev*)
+   (mutable next*)
+   )
   (protocol
    (lambda (c)
      (lambda (key value)
-       (c key value (gen-membership) #f #f #f #f)))))
+       (c key value (gen-membership) (make-vector 2 #f) (make-vector 2 #f))))))
 
-(define (node-append0! n1 n2)
-  (node-next0-set! n1 n2)
-  (node-prev0-set! n2 n1))
+(define (node-next level n)
+  (vector-ref (node-next* n) level))
 
-(define (node-append1! n1 n2)
-  (node-next1-set! n1 n2)
-  (node-prev1-set! n2 n1))
+(define (node-prev level n)
+  (vector-ref (node-prev* n) 0))
 
-(define (node-insert0! root node)
+(define (node-next-set! level n1 n2)
+  (vector-set! (node-next* n1) level n2))
+
+(define (node-prev-set! level n1 n2)
+  (vector-set! (node-prev* n1) level n2))
+
+(define (node-append! level n1 n2)
+  (node-next-set! level n1 n2)
+  (node-prev-set! level n2 n1))
+
+(define (node-insert! level root node)
   (define (node< a b)
     (< (node-key a) (node-key b)))
   (cond
    [(node< node root)
-    (node-append0! node root)
+    (node-append! level node root)
     ;; root is changed
     node]
    [else
     (let loop ([n root])
       (cond
-       [(not (node-next0 n)) ;; tail
-        (node-append0! n node)
+       [(not (node-next level n)) ;; tail
+        (node-append! level n node)
         root]
-       [(node< node (node-next0 n))
-        (let ([next (node-next0 n)])
-          (node-append0! n node)
-          (node-next0-set! node next)
-          (node-prev0-set! next node)
+       [(node< node (node-next level n))
+        (let ([next (node-next level n)])
+          (node-append! level n node)
+          (node-next-set! level node next)
+          (node-prev-set! level next node)
           root)]
        [else
-        (loop (node-next0 n))]))]))
-
-(define (node-insert10! root node)
-  (define (node< a b)
-    (< (node-key a) (node-key b)))
-  (cond
-   [(node< node root)
-    (node-append1! node root)
-    ;; root is changed
-    node]
-   [else
-    (let loop ([n root])
-      (cond
-       [(not (node-next1 n)) ;; tail
-        (node-append1! n node)
-        root]
-       [(node< node (node-next1 n))
-        (let ([next (node-next1 n)])
-          (node-append1! n node)
-          (node-next1-set! node next)
-          (node-prev1-set! next node)
-          root)]
-       [else
-        (loop (node-next1 n))]))]))
-(define node-insert11! node-insert10!)
+        (loop (node-next level n))]))]))
 
 
 
