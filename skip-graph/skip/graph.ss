@@ -1,8 +1,7 @@
 (library (skip graph)
   (export make-skip-graph skip-graph-add! skip-graph-level0
           make-node node-key node-value node-append! skip-graph-level0-key->list skip-graph-level1-key->list
-          node-next node-prev node-membership node-search
-          )
+          node-next node-prev node-membership node-search)
   (import (rnrs)
           (mosh)
           (mosh control))
@@ -18,37 +17,26 @@
        (c #f #f #f)))))
 
 (define (node-search-with-level level start key accum-path)
+  (define (search-to-direction node-direction-proc key-cmp-proc)
+    (let loop ([node start]
+               [path (cons (cons level (node-key start)) accum-path)])
+      ;;(format #t "level=~d node=~a\n" level (node-key node))
+      (cond
+       [(= (node-key node) key)
+        (values #t node (cons 'found path))]
+       [(not (node-direction-proc level node))
+        (values #f node path)]
+       [(key-cmp-proc (node-key (node-direction-proc level node)) key)
+        (values #f node path)]
+       [else
+        (loop (node-direction-proc level node) (cons (cons level (node-key (node-direction-proc level node))) path))])))
   (cond
-   [(= (node-key start) key)
-    (values #t start (cons 'found accum-path))]
    [(> (node-key start) key)
     ;; search to left
-    (let loop ([node start]
-               [path (cons (cons level (node-key start)) accum-path)])
-;;      (format #t "level=~d node=~a\n" level (node-key node))
-      (cond
-       [(= (node-key node) key)
-        (values #t node (cons 'found path))]
-       [(not (node-prev level node))
-        (values #f node path)]
-       [(< (node-key (node-prev level node)) key)
-        (values #f node path)]
-       [else
-        (loop (node-prev level node) (cons (cons level (node-key (node-prev level node))) path))]))]
+    (search-to-direction node-prev <)]
    [else
     ;; search to right
-    (let loop ([node start]
-               [path (cons (cons level (node-key start)) accum-path)])
-;;      (format #t "level=~d node=~a\n" level (node-key node))
-      (cond
-       [(= (node-key node) key)
-        (values #t node (cons 'found path))]
-       [(not (node-next level node))
-        (values #f node path)]
-       [(> (node-key (node-next level node)) key)
-        (values #f node path)]
-       [else
-        (loop (node-next level node) (cons (cons level (node-key (node-next level node))) path))]))]))
+    (search-to-direction node-next >)]))
 
 (define (node-search start key)
   (let loop ([level 1] ;; start search on level 1
@@ -61,7 +49,6 @@
         (if found?
             (values found-node (reverse accum-path))
             (loop (- level 1) found-node accum-path)))])))
-
 
 (define (node->list level root)
   (let loop ([node root]
@@ -90,13 +77,11 @@
    [(zero? (node-membership node))
     (aif (skip-graph-level10 sg)
          (skip-graph-level10-set! sg (node-insert! 1 it node))
-         (skip-graph-level10-set! sg node))
-    ]
+         (skip-graph-level10-set! sg node))]
    [else
     (aif (skip-graph-level11 sg)
          (skip-graph-level11-set! sg (node-insert! 1 it node))
-         (skip-graph-level11-set! sg node))
-    ]))
+         (skip-graph-level11-set! sg node))]))
 
 (define membership 0)
 
@@ -115,8 +100,7 @@
    (immutable value)
    (immutable membership)
    (mutable prev*)
-   (mutable next*)
-   )
+   (mutable next*))
   (protocol
    (lambda (c)
      (lambda (key value)
@@ -160,9 +144,4 @@
           root)]
        [else
         (loop (node-next level n))]))]))
-
-
-
-
-
 )
