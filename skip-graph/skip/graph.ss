@@ -17,48 +17,51 @@
      (lambda ()
        (c #f #f #f)))))
 
-(define (node-search-with-level level start key)
+(define (node-search-with-level level start key accum-path)
   (cond
    [(= (node-key start) key)
-    (values #t start)]
+    (values #t start (cons 'found accum-path))]
    [(> (node-key start) key)
     ;; search to left
-    (let loop ([node start])
-      (format #t "level=~d node=~a\n" level (node-key node))
+    (let loop ([node start]
+               [path (cons (cons level (node-key start)) accum-path)])
+;;      (format #t "level=~d node=~a\n" level (node-key node))
       (cond
        [(= (node-key node) key)
-        (display "[1]")
-        (values #t node)]
-       [(< (node-key (node-prev level node)) key)
-        (display "[2]")
-        (values #f node)]
+        (values #t node (cons 'found path))]
        [(not (node-prev level node))
-        (display "[3]")
-        (values #f node)]
+        (values #f node path)]
+       [(< (node-key (node-prev level node)) key)
+        (values #f node path)]
        [else
-        (display "[4]")
-        (loop (node-prev level node))]))]
+        (loop (node-prev level node) (cons (cons level (node-key (node-prev level node))) path))]))]
    [else
     ;; search to right
-    (let loop ([node start])
+    (let loop ([node start]
+               [path (cons (cons level (node-key start)) accum-path)])
+;;      (format #t "level=~d node=~a\n" level (node-key node))
       (cond
        [(= (node-key node) key)
-        (values #t node)]
-       [(> (node-key (node-next level node)) key)
-        (values #f node)]
+        (values #t node (cons 'found path))]
        [(not (node-next level node))
-        (values #f node)]
+        (values #f node path)]
+       [(> (node-key (node-next level node)) key)
+        (values #f node path)]
        [else
-        (loop (node-next level node))]))]))
+        (loop (node-next level node) (cons (cons level (node-key (node-next level node))) path))]))]))
 
 (define (node-search start key)
-  (let-values (([found? value] (node-search-with-level 1 start key)))
-    (if found?
-        value
-        (let-values (([found? value] (node-search-with-level 0 start key)))
-          (if found?
-              value
-              #f)))))
+  (let loop ([level 1] ;; start search on level 1
+             [start start]
+             [path '()])
+    (cond
+     [(< level 0) (values #f (reverse path))]
+     [else
+      (let-values (([found? found-node accum-path] (node-search-with-level level start key path)))
+        (if found?
+            (values found-node (reverse accum-path))
+            (loop (- level 1) found-node accum-path)))])))
+
 
 (define (node->list level root)
   (let loop ([node root]
@@ -123,7 +126,7 @@
   (vector-ref (node-next* n) level))
 
 (define (node-prev level n)
-  (vector-ref (node-prev* n) 0))
+  (vector-ref (node-prev* n) level))
 
 (define (node-next-set! level n1 n2)
   (vector-set! (node-next* n1) level n2))
