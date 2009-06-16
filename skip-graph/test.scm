@@ -96,6 +96,11 @@
     (test-equal '((1 . 40) (0 . 40)) path)
     (test-false found))
 
-  )
+  ;; range search
+  (let-values (([found path] (node-range-search node40 13 25)))
+    (test-equal '((13 . "$13") (20 . "$20")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
 
-(test-results)
+  (let-values (([found path] (node-range-search node2 13 25)))
+    (test-equal '((13 . "$13") (20 . "$20")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+
+(test-results))

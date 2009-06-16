@@ -1,7 +1,7 @@
 (library (skip graph)
   (export make-skip-graph skip-graph-add! skip-graph-level0
           make-node node-key node-value node-append! skip-graph-level0-key->list skip-graph-level1-key->list
-          node-next node-prev node-membership node-search)
+          node-next node-prev node-membership node-search node-range-search)
   (import (rnrs)
           (mosh)
           (mosh control))
@@ -49,6 +49,18 @@
         (if found?
             (values found-node (reverse accum-path))
             (loop (- level 1) found-node accum-path)))])))
+
+(define (node-range-search start key1 key2)
+  (assert (<= key1 key2))
+  (let-values (([node path](node-search start key1)))
+    (let loop ([node node]
+               [ret '()])
+      (cond
+       [(>= key2 (node-key node))
+        ;; always search on level0
+        (loop (node-next 0 node) (cons node ret))]
+       [else
+        (values (reverse ret) path)]))))
 
 (define (node->list level root)
   (let loop ([node root]
