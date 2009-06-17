@@ -1,7 +1,8 @@
 (library (skip graph)
   (export make-skip-graph skip-graph-add! skip-graph-level0
-          make-node node-key node-value node-append! skip-graph-level0-key->list skip-graph-level1-key->list
-          node-next node-prev node-membership node-search node-range-search)
+          make-node node-key node-value node-append! #;skip-graph-level0-key->list skip-graph-level1-key->list
+          node-next node-prev node-membership node-search node-range-search node-search-closest<= node-add-level! search-same-membeship-node node-add!
+          node->list node->key-list)
   (import (rnrs)
           (mosh)
           (mosh control))
@@ -15,6 +16,109 @@
    (lambda (c)
      (lambda ()
        (c #f #f #f)))))
+
+(define (node->key-list level start)
+  (if (zero? level)
+      (map node-key (node->list level start))
+      (map (lambda (node*) (map node-key node*)) (node->list level start))))
+
+(define (node->list level start)
+  (define (collect-uniq-membership-node* start)
+    (let ([node* (member-list 0 start)])
+      (format #t "node*=~a\n" node*)
+      (let loop ([node* node*]
+                 [membership* '()]
+                 [ret '()])
+;      (display "[2]")
+        (cond
+         [(null? node*)
+          (list-sort (lambda (a b) (< (node-key a) (node-key b))) ret)]
+         [(memq (node-membership (car node*)) membership*)
+          (loop (cdr node*) membership* ret)]
+         [else
+          (loop (cdr node*)
+                (cons (node-membership (car node*)) membership*)
+                (cons (car node*) ret))]))))
+  (define (collect level node-direction start)
+    (format #t "(collect ~d ~a ~a)\n" level node-direction start)
+    (let loop ([node start]
+               [ret '()])
+      (cond
+       [(not node)
+        (reverse ret)]
+       [else
+        (loop (node-direction level node) (cons node ret))])))
+  (define (member-list level start)
+    (format #t "(member-list ~d ~a)\n" level start)
+    (append (reverse (collect level node-prev start))
+            (collect level node-next (node-next level start))))
+  (cond
+   [(zero? level)
+    (member-list level start)]
+   [else
+    (let ([start-node* (collect-uniq-membership-node* start)])
+      (map (lambda (node) (member-list level node)) start-node*))]
+   ))
+
+
+(define (search-same-membeship-node level start)
+  (let loop ([left (node-prev level start)]
+             [right (node-next level start)])
+    (cond
+     [(and (not left) (not right)) #f] ;; not found
+     [(and left (= (node-membership left) (node-membership start)))
+      left]
+     [(and right (= (node-membership right) (node-membership start)))
+      right]
+     [else
+      (loop (and left (node-prev level left))
+            (and right (node-next level right)))])))
+
+(define (node-add! start node)
+  ;; level0
+  (node-add-level! 0 start node)
+  ;; level1
+  (let ([buddy-node (search-same-membeship-node 0 node)])
+    (when buddy-node
+      (node-add-level! 1 buddy-node node))))
+
+(define (node-add-level! level start node)
+  (let ([closest-node (node-search-closest<= level start (node-key node))])
+    (if (< (node-key node) (node-key closest-node)) ;; node to add is leftmost.
+        (begin (display "hige") (node-append! level node closest-node))
+        (node-insert! level closest-node node))))
+
+(define (node-search-closest<= level start key)
+  (node-search-with-level2 level start key))
+
+(define (node-search-with-level2 level start key)
+  (define (search-to-left)
+    (let loop ([node start])
+;      (format #t "level=~d node=~a\n" level (node-key node))
+      (cond
+       [(not (node-prev level node))
+        node]
+       [(<= (node-key (node-prev level node)) key)
+        (node-prev level node)]
+       [else
+        (loop (node-prev level node))])))
+  (define (search-to-right)
+    (let loop ([node start])
+;      (format #t "right level=~d node=~a\n" level (node-key node))
+      (cond
+       [(not (node-next level node))
+        node]
+       [(> (node-key (node-next level node)) key)
+        node]
+       [else
+        (loop (node-next level node))])))
+  (cond
+   [(> (node-key start) key)
+    ;; search to left
+    (search-to-left)]
+   [else
+    ;; search to right
+    (search-to-right)]))
 
 (define (node-search-with-level level start key accum-path)
   (define (search-to-direction node-direction-proc key-cmp-proc)
@@ -62,7 +166,7 @@
        [else
         (values (reverse ret) path)]))))
 
-(define (node->list level root)
+(define (node->list-old level root)
   (let loop ([node root]
              [ret '()])
     (if node
@@ -70,10 +174,10 @@
         (reverse ret))))
 
 (define (node-key->list level root)
-  (map node-key (node->list level root)))
+  (map node-key (node->list-old level root)))
 
-(define (skip-graph-level0-key->list sg)
-  (node-key->list 0 (skip-graph-level0 sg)))
+;; (define (skip-graph-level0-key->list sg)
+;;   (node-key->list 0 (skip-graph-level0 sg)))
 
 (define (skip-graph-level1-key->list sg)
   (list
