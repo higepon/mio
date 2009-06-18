@@ -45,7 +45,6 @@
       (map (lambda (node) (member-list level node)) start-node*))]
    ))
 
-
 (define (search-same-membeship-node level start)
   (let loop ([left (node-left level start)]
              [right (node-right level start)])
