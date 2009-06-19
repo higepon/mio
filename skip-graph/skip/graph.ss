@@ -1,7 +1,7 @@
 (library (skip graph)
   (export make-node node-key node-value node-append! membership=?
           node-right node-left node-membership node-search node-range-search node-search-closest<= node-add-level! search-same-membeship-node node-add!
-          node->list node->key-list max-level
+          node->list node->key-list max-level membership-counter
           ;; export for test
           membership-level
           )
@@ -12,6 +12,7 @@
           (mosh control))
 
 (define max-level (make-parameter 1))
+(define membership-counter (make-parameter 0))
 
 (define (node->key-list level start)
   (map (lambda (node*) (map node-key node*)) (node->list level start)))
@@ -144,29 +145,26 @@
        [else
         (values (reverse ret) path)]))))
 
-(define membership 0)
-(define membership2 0)
-
 (define (gen-membership)
   (cond
    [(= (max-level) 1)
     (cond
-     [(zero? membership)
-      (set! membership 1)
+     [(zero? (membership-counter))
+      (membership-counter 1)
       '(0)]
      [else
-      (set! membership 0)
+      (membership-counter 0)
       '(1)])]
    [(= (max-level) 2)
-    (let ([ret
-    (case membership2
+    ;; ((number->string x 2)
+    (case (membership-counter)
       [(0) '(0 0)]
       [(1) '(0 1)]
       [(2) '(1 0)]
       [(3) '(1 1)])])
-    (set! membership2 (+ membership2 1))
-    (when (= 4 membership2)
-      (set! membership2 0))
+    (membership-counter (+ (membership-counter) 1))
+    (when (= 4 (membership-counter))
+      (membership-counter 0))
     ret)]
    [else
     #f

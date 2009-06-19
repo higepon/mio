@@ -154,7 +154,8 @@
     (test-equal '((2 5 9 30) (6 13 20 40)) (node->key-list 1 node9))))
 
 ;; level0, level1 and leve2
-(parameterize ([max-level 2])
+(parameterize ([max-level 2]
+               [membership-counter 0])
   (let ([node13 (make-node 13 "$13")]
         [node2 (make-node 2 "$2")]
         [node9 (make-node 9 "$9")]
