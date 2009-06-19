@@ -1,15 +1,16 @@
 (library (skip graph)
-  (export make-node node-key node-value node-append!
+  (export make-node node-key node-value node-append! membership=?
           node-right node-left node-membership node-search node-range-search node-search-closest<= node-add-level! search-same-membeship-node node-add!
           node->list node->key-list)
   (import (rnrs)
           (mosh)
+          (only (srfi :1) drop)
           (mosh control))
 
+(define max-level 1)
+
 (define (node->key-list level start)
-  (if (zero? level)
-      (map node-key (node->list level start))
-      (map (lambda (node*) (map node-key node*)) (node->list level start))))
+  (map (lambda (node*) (map node-key node*)) (node->list level start)))
 
 (define (node->list level start)
   (define (collect-uniq-membership-node* start)
@@ -19,7 +20,7 @@
                  [ret '()])
         (cond
          [(null? node*)
-          (list-sort (lambda (a b) (< (node-membership a) (node-membership b))) ret)]
+          (list-sort (lambda (a b) (< (car (node-membership a)) (car (node-membership b) 0))) ret)]
          [(memq (node-membership (car node*)) membership*)
           (loop (cdr node*) membership* ret)]
          [else
@@ -39,32 +40,37 @@
             (collect level node-right (node-right level start))))
   (cond
    [(zero? level)
-    (member-list level start)]
+    (list (member-list level start))]
    [else
     (let ([start-node* (collect-uniq-membership-node* start)])
-      (map (lambda (node) (member-list level node)) start-node*))]
-   ))
+      (map (lambda (node) (member-list level node)) start-node*))]))
 
-(define (search-same-membeship-node level start)
-  (let loop ([left (node-left level start)]
-             [right (node-right level start)])
+(define (search-same-membeship-node search-level membership-level start)
+  ;; always search in level0
+  (let loop ([left (node-left search-level start)]
+             [right (node-right search-level start)])
     (cond
      [(and (not left) (not right)) #f] ;; not found
-     [(and left (= (node-membership left) (node-membership start)))
+     [(and left (membership=? membership-level left start))
       left]
-     [(and right (= (node-membership right) (node-membership start)))
+     [(and right (membership=? membership-level right start))
       right]
      [else
-      (loop (and left (node-left level left))
-            (and right (node-right level right)))])))
+      (loop (and left (node-left search-level left))
+            (and right (node-right search-level right)))])))
 
 (define (node-add! start node)
   ;; level0
   (node-add-level! 0 start node)
-  ;; level1
-  (let ([buddy-node (search-same-membeship-node 0 node)])
-    (when buddy-node
-      (node-add-level! 1 buddy-node node))))
+  ;; level1 or higher
+  (let loop ([level 1])
+    (cond
+     [(> level max-level) '()]
+     [else
+      (let ([buddy-node (search-same-membeship-node (- level 1) level node)])
+        (when buddy-node
+          (node-add-level! level buddy-node node)))
+      (loop (+ level 1))])))
 
 (define (node-add-level! level start node)
   (let ([closest-node (node-search-closest<= level start (node-key node))])
@@ -102,7 +108,7 @@
     (search-to-right)]))
 
 (define (node-search start key)
-  (let loop ([level 1] ;; start search on level 1
+  (let loop ([level max-level] ;; start search on level 1
              [start start]
              [path '()])
     (cond
@@ -125,26 +131,28 @@
        [else
         (values (reverse ret) path)]))))
 
-(define (node->list-old level root)
-  (let loop ([node root]
-             [ret '()])
-    (if node
-        (loop (node-right level node) (cons node ret))
-        (reverse ret))))
-
-(define (node-key->list level root)
-  (map node-key (node->list-old level root)))
-
 (define membership 0)
 
 (define (gen-membership)
   (cond
-   [(zero? membership)
-    (set! membership 1)
-    0]
+   [(= max-level 1)
+    (cond
+     [(zero? membership)
+      (set! membership 1)
+      '(0)]
+     [else
+      (set! membership 0)
+      '(1)])]
    [else
-    (set! membership 0)
-    1]))
+    #f
+    ]))
+
+(define (membership-level level membership)
+    (drop membership (- (length membership) level)))
+
+(define (membership=? level n1 n2)
+  (equal? (membership-level level (node-membership n1))
+          (membership-level level (node-membership n2))))
 
 (define-record-type node
   (fields

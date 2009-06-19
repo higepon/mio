@@ -6,15 +6,15 @@
 (let ([node (make-node "key1" "value1")])
   (test-equal "key1" (node-key node))
   (test-equal "value1" (node-value node))
-  (test-eq 0 (node-membership node)))
+  (test-equal '(0) (node-membership node)))
 
 ;; node append!
 (let ([level 0]
       [node1 (make-node "key1" "value1")]
       [node2 (make-node "key2" "value2")])
   (node-append! level node1 node2)
-  (test-eq 1 (node-membership node1))
-  (test-eq 0 (node-membership node2))
+  (test-equal '(1) (node-membership node1))
+  (test-equal '(0) (node-membership node2))
   (test-eq node2 (node-right level node1))
   (test-eq node1 (node-left level node2)))
 
@@ -28,31 +28,31 @@
       [node6 (make-node 6 "$6")]
       [node9 (make-node 9 "$9")])
 
-  (test-equal '(13) (node->key-list 0 node13))
+  (test-equal '((13)) (node->key-list 0 node13))
   (test-equal '((13)) (node->key-list 1 node13))
 
   (node-add! node13 node30)
-  (test-equal '(13 30) (node->key-list 0 node13))
+  (test-equal '((13 30)) (node->key-list 0 node13))
   (test-equal '((30) (13)) (node->key-list 1 node13))
 
   (node-add! node30 node20)
-  (test-equal '(13 20 30) (node->key-list 0 node30))
+  (test-equal '((13 20 30)) (node->key-list 0 node30))
   (test-equal '((30) (13 20)) (node->key-list 1 node13))
 
   (node-add! node30 node5)
-  (test-equal '(5 13 20 30) (node->key-list 0 node20))
+  (test-equal '((5 13 20 30)) (node->key-list 0 node20))
   (test-equal '((5 30) (13 20)) (node->key-list 1 node20))
 
   (node-add! node30 node40)
-  (test-equal '(5 13 20 30 40) (node->key-list 0 node5))
+  (test-equal '((5 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((5 30) (13 20 40)) (node->key-list 1 node20))
 
   (node-add! node30 node2)
-  (test-equal '(2 5 13 20 30 40) (node->key-list 0 node5))
+  (test-equal '((2 5 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((2 5 30) (13 20 40)) (node->key-list 1 node5))
 
   (node-add! node13 node6)
-  (test-equal '(2 5 6 13 20 30 40) (node->key-list 0 node5))
+  (test-equal '((2 5 6 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((2 5 30) (6 13 20 40)) (node->key-list 1 node2))
 
   ;; start node is node30, search to left on level 1
@@ -148,8 +148,8 @@
 
   (let ([level 0])
     (node-add! node30 node9)
-    (test-equal '(2 5 6 9 13 20 30 40) (node->key-list 0 node30))
-    (test-eq (node-membership node9) (node-membership (search-same-membeship-node 0 node9)))
+    (test-equal '((2 5 6 9 13 20 30 40)) (node->key-list 0 node30))
+    (test-true (membership=? 1 node9 (search-same-membeship-node 0 1 node9)))
     (test-equal '((2 5 9 30) (6 13 20 40)) (node->key-list 1 node9))
 )
 
