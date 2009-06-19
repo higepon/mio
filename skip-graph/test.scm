@@ -1,5 +1,6 @@
 (import (rnrs)
         (skip graph)
+        (srfi :39)
         (mosh test))
 
 ;; node
@@ -150,7 +151,57 @@
     (node-add! node30 node9)
     (test-equal '((2 5 6 9 13 20 30 40)) (node->key-list 0 node30))
     (test-true (membership=? 1 node9 (search-same-membeship-node 0 1 node9)))
-    (test-equal '((2 5 9 30) (6 13 20 40)) (node->key-list 1 node9))
-)
+    (test-equal '((2 5 9 30) (6 13 20 40)) (node->key-list 1 node9))))
 
-(test-results))
+;; level0, level1 and leve2
+(parameterize ([max-level 2])
+  (let ([node13 (make-node 13 "$13")]
+        [node2 (make-node 2 "$2")]
+        [node9 (make-node 9 "$9")]
+        [node40 (make-node 40 "$40")]
+        [node5 (make-node 5 "$5")]
+        )
+
+    (test-equal '((13)) (node->key-list 0 node13))
+    (test-equal '((13)) (node->key-list 1 node13))
+    (test-equal '((13)) (node->key-list 2 node13))
+
+    (node-add! node13 node2)
+    (test-equal '((2 13)) (node->key-list 0 node13))
+    (test-equal '((13) (2)) (node->key-list 1 node13))
+    (test-equal '((13) (2)) (node->key-list 2 node13))
+
+    (node-add! node2 node9)
+    (test-equal '((2 9 13)) (node->key-list 0 node13))
+    (test-equal '((9 13) (2)) (node->key-list 1 node13))
+    (test-equal '((13) (2) (9)) (node->key-list 2 node13))
+
+    (node-add! node13 node40)
+    (test-equal '((2 9 13 40)) (node->key-list 0 node13))
+    (test-equal '((9 13) (2 40)) (node->key-list 1 node13))
+    (test-equal '((13) (2) (9) (40)) (node->key-list 2 node13))
+
+    (node-add! node40 node5)
+    (test-equal '((2 5 9 13 40)) (node->key-list 0 node13))
+    (test-equal '((5 9 13) (2 40)) (node->key-list 1 node13))
+    (test-equal '((5 13) (2) (9) (40)) (node->key-list 2 node40))
+
+  (let-values (([found path] (node-search node40 5)))
+    (test-true found)
+    (test-equal '((2 . 40) (1 . 40) (1 . 2) (0 . 2) (0 . 5) found) path)
+    (test-equal "$5" (node-value found)))
+
+  (let-values (([found path] (node-range-search node13 6 10)))
+    (test-equal '((9 . "$9")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+
+
+;    (test-equal '(0) (membership-level 1 '(1 0)))
+;    (test-equal '(1 0) (membership-level 2 '(1 0)))
+    #f
+    ))
+
+
+
+
+
+(test-results)
