@@ -102,6 +102,11 @@
   (let-values (([found path] (node-range-search node2 13 25)))
     (test-equal '((13 . "$13") (20 . "$20")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
 
+  ;; range search
+  (let-values (([found path] (node-range-search node40 13 25 1)))
+    (test-equal '((13 . "$13")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+
+
   ;; find closest<=
   (let ([level 0]) ;; (2 5 6 13 20 30 40)
     ;; middle to left
@@ -195,14 +200,26 @@
   (let-values (([found path] (node-range-search node13 6 10)))
     (test-equal '((9 . "$9")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
 
+  (node-delete! node9)
+  (test-equal '((2 5 13 40)) (node->key-list 0 node13))
+  (test-equal '((5 13) (2 40)) (node->key-list 1 node13))
+  (test-equal '((5 13) (2) (40)) (node->key-list 2 node40))
+
+  (node-delete! node2)
+  (test-equal '((5 13 40)) (node->key-list 0 node13))
+  (test-equal '((5 13) (40)) (node->key-list 1 node13))
+  (test-equal '((5 13) (40)) (node->key-list 2 node40))
+
+  (node-delete! node40)
+  (test-equal '((5 13)) (node->key-list 0 node13))
+  (test-equal '((5 13)) (node->key-list 1 node13))
+  (test-equal '((5 13)) (node->key-list 2 node5))
+
 
 ;    (test-equal '(0) (membership-level 1 '(1 0)))
 ;    (test-equal '(1 0) (membership-level 2 '(1 0)))
     #f
     ))
-
-
-
 
 
 (test-results)

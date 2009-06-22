@@ -2,6 +2,7 @@
   (export make-node node-key node-value node-append! membership=?
           node-right node-left node-membership node-search node-range-search node-search-closest<= node-add-level! search-same-membeship-node node-add!
           node->list node->key-list max-level membership-counter
+          node-delete!
           ;; export for test
           membership-level
           )
@@ -9,7 +10,9 @@
           (mosh)
           (only (srfi :1) drop)
           (srfi :39)
+          (srfi :42)
           (mosh control))
+
 
 (define max-level (make-parameter 1))
 (define membership-counter (make-parameter 0))
@@ -131,44 +134,39 @@
             (values found-node (append path accum-path '(found)))
             (loop (- level 1) found-node (append path accum-path))))])))
 
-(define (node-range-search start key1 key2)
-  (assert (<= key1 key2))
-  (let-values (([node path] (node-search-internal start key1)))
-    (let loop ([node (if (= key1 (node-key node))
-                         node
-                         (node-right 0 node))]
-               [ret '()])
-      (cond
-       [(>= key2 (node-key node))
-        ;; always search on level0
-        (loop (node-right 0 node) (cons node ret))]
-       [else
-        (values (reverse ret) path)]))))
+(define (node-range-search start key1 key2 . opt)
+  (let-optionals* opt ((limit #f))
+    (assert (<= key1 key2))
+    (let-values (([node path] (node-search-internal start key1)))
+      (let loop ([node (if (= key1 (node-key node))
+                           node
+                           (node-right 0 node))]
+                 [ret '()]
+                 [count 0])
+        (cond
+         [(and limit (= limit count))
+          (values (reverse ret) path)]
+         [(>= key2 (node-key node))
+          ;; always search on level0
+          (loop (node-right 0 node) (cons node ret) (+ 1 count))]
+         [else
+          (values (reverse ret) path)])))))
 
+;; For testability, this is sequencial
 (define (gen-membership)
-  (cond
-   [(= (max-level) 1)
-    (cond
-     [(zero? (membership-counter))
-      (membership-counter 1)
-      '(0)]
-     [else
-      (membership-counter 0)
-      '(1)])]
-   [(= (max-level) 2)
-    ;; ((number->string x 2)
-    (case (membership-counter)
-      [(0) '(0 0)]
-      [(1) '(0 1)]
-      [(2) '(1 0)]
-      [(3) '(1 1)])])
+  ;; (num->binary-list 3 0) => (0 0 0)
+  ;; (num->binary-list 3 1) => (0 0 1)
+  ;; (num->binary-list 3 2) => (0 1 0)
+  (define (num->binary-list bits n)
+    (let ([ret (map (lambda (x) (- x (char->integer #\0))) (map char->integer (string->list (number->string n 2))))])
+      (if (> bits (length ret))
+          (append (list-ec (: i (- bits (length ret))) 0) ret)
+          ret)))
+  (let ([ret (num->binary-list (max-level) (membership-counter))])
     (membership-counter (+ (membership-counter) 1))
-    (when (= 4 (membership-counter))
+    (when (= (expt 2 (max-level)) (membership-counter))
       (membership-counter 0))
-    ret)]
-   [else
-    #f
-    ]))
+    ret))
 
 (define (membership-level level membership)
   (drop membership (- (length membership) level)))
@@ -209,6 +207,17 @@
 (define (node-append! level n1 n2)
   (node-right-set! level n1 n2)
   (node-left-set! level n2 n1))
+
+(define (node-delete! node)
+  (let loop ([level (max-level)])
+    (cond
+     [(< level 0) '()]
+     [else
+      (when (node-left level node)
+        (node-right-set! level (node-left level node) (node-right level node)))
+      (when (node-right level node)
+        (node-left-set! level (node-right level node) (node-left level node)))
+      (loop (- level 1))])))
 
 (define (node-insert! level root node)
   (define (node< a b)
