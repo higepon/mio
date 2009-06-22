@@ -87,7 +87,7 @@
 
   ;; not found
   (let-values (([found path] (node-search node40 4)))
-    (test-equal '((1 . 40) (1 . 20) (1 . 13) (1 . 6) (0 . 6) (0 . 5) (0 . 2)) path)
+    (test-equal '((1 . 40) (1 . 20) (1 . 13) (1 . 6) (0 . 6) (0 . 5)) path)
     (test-false found))
 
   ;; not found
@@ -194,7 +194,7 @@
 
   (let-values (([found path] (node-search node40 5)))
     (test-true found)
-    (test-equal '((2 . 40) (1 . 40) (1 . 2) (0 . 2) (0 . 5) found) path)
+    (test-equal '((2 . 40) (1 . 40) (0 . 40) (0 . 13) (0 . 9)  (0 . 5) found) path)
     (test-equal "$5" (node-value found)))
 
   (let-values (([found path] (node-range-search node13 6 10)))
@@ -215,10 +215,6 @@
   (test-equal '((5 13)) (node->key-list 1 node13))
   (test-equal '((5 13)) (node->key-list 2 node5))
 
-
-;    (test-equal '(0) (membership-level 1 '(1 0)))
-;    (test-equal '(1 0) (membership-level 2 '(1 0)))
-    #f
     ))
 
 

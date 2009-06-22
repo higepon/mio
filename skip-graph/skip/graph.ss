@@ -116,8 +116,14 @@
     ;; search to right
     (search-to-right)]))
 
+;; (define (node-search start key)
+;;   (let-values (([node path] (node-search-internal start key)))
+;;     (if (= key (node-key node))
+;;         (values node path)
+;;         (values #f path))))
+
 (define (node-search start key)
-  (let-values (([node path] (node-search-internal start key)))
+  (let-values (([node path] (search-op start start key (max-level) '())))
     (if (= key (node-key node))
         (values node path)
         (values #f path))))
@@ -191,6 +197,37 @@
    (lambda (c)
      (lambda (key value)
        (c key value (gen-membership) (make-vector (+ (max-level) 1) #f) (make-vector (+ (max-level) 1) #f))))))
+
+;; send result node to start node.
+(define (search-op-result start found-node path)
+  (values found-node (reverse path)))
+
+(define (search-op self start key level path)
+  (define (add-path level)
+    (cons (cons level (node-key self)) path))
+  (cond
+   [(= (node-key self) key)
+    (search-op-result start self (cons 'found (add-path level)))]
+   [(< (node-key self) key)
+    (let loop ([level level])
+      (cond
+       [(< level 0)
+        (search-op-result start self path)]
+       [(and (node-right level self) (<= (node-key (node-right level self)) key))
+        (search-op (node-right level self) start key level (add-path level))]
+       [else
+        (set! path (add-path level))
+        (loop (- level 1))]))]
+   [else
+    (let loop ([level level])
+      (cond
+       [(< level 0)
+        (search-op-result start self path)]
+       [(and (node-left level self) (>= (node-key (node-left level self)) key))
+        (search-op (node-left level self) start key level (add-path level))]
+       [else
+        (set! path (add-path level))
+        (loop (- level 1))]))]))
 
 (define (node-right level n)
   (vector-ref (node-right* n) level))
