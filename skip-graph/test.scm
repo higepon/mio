@@ -57,19 +57,19 @@
       [node6 (make-node 6 "$6")]
       [node9 (make-node 9 "$9")])
 
-  (node-add! node13 node13)
+  (node-insert! node13 node13)
   (test-equal '((13)) (node->key-list 0 node13))
   (test-equal '((13)) (node->key-list 1 node13))
 
-  (node-add! node13 node30)
+  (node-insert! node13 node30)
   (test-equal '((13 30)) (node->key-list 0 node13))
   (test-equal '((13) (30)) (node->key-list 1 node13))
 
-  (node-add! node30 node20)
+  (node-insert! node30 node20)
   (test-equal '((13 20 30)) (node->key-list 0 node30))
   (test-equal '((13 20) (30)) (node->key-list 1 node13))
 
-  (node-add! node30 node5)
+  (node-insert! node30 node5)
   (test-equal '((5 13 20 30)) (node->key-list 0 node20))
   (test-equal '((13 20) (5 30)) (node->key-list 1 node20))
 
@@ -84,15 +84,15 @@
 ;;     (test-eq 20 (node-key found)))
 
 
-  (node-add! node30 node40)
+  (node-insert! node30 node40)
   (test-equal '((5 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((13 20 40) (5 30) ) (node->key-list 1 node20))
 
-  (node-add! node30 node2)
+  (node-insert! node30 node2)
   (test-equal '((2 5 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((13 20 40) (2 5 30)) (node->key-list 1 node5))
 
-  (node-add! node13 node6)
+  (node-insert! node13 node6)
   (test-equal '((2 5 6 13 20 30 40)) (node->key-list 0 node5))
   (test-equal '((6 13 20 40) (2 5 30) ) (node->key-list 1 node2))
 
@@ -193,7 +193,7 @@
       (test-eq 2 (node-key node))))
 
   (let ([level 0])
-    (node-add! node30 node9)
+    (node-insert! node30 node9)
     (test-equal '((2 5 6 9 13 20 30 40)) (node->key-list 0 node30))
     (test-true (membership=? 1 node9 (search-same-membeship-node 0 1 node9)))
     (test-equal '((6 13 20 40) (2 5 9 30)) (node->key-list 1 node9)))))
@@ -212,22 +212,22 @@
     (test-equal '((13)) (node->key-list 1 node13))
     (test-equal '((13)) (node->key-list 2 node13))
 
-    (node-add! node13 node2)
+    (node-insert! node13 node2)
     (test-equal '((2 13)) (node->key-list 0 node13))
     (test-equal '((13) (2)) (node->key-list 1 node13))
     (test-equal '((13) (2)) (node->key-list 2 node13))
 
-    (node-add! node2 node9)
+    (node-insert! node2 node9)
     (test-equal '((2 9 13)) (node->key-list 0 node13))
     (test-equal '((9 13) (2)) (node->key-list 1 node13))
     (test-equal '((13) (2) (9)) (node->key-list 2 node13))
 
-    (node-add! node13 node40)
+    (node-insert! node13 node40)
     (test-equal '((2 9 13 40)) (node->key-list 0 node13))
     (test-equal '((9 13) (2 40)) (node->key-list 1 node13))
     (test-equal '((13) (2) (9) (40)) (node->key-list 2 node13))
 
-    (node-add! node40 node5)
+    (node-insert! node40 node5)
     (test-equal '((2 5 9 13 40)) (node->key-list 0 node13))
     (test-equal '((5 9 13) (2 40)) (node->key-list 1 node13))
     (test-equal '((5 13) (2) (9) (40)) (node->key-list 2 node40))
