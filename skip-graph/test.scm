@@ -1,6 +1,7 @@
 (import (rnrs)
         (skip graph)
         (srfi :39)
+        (srfi :8)
         (mosh test))
 
 ;; node
@@ -29,16 +30,20 @@
       [node6 (make-node 6 "$6")]
       [node9 (make-node 9 "$9")])
 
+  (node-add! node13 node13)
   (test-equal '((13)) (node->key-list 0 node13))
   (test-equal '((13)) (node->key-list 1 node13))
 
   (node-add! node13 node30)
+  (receive (found level) (buddy-op node13 node30 1 3)
+    (test-false found))
+
   (test-equal '((13 30)) (node->key-list 0 node13))
   (test-equal '((30) (13)) (node->key-list 1 node13))
 
   (node-add! node30 node20)
   (test-equal '((13 20 30)) (node->key-list 0 node30))
-  (test-equal '((30) (13 20)) (node->key-list 1 node13))
+ (test-equal '((30) (13 20)) (node->key-list 1 node13))
 
   (node-add! node30 node5)
   (test-equal '((5 13 20 30)) (node->key-list 0 node20))
@@ -215,7 +220,5 @@
   (test-equal '((5 13)) (node->key-list 1 node13))
   (test-equal '((5 13)) (node->key-list 2 node5))
 
-    ))
-
-
+))
 (test-results)
