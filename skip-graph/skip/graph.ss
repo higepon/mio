@@ -6,6 +6,7 @@
           ;; export for test
           membership-level
           buddy-op
+          link-op
           )
   (import (rnrs)
           (mosh)
@@ -93,81 +94,110 @@
      (assert #f)]))
 
 ;; 自分とマッチして buddy を返すバグがある
-(define (buddy-op self n level membership)
-  (format #t "buddy-op: self=~a n=~a level=~a\n" (and self (node-key self)) (and n (node-key n)) level)
-  (let ([search-level (- level 1)]
-        [membership-level level])
-;    (format #t "buddy-op self=~a n=~a level=~a\n" (node-key self) (node-key n) level)
-  (let loop ([left self]
-             [right (node-right search-level self)])
-   (format #t "left =~a right =~a\n" (and left (node-key left)) right)
-    (cond
-     [(and (not left) (not right))
-      (display "[1]\n")
-      (display "higehige\n")
-      (values #f #f)] ;; not found
-     [(and left (not (eq? n left)) (membership=? membership-level left n))
-      (display "[2]\n")
-      (values left level)]
-     [(and right (not (eq? n right)) (membership=? membership-level right n))
-      (display "[3]\n")
-      (values right level)]
-     [else
-      (display "[4]\n")
-      (loop (and left (node-left search-level left))
-            (and right (node-right search-level right)))]))))
+;; (define (buddy-op self n level membership)
+;;   (format #t "buddy-op: self=~a n=~a level=~a\n" (and self (node-key self)) (and n (node-key n)) level)
+;;   (let ([search-level (- level 1)]
+;;         [membership-level level])
+;; ;    (format #t "buddy-op self=~a n=~a level=~a\n" (node-key self) (node-key n) level)
+;;   (let loop ([left self]
+;;              [right (node-right search-level self)])
+;;    (format #t "left =~a right =~a\n" (and left (node-key left)) right)
+;;     (cond
+;;      [(and (not left) (not right))
+;;       (display "[1]\n")
+;;       (display "higehige\n")
+;;       (values #f #f)] ;; not found
+;;      [(and left (not (eq? n left)) (membership=? membership-level left n))
+;;       (display "[2]\n")
+;;       (values left level)]
+;;      [(and right (not (eq? n right)) (membership=? membership-level right n))
+;;       (display "[3]\n")
+;;       (values right level)]
+;;      [else
+;;       (display "[4]\n")
+;;       (loop (and left (node-left search-level left))
+;;             (and right (node-right search-level right)))]))))
 
+;; 
+(define (buddy-op self n level membership side)
+  (cond
+   [(membership=? level n self)
+    (values self level)]
+   [else
+    (case side
+      [(LEFT)
+       (if (node-right (- level 1) self)
+           (buddy-op (node-right (- level 1) self) n level membership side)
+           (values #f #f))]
+      [(RIGHT)
+       (if (node-left (- level 1) self)
+           (buddy-op (node-left (- level 1) self) n level membership side)
+           (values #f #f))]
+      [else
+       (assert #f)])]))
+
+;(define (node-add! introducer n)
+
+;; buddy-op は左右両方を見ないと行けない
 (define (node-add! introducer n)
-  (display "node-add!\n")
   (cond
    [(eq? introducer n)
     (node-right-set! 0 n #f)
     (node-left-set!  0 n #f)]
    [else
     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
-      (format #t "neighbor=~a\n" (node-key neighbor))
+      (format #t "neighbor = ~a\n" (and neighbor (node-key neighbor)))
       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'R 'L) 0)
-      (format #t "key->list ~a\n" (node->key-list 0 introducer))
       (let loop ([level 1])
+        (format #t "level=~a\n"  level)
         (cond
-         [(> level (max-level)) '()]
-         [else
-          (let ([left (node-left (- level 1) n)]
-                [right (node-right (- level 1) n)])
-            (format #t "left=~a right=~a\n" (and left (node-key left)) (and right (node-key right)))
+         [(> level (max-level)) (display 'done)'()]
+         [(node-left (- level 1) n)
+          (format #t "node-left ~a ~a\n" (node-key (node-left (- level 1) n)) (node-key n) )
+          (let-values (([new-buddy level2] (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)))
+            (format #t "new-buddy=~a\n" (and new-buddy (node-key new-buddy)))
+          (display "after buddy op\n")
             (cond
-             [(and left right)
-              (let-values (([new-buddy level] (buddy-op left n level (membership-level level (node-membership n)))))
-                  (if new-buddy
-                      (begin (display "<1>")(link-op new-buddy n (if (< (node-key new-buddy) (node-key n)) 'R 'L) level) (loop (+ level 1)))
-                      (let-values (([new-buddy level] (buddy-op right n level (membership-level level (node-membership n)))))
-                        (if new-buddy
-                            (begin (display "<2>")(link-op new-buddy n (if (< (node-key new-buddy) (node-key n)) 'R 'L) level) (loop (+ level 1)))
-                            (begin (node-right-set! level n #f)
-                                   (node-left-set! level n #f)
-                                   (loop (+ level 1)))))))]
-             [left
-              (display "LEFT\n")
-              (let-values (([new-buddy level-dummy] (buddy-op left n level (membership-level level (node-membership n)))))
-                (format #t "n=~a new-buddy=~a\n" (and n (node-key n))  (and new-buddy (node-key new-buddy)))
-                  (if new-buddy
-                      (begin (link-op new-buddy n 'R level) (loop (+ level 1)))
-                      (begin (node-right-set! level n #f)
-                             (node-left-set! level n #f)
-                             (format #t "N left=~a right=~a\n" (node-left level n) (node-right level n))
-                                   (loop (+ level 1)))))]
-             [right
-              (let-values (([new-buddy level2] (buddy-op right n level (membership-level level (node-membership n)))))
-                (if new-buddy
-                    (begin (link-op new-buddy n 'L level) (loop (+ level 1)))
-                    (begin (node-right-set! level n #f)
-                           (node-left-set! level n #f)
-                           (loop (+ level 1)))))]
+             [new-buddy
+              (link-op new-buddy n 'R level)
+              (display "after link op\n")
+              (display level)
+              (loop (+ level 1))]
+             [(node-right (- level 1) n)
+              (let-values (([new-buddy level2] (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)))
+                (cond
+                 [new-buddy
+                  (link-op new-buddy n 'L level)
+                  (loop (+ level 1))]
+                 [else
+                  '() ;; nomore
+                  ]))]
              [else
-              (begin (node-right-set! level n #f)
-                           (node-left-set! level n #f)
-                           (loop (+ level 1)))
-                              (loop (+ level 1))]))])))]))
+              '()]))]
+         [(node-right (- level 1) n)
+          (display "node-right op\n")
+          (let-values (([new-buddy level2] (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)))
+            (format #t "new-buddy=~a\n" (and new-buddy (node-key new-buddy)))
+            (cond
+             [new-buddy
+              (link-op new-buddy n 'L level)
+              (display "after link op\n")
+              (display level)
+              (loop (+ level 1))]
+             [(node-left (- level 1) n)
+              (let-values (([new-buddy level2] (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)))
+                (cond
+                 [new-buddy
+                  (link-op new-buddy n 'R level)
+                  (loop (+ level 1))]
+                 [else
+                  '() ;; nomore
+                  ]))]
+             [else
+              '()])
+            )]
+         [else
+          '()])))]))
 
 ;; (define (node-add! start node)
 ;; ;  (format #t "node-to-add key=~a membership=~a\n" (node-key node) (node-membership node))
