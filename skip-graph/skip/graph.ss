@@ -15,7 +15,6 @@
           (srfi :42)
           (mosh control))
 
-
 (define max-level (make-parameter 1))
 (define membership-counter (make-parameter 0))
 
@@ -118,21 +117,24 @@
 ;;       (loop (and left (node-left search-level left))
 ;;             (and right (node-right search-level right)))]))))
 
-;; 
+;; Original algorithms's buddy-op has unnecessary return value.
+;;   (To, n, level, membership-vector(level)) => (new-buddy, level)
+;; Our code
+;;   (To, n, level, membership-vector(level), side) => new-buddy
 (define (buddy-op self n level membership side)
   (cond
    [(membership=? level n self)
-    (values self level)]
+    self]
    [else
     (case side
       [(LEFT)
        (if (node-right (- level 1) self)
            (buddy-op (node-right (- level 1) self) n level membership side)
-           (values #f #f))]
+           #f)]
       [(RIGHT)
        (if (node-left (- level 1) self)
            (buddy-op (node-left (- level 1) self) n level membership side)
-           (values #f #f))]
+           #f)]
       [else
        (assert #f)])]))
 
@@ -154,7 +156,7 @@
          [(> level (max-level)) (display 'done)'()]
          [(node-left (- level 1) n)
           (format #t "node-left ~a ~a\n" (node-key (node-left (- level 1) n)) (node-key n) )
-          (let-values (([new-buddy level2] (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)))
+          (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
             (format #t "new-buddy=~a\n" (and new-buddy (node-key new-buddy)))
           (display "after buddy op\n")
             (cond
@@ -164,7 +166,7 @@
               (display level)
               (loop (+ level 1))]
              [(node-right (- level 1) n)
-              (let-values (([new-buddy level2] (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)))
+              (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'L level)
@@ -176,7 +178,7 @@
               '()]))]
          [(node-right (- level 1) n)
           (display "node-right op\n")
-          (let-values (([new-buddy level2] (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)))
+          (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
             (format #t "new-buddy=~a\n" (and new-buddy (node-key new-buddy)))
             (cond
              [new-buddy
@@ -185,7 +187,7 @@
               (display level)
               (loop (+ level 1))]
              [(node-left (- level 1) n)
-              (let-values (([new-buddy level2] (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)))
+              (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'R level)

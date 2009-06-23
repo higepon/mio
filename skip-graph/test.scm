@@ -36,7 +36,7 @@
   (test-equal '((13 20)) (node->key-list 0 node13))
   (test-equal '((13) (20)) (node->key-list 1 node13))
 
-  (receive (found level) (buddy-op node13 node40 1 'dummy 'RIGHT)
+  (let ([found (buddy-op node13 node40 1 'dummy 'RIGHT)])
     (test-true found)
     (test-eq 13 (node-key found)))
 
