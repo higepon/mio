@@ -1,6 +1,6 @@
 (library (skip graph)
   (export make-node node-key node-value node-append! membership=?
-          node-right node-left node-membership node-search node-range-search node-search-closest<= search-same-membeship-node node-insert!
+          node-right node-left node-membership node-search node-range-search node-search-closest<= node-insert!
           node->list node->key-list max-level membership-counter
           node-delete!
           ;; export for test
@@ -15,9 +15,11 @@
           (srfi :42)
           (mosh control))
 
+;; Dynamic parameters
 (define max-level (make-parameter 1))
 (define membership-counter (make-parameter 0))
 
+;; Inspection
 (define (node->key-list level start)
   (map (lambda (node*) (map node-key node*)) (node->list level start)))
 
@@ -53,20 +55,6 @@
    [else
     (let ([start-node* (collect-uniq-membership-node* start)])
       (map (lambda (node) (member-list level node)) start-node*))]))
-
-(define (search-same-membeship-node search-level membership-level start)
-  ;; always search in level0
-  (let loop ([left (node-left search-level start)]
-             [right (node-right search-level start)])
-    (cond
-     [(and (not left) (not right)) #f] ;; not found
-     [(and left (membership=? membership-level left start))
-      left]
-     [(and right (membership=? membership-level right start))
-      right]
-     [else
-      (loop (and left (node-left search-level left))
-            (and right (node-right search-level right)))])))
 
 (define (link-op self n side level)
   (assert (and self n))

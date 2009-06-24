@@ -195,7 +195,6 @@
   (let ([level 0])
     (node-insert! node30 node9)
     (test-equal '((2 5 6 9 13 20 30 40)) (node->key-list 0 node30))
-    (test-true (membership=? 1 node9 (search-same-membeship-node 0 1 node9)))
     (test-equal '((6 13 20 40) (2 5 9 30)) (node->key-list 1 node9)))))
 
 ;; level0, level1 and leve2
