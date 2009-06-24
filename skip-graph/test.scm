@@ -10,16 +10,6 @@
   (test-equal "value1" (node-value node))
   (test-equal '(0) (node-membership node)))
 
-;; node append!
-(let ([level 0]
-      [node1 (make-node "key1" "value1")]
-      [node2 (make-node "key2" "value2")])
-  (node-append! level node1 node2)
-  (test-equal '(1) (node-membership node1))
-  (test-equal '(0) (node-membership node2))
-  (test-eq node2 (node-right level node1))
-  (test-eq node1 (node-left level node2)))
-
 ;; link-op, buddy-op
 (parameterize ([max-level 1]
                [membership-counter 0])

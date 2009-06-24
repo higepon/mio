@@ -1,5 +1,5 @@
 (library (skip graph)
-  (export make-node node-key node-value node-append! membership=?
+  (export make-node node-key node-value membership=?
           node-right node-left node-membership node-search node-range-search node-search-closest<= node-insert!
           node->list node->key-list max-level membership-counter
           node-delete!
@@ -11,7 +11,6 @@
   (import (rnrs)
           (mosh)
           (only (srfi :1) drop)
-
           (srfi :42)
           (srfi :39)
           (mosh control)
@@ -20,6 +19,35 @@
 ;; Dynamic parameters
 (define max-level (make-parameter 1))
 (define membership-counter (make-parameter 0))
+
+;; public skip graph manipulations
+(define (node-search start key)
+  (let-values (([node path] (search-op start start key (max-level) '())))
+    (if (= key (node-key node))
+        (values node path)
+        (values #f path))))
+
+(define (node-insert! introducer n)
+  (insert-op introducer n))
+
+(define (node-delete! introducer key)
+  (let loop ([level (max-level)])
+    (cond
+     [(< level 0) '()]
+     [else
+       (let ([node (search-op introducer introducer key level '())])
+         (unless (= (node-key node) key)
+           (error 'node-delete! "not exist key"))
+          (when (node-left level node)
+            (aif (node-right level node)
+                 (delete-op (node-left level node) it level 'RIGHT)
+                 (delete-op (node-left level node) #f level 'RIGHT)))
+          (when (node-right level node)
+            (aif (node-left level node)
+                 (delete-op (node-right level node) it level 'LEFT)
+                 (delete-op (node-right level node) #f level 'LEFT))))
+      (loop (- level 1))])))
+
 
 ;; Inspection
 (define (node->key-list level start)
@@ -57,6 +85,40 @@
    [else
     (let ([start-node* (collect-uniq-membership-node* start)])
       (map (lambda (node) (member-list level node)) start-node*))]))
+
+;; delete operation
+(define (delete-op self side-node level side)
+  ((if (eq? side 'LEFT) node-left-set! node-right-set!) level self side-node))
+
+;; search operation
+(define (search-op self start key level path)
+  (define (search-op-result start found-node path)
+    (values found-node (reverse path)))
+  (define (add-path level)
+    (cons (cons level (node-key self)) path))
+  (cond
+   [(= (node-key self) key)
+    (search-op-result start self (cons 'found (add-path level)))]
+   [(< (node-key self) key)
+    (let loop ([level level])
+      (cond
+       [(< level 0)
+        (search-op-result start self path)]
+       [(and (node-right level self) (<= (node-key (node-right level self)) key))
+        (search-op (node-right level self) start key level (add-path level))]
+       [else
+        (set! path (add-path level))
+        (loop (- level 1))]))]
+   [else
+    (let loop ([level level])
+      (cond
+       [(< level 0)
+        (search-op-result start self path)]
+       [(and (node-left level self) (>= (node-key (node-left level self)) key))
+        (search-op (node-left level self) start key level (add-path level))]
+       [else
+        (set! path (add-path level))
+        (loop (- level 1))]))]))
 
 ;; link operation
 (define (link-op self n side level)
@@ -124,7 +186,7 @@
        (assert #f)])]))
 
 ;; insert operation
-(define (node-insert! introducer n)
+(define (insert-op introducer n)
   (cond
    [(eq? introducer n)
     (node-right-set! 0 n #f)
@@ -202,12 +264,6 @@
     ;; search to right
     (search-to-right)]))
 
-(define (node-search start key)
-  (let-values (([node path] (search-op start start key (max-level) '())))
-    (if (= key (node-key node))
-        (values node path)
-        (values #f path))))
-
 (define (node-search-internal start key)
   (let loop ([level (max-level)] ;; start search on max-level
              [start start]
@@ -238,6 +294,7 @@
          [else
           (values (reverse ret) path)])))))
 
+;; Membership vector
 ;; For testability, this issues sequencial number.
 (define (gen-membership)
   ;; (num->binary-list 3 0) => (0 0 0)
@@ -261,11 +318,12 @@
   (define (to-number node)
     (string->number (apply string-append (map number->string (membership-level level (node-membership node)))) 2))
   (< (to-number n1) (to-number n2)))
+
 (define (membership=? level n1 n2)
-;  (format #t "level=~a ~a(~a), ~a(~a)\n" level (node-key n1) (membership-level level (node-membership n1)) (node-key n2) (membership-level level (node-membership n2)))
   (equal? (membership-level level (node-membership n1))
           (membership-level level (node-membership n2))))
 
+;; node manipulation
 (define-record-type node
   (fields
    (immutable key)
@@ -278,37 +336,6 @@
      (lambda (key value)
        (c key value (gen-membership) (make-vector (+ (max-level) 1) #f) (make-vector (+ (max-level) 1) #f))))))
 
-;; send result node to start node.
-(define (search-op-result start found-node path)
-  (values found-node (reverse path)))
-
-(define (search-op self start key level path)
-  (define (add-path level)
-    (cons (cons level (node-key self)) path))
-  (cond
-   [(= (node-key self) key)
-    (search-op-result start self (cons 'found (add-path level)))]
-   [(< (node-key self) key)
-    (let loop ([level level])
-      (cond
-       [(< level 0)
-        (search-op-result start self path)]
-       [(and (node-right level self) (<= (node-key (node-right level self)) key))
-        (search-op (node-right level self) start key level (add-path level))]
-       [else
-        (set! path (add-path level))
-        (loop (- level 1))]))]
-   [else
-    (let loop ([level level])
-      (cond
-       [(< level 0)
-        (search-op-result start self path)]
-       [(and (node-left level self) (>= (node-key (node-left level self)) key))
-        (search-op (node-left level self) start key level (add-path level))]
-       [else
-        (set! path (add-path level))
-        (loop (- level 1))]))]))
-
 (define (node-right level n)
   (vector-ref (node-right* n) level))
 
@@ -320,41 +347,4 @@
 
 (define (node-left-set! level n1 n2)
   (vector-set! (node-left* n1) level n2))
-
-(define (node-append! level n1 n2)
-  (node-right-set! level n1 n2)
-  (node-left-set! level n2 n1))
-
-#;(define (node-delete! node)
-  (let loop ([level (max-level)])
-    (cond
-     [(< level 0) '()]
-     [else
-      (when (node-left level node)
-        (node-right-set! level (node-left level node) (node-right level node)))
-      (when (node-right level node)
-        (node-left-set! level (node-right level node) (node-left level node)))
-      (loop (- level 1))])))
-
-(define (delete-op self side-node level side)
-  ((if (eq? side 'LEFT) node-left-set! node-right-set!) level self side-node))
-
-(define (node-delete! introducer key)
-  (let loop ([level (max-level)])
-    (cond
-     [(< level 0) '()]
-     [else
-       (let ([node (search-op introducer introducer key level '())])
-         (unless (= (node-key node) key)
-           (error 'node-delete! "not exist key"))
-          (when (node-left level node)
-            (aif (node-right level node)
-                 (delete-op (node-left level node) it level 'RIGHT)
-                 (delete-op (node-left level node) #f level 'RIGHT)))
-          (when (node-right level node)
-            (aif (node-left level node)
-                 (delete-op (node-right level node) it level 'LEFT)
-                 (delete-op (node-right level node) #f level 'LEFT))))
-      (loop (- level 1))])))
-
 )
