@@ -56,6 +56,7 @@
     (let ([start-node* (collect-uniq-membership-node* start)])
       (map (lambda (node) (member-list level node)) start-node*))]))
 
+;; link operation
 (define (link-op self n side level)
   (assert (and self n))
   (case side
@@ -102,29 +103,7 @@
     [else
      (assert #f)]))
 
-;; (define (link-op self n side level)
-;;   (case side
-;;     [(R)
-;;      (let ([left self]
-;;            [right (node-right level self)])
-;;        (when left
-;;          (node-right-set! level left n))
-;;        (when right
-;;          (node-left-set! level right n))
-;;        (node-left-set! level n left)
-;;        (node-right-set! level n right))]
-;;     [(L)
-;;      (let ([left (node-left level self)]
-;;            [right self])
-;;        (when left
-;;          (node-right-set! level left n))
-;;        (when right
-;;          (node-left-set! level right n))
-;;        (node-left-set! level n left)
-;;        (node-right-set! level n right))]
-;;     [else
-;;      (assert #f)]))
-
+;; buddy operation
 (define (buddy-op self n level membership side)
   (cond
    [(membership=? level n self)
@@ -142,6 +121,7 @@
       [else
        (assert #f)])]))
 
+;; insert operation
 (define (node-insert! introducer n)
   (cond
    [(eq? introducer n)
@@ -256,7 +236,7 @@
          [else
           (values (reverse ret) path)])))))
 
-;; For testability, this is sequencial
+;; For testability, this issues sequencial number.
 (define (gen-membership)
   ;; (num->binary-list 3 0) => (0 0 0)
   ;; (num->binary-list 3 1) => (0 0 1)
@@ -354,26 +334,4 @@
         (node-left-set! level (node-right level node) (node-left level node)))
       (loop (- level 1))])))
 
-;; (define (node-insert! level root node)
-;;   (define (node< a b)
-;;     (< (node-key a) (node-key b)))
-;;   (cond
-;;    [(node< node root)
-;;     (node-append! level node root)
-;;     ;; root is changed
-;;     node]
-;;    [else
-;;     (let loop ([n root])
-;;       (cond
-;;        [(not (node-right level n)) ;; tail
-;;         (node-append! level n node)
-;;         root]
-;;        [(node< node (node-right level n))
-;;         (let ([right (node-right level n)])
-;;           (node-append! level n node)
-;;           (node-right-set! level node right)
-;;           (node-left-set! level right node)
-;;           root)]
-;;        [else
-;;         (loop (node-right level n))]))]))
 )
