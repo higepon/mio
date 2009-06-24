@@ -1,6 +1,6 @@
 (library (skip graph)
   (export make-node node-key node-value membership=?
-          node-right node-left node-membership node-search node-range-search node-search-closest<= node-insert!
+          node-right node-left node-membership node-search node-range-search #;node-search-closest<= node-insert!
           node->list node->key-list max-level membership-counter
           node-delete!
           ;; export for test
@@ -26,6 +26,12 @@
     (if (= key (node-key node))
         (values node path)
         (values #f path))))
+
+(define (node-range-search start key1 key2 . opt)
+  (let-optionals* opt ((limit 0))
+    (assert (<= key1 key2))
+    (let-values (([node path] (search-op start start key1 (max-level) '())))
+      (values (reverse (range-search-op node start key2 '() limit)) path))))
 
 (define (node-insert! introducer n)
   (insert-op introducer n))
@@ -118,6 +124,24 @@
        [else
         (set! path (add-path level))
         (loop (- level 1))]))]))
+
+;; range-search operation
+(define (range-search-op self start key-max accum-key/value* limit)
+  (define (return-range-search-op start results)
+    results)
+  (cond
+   [(> (node-key self) key-max)
+    (return-range-search-op start accum-key/value*)]
+   [(< (node-key self) key-max)
+    (aif (node-right 0 self)
+         (if (or (not (zero? limit)) (= (- limit 1) (length accum-key/value*)))
+             (return-range-search-op start (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*))
+             (range-search-op it start key-max (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*) limit)))]
+   [else ; (= (node-key self) key-max)
+    (return-range-search-op start (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*))]))
 
 ;; link operation
 (define (link-op self n side level)
@@ -233,102 +257,6 @@
             )]
          [else
           '()])))]))
-
-(define (node-search-closest<= level start key)
-  (define (search-to-left)
-    (let loop ([node start]
-               [path (list (cons level (node-key start)))])
-      (cond
-       [(not (node-left level node))
-        (values node (reverse path))]
-       [(<= (node-key (node-left level node)) key)
-        (values (node-left level node) (reverse (cons (cons level (node-key (node-left level node))) path)))]
-       [else
-        (loop (node-left level node) (cons (cons level (node-key (node-left level node))) path))])))
-  (define (search-to-right)
-    (let loop ([node start]
-               [path (list (cons level (node-key start)))])
-      (cond
-       [(not (node-right level node))
-        (values node (reverse path))]
-       [(> (node-key (node-right level node)) key)
-        (values node (reverse path))]
-       [else
-        (loop (node-right level node) (cons (cons level (node-key (node-right level node))) path))])))
-  (cond
-   [(> (node-key start) key)
-    ;; search to left
-    (search-to-left)]
-   [else
-    ;; search to right
-    (search-to-right)]))
-
-(define (node-search-internal start key)
-  (let loop ([level (max-level)] ;; start search on max-level
-             [start start]
-             [path '()])
-    (cond
-     [(< level 0) (values start path)]
-     [else
-      (let-values (([found-node accum-path] (node-search-closest<= level start key)))
-        (if (= (node-key found-node) key)
-            (values found-node (append path accum-path '(found)))
-            (loop (- level 1) found-node (append path accum-path))))])))
-
-(define (range-search-op self start key-max accum-key/value* limit)
-  (define (return-range-search-op start results)
-    results)
-  (cond
-   [(> (node-key self) key-max)
-    (return-range-search-op start accum-key/value*)]
-   [(< (node-key self) key-max)
-    (aif (node-right 0 self)
-         (if (or (not (zero? limit)) (= (- limit 1) (length accum-key/value*)))
-             (return-range-search-op start (cons (cons (node-key self) (node-value self))
-                                                 accum-key/value*))
-             (range-search-op it start key-max (cons (cons (node-key self) (node-value self))
-                                                 accum-key/value*) limit)))]
-   [else ; (= (node-key self) key-max)
-    (return-range-search-op start (cons (cons (node-key self) (node-value self))
-                                                 accum-key/value*))]))
-
-(define (node-range-search start key1 key2 . opt)
-  (let-optionals* opt ((limit 0))
-    (assert (<= key1 key2))
-    (let-values (([node path] (search-op start start key1 (max-level) '())))
-      (values (reverse (range-search-op node start key2 '() limit)) path))))
-;;       (let loop ([node (if (= key1 (node-key node))
-;;                            node
-;;                            (node-right 0 node))]
-;;                  [ret '()]
-;;                  [count 0])
-;;         (cond
-;;          [(and limit (= limit count))
-;;           (values (reverse ret) path)]
-;;          [(>= key2 (node-key node))
-;;           ;; always search on level0
-;;           (loop (node-right 0 node) (cons node ret) (+ 1 count))]
-;;          [else
-;;           (values (reverse ret) path)])))))
-
-
-#;(define (node-range-search start key1 key2 . opt)
-  (let-optionals* opt ((limit #f))
-    (assert (<= key1 key2))
-    (let-values (([node path] (node-search-internal start key1)))
-      (let loop ([node (if (= key1 (node-key node))
-                           node
-                           (node-right 0 node))]
-                 [ret '()]
-                 [count 0])
-        (cond
-         [(and limit (= limit count))
-          (values (reverse ret) path)]
-         [(>= key2 (node-key node))
-          ;; always search on level0
-          (loop (node-right 0 node) (cons node ret) (+ 1 count))]
-         [else
-          (values (reverse ret) path)])))))
 
 ;; Membership vector
 ;; For testability, this issues sequencial number.

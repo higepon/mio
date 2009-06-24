@@ -136,52 +136,6 @@
   (let-values (([found path] (node-range-search node40 13 25 1)))
     (test-equal '((13 . "$13")) found))
 
-
-  ;; find closest<=
-  (let ([level 0]) ;; (2 5 6 13 20 30 40)
-    ;; middle to left
-    (let-values (([node path] (node-search-closest<= level node20 8)))
-      (test-equal '((0 . 20) (0 . 13) (0 . 6)) path)
-      (test-eq 6 (node-key node)))
-
-    ;; middle to right
-    (let-values (([node path] (node-search-closest<= level node20 34)))
-      (test-equal '((0 . 20) (0 . 30)) path)
-      (test-eq 30 (node-key node)))
-
-    ;; leftmost to right
-    (let-values (([node path] (node-search-closest<= level node2 8)))
-      (test-equal '((0 . 2) (0 . 5) (0 . 6)) path)
-      (test-eq 6 (node-key node)))
-
-    ;; leftmost to left
-    (let-values (([node path] (node-search-closest<= level node2 1)))
-      (test-equal '((0 . 2)) path)
-      (test-eq 2 (node-key node)))
-
-    ;; leftmost to rightmost
-    (let-values (([node path] (node-search-closest<= level node2 50)))
-      (test-equal '((0 . 2) (0 . 5) (0 . 6) (0 . 13) (0 . 20) (0 . 30) (0 . 40)) path)
-      (test-eq 40 (node-key node)))
-
-    (let-values (([node path] (node-search-closest<= level node2 40)))
-      (test-equal '((0 . 2) (0 . 5) (0 . 6) (0 . 13) (0 . 20) (0 . 30) (0 . 40)) path)
-      (test-eq 40 (node-key node)))
-
-    ;; rightmost to right
-    (let-values (([node path] (node-search-closest<= level node40 40)))
-      (test-equal '((0 . 40)) path)
-      (test-eq 40 (node-key node)))
-
-    (let-values (([node path] (node-search-closest<= level node40 50)))
-      (test-equal '((0 . 40)) path)
-      (test-eq 40 (node-key node)))
-
-    ;; rightmost to left
-    (let-values (([node path] (node-search-closest<= level node40 4)))
-      (test-equal '((0 . 40) (0 . 30) (0 . 20) (0 . 13) (0 . 6) (0 . 5) (0 . 2)) path)
-      (test-eq 2 (node-key node))))
-
   (let ([level 0])
     (node-insert! node30 node9)
     (test-equal '((2 5 6 9 13 20 30 40)) (node->key-list 0 node30))
