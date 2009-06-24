@@ -69,27 +69,73 @@
             (and right (node-right search-level right)))])))
 
 (define (link-op self n side level)
+  (assert (and self n))
   (case side
     [(R)
      (let ([left self]
            [right (node-right level self)])
-       (when left
-         (node-right-set! level left n))
-       (when right
-         (node-left-set! level right n))
-       (node-left-set! level n left)
+       (cond
+        [(and right (< (node-key right) (node-key self)))
+         ;; Someone inserted the other node as follows.
+         ;;   Before 30 => 50
+         ;;             40
+         ;;   Now 30 => 33 => 50
+         ;;                40
+         ;; We resend link-op to the right
+         (assert #f) ;; not tested
+         (link-op right n side level)]
+        [else
+         (node-right-set! level self n)
+         ;; tell the neighbor to link the newone
+         (when right
+           (link-op right n 'L level))])
+       (node-left-set! level n self)
        (node-right-set! level n right))]
     [(L)
-     (let ([left (node-left level self)]
-           [right self])
-       (when left
-         (node-right-set! level left n))
-       (when right
-         (node-left-set! level right n))
+     (let ([right self]
+           [left (node-left level self)])
+       (cond
+        [(and left (> (node-key left) (node-key self)))
+         ;; Someone inserted the other node as follows.
+         ;;   Before 30 => 40
+         ;;             35
+         ;;   Now    30 => 37 => 40
+         ;;             35
+         ;; We resend link-op to the left
+         (assert #f) ;; not tested
+         (link-op left n side level)]
+        [else
+         (node-left-set! level self n)
+         ;; tell the neighbor to link the newone
+         (when left
+           (link-op left n 'R level))])
        (node-left-set! level n left)
-       (node-right-set! level n right))]
+       (node-right-set! level n self))]
     [else
      (assert #f)]))
+
+;; (define (link-op self n side level)
+;;   (case side
+;;     [(R)
+;;      (let ([left self]
+;;            [right (node-right level self)])
+;;        (when left
+;;          (node-right-set! level left n))
+;;        (when right
+;;          (node-left-set! level right n))
+;;        (node-left-set! level n left)
+;;        (node-right-set! level n right))]
+;;     [(L)
+;;      (let ([left (node-left level self)]
+;;            [right self])
+;;        (when left
+;;          (node-right-set! level left n))
+;;        (when right
+;;          (node-left-set! level right n))
+;;        (node-left-set! level n left)
+;;        (node-right-set! level n right))]
+;;     [else
+;;      (assert #f)]))
 
 (define (buddy-op self n level membership side)
   (cond
