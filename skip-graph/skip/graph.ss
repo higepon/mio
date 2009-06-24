@@ -337,11 +337,7 @@
       (loop (- level 1))])))
 
 (define (delete-op self side-node level side)
-  (case side
-    [(LEFT)
-     (node-left-set! level self side-node)]
-    [(RIGHT)
-     (node-right-set! level self side-node)]))
+  ((if (eq? side 'LEFT) node-left-set! node-right-set!) level self side-node))
 
 (define (node-delete! introducer key)
   (let loop ([level (max-level)])
