@@ -1,20 +1,18 @@
 (library (skip graph)
   (export make-node node-key node-value membership=?
-          node-right node-left node-membership node-search node-range-search #;node-search-closest<= node-insert!
+          node-right node-left node-membership node-search node-range-search node-insert!
           node->list node->key-list max-level membership-counter
           node-delete!
           ;; export for test
           membership-level
           buddy-op
-          link-op
-          )
+          link-op)
   (import (rnrs)
           (mosh)
           (only (srfi :1) drop)
           (srfi :42)
           (srfi :39)
-          (mosh control)
-        )
+          (mosh control))
 
 ;; Dynamic parameters
 (define max-level (make-parameter 1))
@@ -43,18 +41,14 @@
      [else
        (let ([node (search-op introducer introducer key level '())])
          (unless (= (node-key node) key)
-           (error 'node-delete! "not exist key"))
-          (when (node-left level node)
-            (aif (node-right level node)
-                 (delete-op (node-left level node) it level 'RIGHT)
-                 (delete-op (node-left level node) #f level 'RIGHT)))
-          (when (node-right level node)
-            (aif (node-left level node)
-                 (delete-op (node-right level node) it level 'LEFT)
-                 (delete-op (node-right level node) #f level 'LEFT))))
+           (error 'node-delete! "key does not exist"))
+          (aif (node-left level node)
+            (delete-op it (node-right level node) level 'RIGHT))
+          (aif (node-right level node)
+            (delete-op it (node-left level node) level 'LEFT)))
       (loop (- level 1))])))
 
-;; Inspection
+;; Inspection for Debug
 (define (node->key-list level start)
   (map (lambda (node*) (map node-key node*)) (node->list level start)))
 
@@ -138,10 +132,10 @@
              (return-range-search-op start (cons (cons (node-key self) (node-value self))
                                                  accum-key/value*))
              (range-search-op it start key-max (cons (cons (node-key self) (node-value self))
-                                                 accum-key/value*) limit)))]
+                                                     accum-key/value*) limit)))]
    [else ; (= (node-key self) key-max)
     (return-range-search-op start (cons (cons (node-key self) (node-value self))
-                                                 accum-key/value*))]))
+                                        accum-key/value*))]))
 
 ;; link operation
 (define (link-op self n side level)
