@@ -186,19 +186,21 @@
 
 ;; buddy operation
 (define (buddy-op self start n level membership side)
+  (define (return-buddy-op start buddy)
+    buddy)
   (cond
    [(membership=? level n self)
-    self]
+    (return-buddy-op start self)]
    [else
     (case side
       [(LEFT)
        (if (node-right (- level 1) self)
            (buddy-op (node-right (- level 1) self) start n level membership side)
-           #f)]
+           (return-buddy-op  start #f))]
       [(RIGHT)
        (if (node-left (- level 1) self)
            (buddy-op (node-left (- level 1) self) start n level membership side)
-           #f)]
+           (return-buddy-op start #f))]
       [else
        (assert #f)])]))
 
