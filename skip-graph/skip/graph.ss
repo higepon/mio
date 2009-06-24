@@ -11,9 +11,11 @@
   (import (rnrs)
           (mosh)
           (only (srfi :1) drop)
-          (srfi :39)
+
           (srfi :42)
-          (mosh control))
+          (srfi :39)
+          (mosh control)
+        )
 
 ;; Dynamic parameters
 (define max-level (make-parameter 1))
@@ -323,7 +325,7 @@
   (node-right-set! level n1 n2)
   (node-left-set! level n2 n1))
 
-(define (node-delete! node)
+#;(define (node-delete! node)
   (let loop ([level (max-level)])
     (cond
      [(< level 0) '()]
@@ -332,6 +334,31 @@
         (node-right-set! level (node-left level node) (node-right level node)))
       (when (node-right level node)
         (node-left-set! level (node-right level node) (node-left level node)))
+      (loop (- level 1))])))
+
+(define (delete-op self side-node level side)
+  (case side
+    [(LEFT)
+     (node-left-set! level self side-node)]
+    [(RIGHT)
+     (node-right-set! level self side-node)]))
+
+(define (node-delete! introducer key)
+  (let loop ([level (max-level)])
+    (cond
+     [(< level 0) '()]
+     [else
+       (let ([node (search-op introducer introducer key level '())])
+         (unless (= (node-key node) key)
+           (error 'node-delete! "not exist key"))
+          (when (node-left level node)
+            (aif (node-right level node)
+                 (delete-op (node-left level node) it level 'RIGHT)
+                 (delete-op (node-left level node) #f level 'RIGHT)))
+          (when (node-right level node)
+            (aif (node-left level node)
+                 (delete-op (node-right level node) it level 'LEFT)
+                 (delete-op (node-right level node) #f level 'LEFT))))
       (loop (- level 1))])))
 
 )

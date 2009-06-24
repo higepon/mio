@@ -239,17 +239,17 @@
   (let-values (([found path] (node-range-search node13 6 10)))
     (test-equal '((9 . "$9")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
 
-  (node-delete! node9)
+  (node-delete! node13 9)
   (test-equal '((2 5 13 40)) (node->key-list 0 node13))
   (test-equal '((5 13) (2 40)) (node->key-list 1 node13))
   (test-equal '((5 13) (2) (40)) (node->key-list 2 node40))
 
-  (node-delete! node2)
+  (node-delete! node5 2)
   (test-equal '((5 13 40)) (node->key-list 0 node13))
   (test-equal '((5 13) (40)) (node->key-list 1 node13))
   (test-equal '((5 13) (40)) (node->key-list 2 node40))
 
-  (node-delete! node40)
+  (node-delete! node13 40)
   (test-equal '((5 13)) (node->key-list 0 node13))
   (test-equal '((5 13)) (node->key-list 1 node13))
   (test-equal '((5 13)) (node->key-list 2 node5))
