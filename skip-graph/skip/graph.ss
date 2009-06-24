@@ -185,7 +185,7 @@
      (assert #f)]))
 
 ;; buddy operation
-(define (buddy-op self n level membership side)
+(define (buddy-op self start n level membership side)
   (cond
    [(membership=? level n self)
     self]
@@ -193,11 +193,11 @@
     (case side
       [(LEFT)
        (if (node-right (- level 1) self)
-           (buddy-op (node-right (- level 1) self) n level membership side)
+           (buddy-op (node-right (- level 1) self) start n level membership side)
            #f)]
       [(RIGHT)
        (if (node-left (- level 1) self)
-           (buddy-op (node-left (- level 1) self) n level membership side)
+           (buddy-op (node-left (- level 1) self) start n level membership side)
            #f)]
       [else
        (assert #f)])]))
@@ -215,13 +215,13 @@
         (cond
          [(> level (max-level)) '()]
          [(node-left (- level 1) n)
-          (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
+          (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
             (cond
              [new-buddy
               (link-op new-buddy n 'RIGHT level)
               (loop (+ level 1))]
              [(node-right (- level 1) n)
-              (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
+              (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'LEFT level)
@@ -232,13 +232,13 @@
              [else
               '()]))]
          [(node-right (- level 1) n)
-          (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
+          (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
             (cond
              [new-buddy
               (link-op new-buddy n 'LEFT level)
               (loop (+ level 1))]
              [(node-left (- level 1) n)
-              (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
+              (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'RIGHT level)
