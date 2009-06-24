@@ -32,7 +32,7 @@
       [node6 (make-node 6 "$6")]
       [node9 (make-node 9 "$9")])
 
-  (link-op node13 node20 'R 0)
+  (link-op node13 node20 'RIGHT 0)
   (test-equal '((13 20)) (node->key-list 0 node13))
   (test-equal '((13) (20)) (node->key-list 1 node13))
 
@@ -40,7 +40,7 @@
     (test-true found)
     (test-eq 13 (node-key found)))
 
-  (link-op node20 node40 'R 0)
+  (link-op node20 node40 'RIGHT 0)
   (test-equal '((13 20 40)) (node->key-list 0 node13))
 
 ))

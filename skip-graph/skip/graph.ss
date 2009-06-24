@@ -71,7 +71,7 @@
 (define (link-op self n side level)
   (assert (and self n))
   (case side
-    [(R)
+    [(RIGHT)
      (let ([left self]
            [right (node-right level self)])
        (cond
@@ -88,10 +88,10 @@
          (node-right-set! level self n)
          ;; tell the neighbor to link the newone
          (when right
-           (link-op right n 'L level))])
+           (link-op right n 'LEFT level))])
        (node-left-set! level n self)
        (node-right-set! level n right))]
-    [(L)
+    [(LEFT)
      (let ([right self]
            [left (node-left level self)])
        (cond
@@ -108,7 +108,7 @@
          (node-left-set! level self n)
          ;; tell the neighbor to link the newone
          (when left
-           (link-op left n 'R level))])
+           (link-op left n 'RIGHT level))])
        (node-left-set! level n left)
        (node-right-set! level n self))]
     [else
@@ -161,7 +161,7 @@
     (node-left-set!  0 n #f)]
    [else
     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
-      (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'R 'L) 0)
+      (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
       (let loop ([level 1])
         (cond
          [(> level (max-level)) '()]
@@ -169,13 +169,13 @@
           (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
             (cond
              [new-buddy
-              (link-op new-buddy n 'R level)
+              (link-op new-buddy n 'RIGHT level)
               (loop (+ level 1))]
              [(node-right (- level 1) n)
               (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
                 (cond
                  [new-buddy
-                  (link-op new-buddy n 'L level)
+                  (link-op new-buddy n 'LEFT level)
                   (loop (+ level 1))]
                  [else
                   '() ;; nomore
@@ -186,13 +186,13 @@
           (let ([new-buddy (buddy-op (node-right (- level 1) n) n level (membership-level level (node-membership n)) 'LEFT)])
             (cond
              [new-buddy
-              (link-op new-buddy n 'L level)
+              (link-op new-buddy n 'LEFT level)
               (loop (+ level 1))]
              [(node-left (- level 1) n)
               (let ([new-buddy (buddy-op (node-left (- level 1) n) n level (membership-level level (node-membership n)) 'RIGHT)])
                 (cond
                  [new-buddy
-                  (link-op new-buddy n 'R level)
+                  (link-op new-buddy n 'RIGHT level)
                   (loop (+ level 1))]
                  [else
                   '() ;; nomore
