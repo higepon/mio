@@ -48,7 +48,6 @@
                  (delete-op (node-right level node) #f level 'LEFT))))
       (loop (- level 1))])))
 
-
 ;; Inspection
 (define (node->key-list level start)
   (map (lambda (node*) (map node-key node*)) (node->list level start)))
@@ -276,7 +275,44 @@
             (values found-node (append path accum-path '(found)))
             (loop (- level 1) found-node (append path accum-path))))])))
 
+(define (range-search-op self start key-max accum-key/value* limit)
+  (define (return-range-search-op start results)
+    results)
+  (cond
+   [(> (node-key self) key-max)
+    (return-range-search-op start accum-key/value*)]
+   [(< (node-key self) key-max)
+    (aif (node-right 0 self)
+         (if (or (not (zero? limit)) (= (- limit 1) (length accum-key/value*)))
+             (return-range-search-op start (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*))
+             (range-search-op it start key-max (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*) limit)))]
+   [else ; (= (node-key self) key-max)
+    (return-range-search-op start (cons (cons (node-key self) (node-value self))
+                                                 accum-key/value*))]))
+
 (define (node-range-search start key1 key2 . opt)
+  (let-optionals* opt ((limit 0))
+    (assert (<= key1 key2))
+    (let-values (([node path] (search-op start start key1 (max-level) '())))
+      (values (reverse (range-search-op node start key2 '() limit)) path))))
+;;       (let loop ([node (if (= key1 (node-key node))
+;;                            node
+;;                            (node-right 0 node))]
+;;                  [ret '()]
+;;                  [count 0])
+;;         (cond
+;;          [(and limit (= limit count))
+;;           (values (reverse ret) path)]
+;;          [(>= key2 (node-key node))
+;;           ;; always search on level0
+;;           (loop (node-right 0 node) (cons node ret) (+ 1 count))]
+;;          [else
+;;           (values (reverse ret) path)])))))
+
+
+#;(define (node-range-search start key1 key2 . opt)
   (let-optionals* opt ((limit #f))
     (assert (<= key1 key2))
     (let-values (([node path] (node-search-internal start key1)))

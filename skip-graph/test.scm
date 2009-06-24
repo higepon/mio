@@ -127,14 +127,14 @@
 
   ;; range search
   (let-values (([found path] (node-range-search node40 13 25)))
-    (test-equal '((13 . "$13") (20 . "$20")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+    (test-equal '((13 . "$13") (20 . "$20")) found))
 
   (let-values (([found path] (node-range-search node2 13 25)))
-    (test-equal '((13 . "$13") (20 . "$20")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+    (test-equal '((13 . "$13") (20 . "$20")) found))
 
   ;; range search
   (let-values (([found path] (node-range-search node40 13 25 1)))
-    (test-equal '((13 . "$13")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+    (test-equal '((13 . "$13")) found))
 
 
   ;; find closest<=
@@ -227,7 +227,7 @@
     (test-equal "$5" (node-value found)))
 
   (let-values (([found path] (node-range-search node13 6 10)))
-    (test-equal '((9 . "$9")) (map (lambda (node) (cons (node-key node) (node-value node))) found)))
+    (test-equal '((9 . "$9")) found))
 
   (node-delete! node13 9)
   (test-equal '((2 5 13 40)) (node->key-list 0 node13))
