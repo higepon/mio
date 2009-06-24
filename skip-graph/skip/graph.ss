@@ -95,29 +95,25 @@
     (values found-node (reverse path)))
   (define (add-path level)
     (cons (cons level (node-key self)) path))
+  (define (search-op-to-direction self start key level direction)
+    (let ([node-fetch-proc (if (eq? direction 'RIGHT) node-right node-left)]
+          [node-key-cmp    (if (eq? direction 'RIGHT) <= >=)])
+      (let loop ([level level])
+      (cond
+       [(< level 0)
+        (search-op-result start self path)]
+       [(and (node-fetch-proc level self) (node-key-cmp (node-key (node-fetch-proc level self)) key))
+        (search-op (node-fetch-proc level self) start key level (add-path level))]
+       [else
+        (set! path (add-path level))
+        (loop (- level 1))]))))
   (cond
    [(= (node-key self) key)
     (search-op-result start self (cons 'found (add-path level)))]
    [(< (node-key self) key)
-    (let loop ([level level])
-      (cond
-       [(< level 0)
-        (search-op-result start self path)]
-       [(and (node-right level self) (<= (node-key (node-right level self)) key))
-        (search-op (node-right level self) start key level (add-path level))]
-       [else
-        (set! path (add-path level))
-        (loop (- level 1))]))]
+    (search-op-to-direction self start key level 'RIGHT)]
    [else
-    (let loop ([level level])
-      (cond
-       [(< level 0)
-        (search-op-result start self path)]
-       [(and (node-left level self) (>= (node-key (node-left level self)) key))
-        (search-op (node-left level self) start key level (add-path level))]
-       [else
-        (set! path (add-path level))
-        (loop (- level 1))]))]))
+    (search-op-to-direction self start key level 'LEFT)]))
 
 ;; range-search operation
 (define (range-search-op self start key-max accum-key/value* limit)
@@ -193,11 +189,11 @@
     (return-buddy-op start self)]
    [else
     (case side
-      [(LEFT)
+      [(RIGHT)
        (if (node-right (- level 1) self)
            (buddy-op (node-right (- level 1) self) start n level membership side)
            (return-buddy-op  start #f))]
-      [(RIGHT)
+      [(LEFT)
        (if (node-left (- level 1) self)
            (buddy-op (node-left (- level 1) self) start n level membership side)
            (return-buddy-op start #f))]
@@ -217,13 +213,13 @@
         (cond
          [(> level (max-level)) '()]
          [(node-left (- level 1) n)
-          (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
+          (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
             (cond
              [new-buddy
               (link-op new-buddy n 'RIGHT level)
               (loop (+ level 1))]
              [(node-right (- level 1) n)
-              (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
+              (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'LEFT level)
@@ -234,13 +230,13 @@
              [else
               '()]))]
          [(node-right (- level 1) n)
-          (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
+          (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
             (cond
              [new-buddy
               (link-op new-buddy n 'LEFT level)
               (loop (+ level 1))]
              [(node-left (- level 1) n)
-              (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
+              (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
                 (cond
                  [new-buddy
                   (link-op new-buddy n 'RIGHT level)
