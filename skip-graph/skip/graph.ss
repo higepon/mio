@@ -200,7 +200,6 @@
       [else
        (assert #f)])]))
 
-;; insert operation
 (define (insert-op introducer n)
   (cond
    [(eq? introducer n)
@@ -212,43 +211,16 @@
       (let loop ([level 1])
         (cond
          [(> level (max-level)) '()]
-         [(node-left (- level 1) n)
-          (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
-            (cond
-             [new-buddy
-              (link-op new-buddy n 'RIGHT level)
-              (loop (+ level 1))]
-             [(node-right (- level 1) n)
-              (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
-                (cond
-                 [new-buddy
-                  (link-op new-buddy n 'LEFT level)
-                  (loop (+ level 1))]
-                 [else
-                  '() ;; nomore
-                  ]))]
-             [else
-              '()]))]
-         [(node-right (- level 1) n)
-          (let ([new-buddy (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT)])
-            (cond
-             [new-buddy
-              (link-op new-buddy n 'LEFT level)
-              (loop (+ level 1))]
-             [(node-left (- level 1) n)
-              (let ([new-buddy (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT)])
-                (cond
-                 [new-buddy
-                  (link-op new-buddy n 'RIGHT level)
-                  (loop (+ level 1))]
-                 [else
-                  '() ;; nomore
-                  ]))]
-             [else
-              '()])
-            )]
          [else
-          '()])))]))
+          (aif (and (node-left (- level 1) n)
+                    (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
+               (begin (link-op it n 'RIGHT level)
+                      (loop (+ level 1)))
+               (aif (and (node-right (- level 1) n)
+                         (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
+                    (begin (link-op it n 'LEFT level)
+                           (loop (+ level 1)))
+                    '()))])))]))
 
 ;; Membership vector
 ;; For testability, this issues sequencial number.
