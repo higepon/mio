@@ -1,10 +1,9 @@
 (library (skip graph)
-  (export make-node node-key node-value membership=?
-          node-right node-left node-membership node-search node-range-search node-insert!
-          node->list node->key-list max-level membership-counter
-          node-delete!
-          ;; export for test
-          membership-level
+  (export node-search node-range-search node-insert! node-delete!
+          make-node node-key node-value
+          node->list node->key-list
+          max-level membership-counter
+          ;; exported for test
           buddy-op
           link-op)
   (import (rnrs)
@@ -200,6 +199,7 @@
       [else
        (assert #f)])]))
 
+;; insert operation
 (define (insert-op introducer n)
   (cond
    [(eq? introducer n)

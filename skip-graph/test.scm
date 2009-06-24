@@ -4,12 +4,6 @@
         (srfi :8)
         (mosh test))
 
-;; node
-(let ([node (make-node "key1" "value1")])
-  (test-equal "key1" (node-key node))
-  (test-equal "value1" (node-value node))
-  (test-equal '(0) (node-membership node)))
-
 ;; link-op, buddy-op
 (parameterize ([max-level 1]
                [membership-counter 0])
@@ -62,17 +56,6 @@
   (node-insert! node30 node5)
   (test-equal '((5 13 20 30)) (node->key-list 0 node20))
   (test-equal '((13 20) (5 30)) (node->key-list 1 node20))
-
-;;   ;; buddy-op : search to right on level 1
-;;   (receive (found level) (buddy-op node20 node40 1 '())
-;;     (test-true found)
-;;     (test-eq 20 (node-key found)))
-
-;;   ;; buddy-op : search to left on level 1
-;;   (receive (found level) (buddy-op node5 node40 1 '())
-;;     (test-true found)
-;;     (test-eq 20 (node-key found)))
-
 
   (node-insert! node30 node40)
   (test-equal '((5 13 20 30 40)) (node->key-list 0 node5))
