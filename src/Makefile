@@ -9,7 +9,7 @@ ERL_COMPILE_FLAGS += \
 	+warn_unused_vars +nowarn_shadow_vars +warn_unused_import \
 	+debug_info
 
-SOURCES = mio
+SOURCES = mio mio_sup mio_node
 
 MODS = ${SOURCES:%=$(EBIN)/%.$(EMULATOR)} $(APP_TARGET)
 
