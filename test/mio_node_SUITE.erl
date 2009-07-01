@@ -18,12 +18,17 @@ end_per_suite(Config) ->
     ok.
 
 all() -> 
-    [my_test_case].
+    [get_call, atom_compare].
 
-my_test_case() ->
+get_call() ->
     [].
 
-my_test_case(_Config) ->
+get_call(_Config) ->
     {myKey, myValue} = gen_server:call(mio_node, get),
     {myKey, myValue2} = gen_server:call(mio_node, get),
     ok.
+
+
+atom_compare(_Config) ->
+    false = abc > def,
+    true = mio_node:key_gt(def, abc).
