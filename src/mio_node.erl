@@ -65,6 +65,16 @@ init(Args) ->
 handle_call(get, From, State) ->
     {reply, {State#state.key, State#state.value},
      {state, State#state.key, myValue2, State#state.left, State#state.right}};
+handle_call(left, From, State) ->
+    {reply, State#state.left, State};
+handle_call(right, From, State) ->
+    {reply, State#state.right, State};
+handle_call(add_right, From, State) ->
+    Pid = supervisor:start_child(mio_sup, {mio_node,
+                                            {mio_node, start_link, [[myKey, myValue]]},
+                                            permanent, brutal_kill, worker, [mio_node]}),
+    error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
+    {reply, true, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

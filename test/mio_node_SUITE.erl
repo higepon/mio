@@ -18,7 +18,7 @@ end_per_suite(Config) ->
     ok.
 
 all() -> 
-    [get_call, atom_compare].
+    [get_call, atom_compare, left_right_call, add_right_call].
 
 get_call() ->
     [].
@@ -28,7 +28,13 @@ get_call(_Config) ->
     {myKey, myValue2} = gen_server:call(mio_node, get),
     ok.
 
+left_right_call(_Config) ->
+    [] = gen_server:call(mio_node, left),
+    [] = gen_server:call(mio_node, right).
 
 atom_compare(_Config) ->
     false = abc > def,
     true = mio_node:key_gt(def, abc).
+
+add_right_call(_Config) ->
+    true = gen_server:call(mio_node, add_right).
