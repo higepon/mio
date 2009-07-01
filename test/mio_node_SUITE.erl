@@ -23,6 +23,7 @@ all() ->
 my_test_case() ->
     [].
 
-my_test_case(_Config) -> 
-    ok = gen_server:call(mio_node, hige),
+my_test_case(_Config) ->
+    {myKey, myValue} = gen_server:call(mio_node, keyValue),
+    {myKey, myValue2} = gen_server:call(mio_node, keyValue),
     ok.

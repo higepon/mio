@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -18,7 +18,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {key, value}).
 
 %%====================================================================
 %% API
@@ -27,9 +27,11 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
+start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    error_logger:info_msg("args = ~p start_link\n", [Args]),
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -42,9 +44,11 @@ start_link() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
+init(Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
-    {ok, #state{}}.
+    error_logger:info_msg("~p init\n", [Args]),
+    [MyKey, MyValue] = Args,
+    {ok, #state{key=myKey, value=myValue}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -55,6 +59,8 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call(keyValue, From, State) ->
+    {reply, {State#state.key, State#state.value}, {state, State#state.key, myValue2}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
