@@ -18,7 +18,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {key, value}).
+-record(state, {key, value, left, right}).
 
 %%====================================================================
 %% API
@@ -48,7 +48,7 @@ init(Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
     error_logger:info_msg("~p init\n", [Args]),
     [MyKey, MyValue] = Args,
-    {ok, #state{key=myKey, value=myValue}}.
+    {ok, #state{key=MyKey, value=MyValue, left=[], right=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -59,8 +59,9 @@ init(Args) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call(keyValue, From, State) ->
-    {reply, {State#state.key, State#state.value}, {state, State#state.key, myValue2}};
+handle_call(get, From, State) ->
+    {reply, {State#state.key, State#state.value},
+     {state, State#state.key, myValue2, State#state.left, State#state.right}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
