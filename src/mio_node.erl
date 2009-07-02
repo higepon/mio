@@ -74,7 +74,8 @@ handle_call(dump_to_right, From, State) ->
     io:write(State#state.right),
     case State#state.right of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        RightPid  -> RightPid
+        RightPid  -> gen_server:cast(RightPid, self(), []),
+                     receive
     end;
 
 handle_call({insert, Key, Value}, From, State) ->
@@ -104,8 +105,15 @@ handle_call(add_right, From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    case State#state.right of
+        [] -> ReturnToMe ! [{MyKey, MyValue} | Accum];
+        RightPid  -> gen_server:cast(RightPid, {dump_to_right_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+    end,
     {noreply, State}.
+
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
