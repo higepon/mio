@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() -> 
-    [get_call, atom_compare, left_right_call, add_right_call].
+    [get_call, atom_compare, left_right_call, add_right_call, insert_call].
 
 get_call() ->
     [].
@@ -40,3 +40,6 @@ atom_compare(_Config) ->
 
 add_right_call(_Config) ->
     true = gen_server:call(mio_node, add_right).
+
+insert_call(_Config) ->
+    ok = gen_server:call(mio_node, {insert, newKey, newValue}).

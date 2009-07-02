@@ -67,12 +67,18 @@ getRandomId() ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(get, From, State) ->
-    {reply, {State#state.key, State#state.value},
-     {state, State#state.key, myValue2, State#state.left, State#state.right}};
+    {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
+
+handle_call({insert, Key, Value}, From, State) ->
+    {ok, Pid} = mio_sup:start_node(Key, Value),
+    {reply, ok, State};
+
 handle_call(left, From, State) ->
     {reply, State#state.left, State};
+
 handle_call(right, From, State) ->
     {reply, State#state.right, State};
+
 handle_call(add_right, From, State) ->
     {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
