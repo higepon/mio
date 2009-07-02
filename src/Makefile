@@ -8,7 +8,7 @@ APP_TARGET = $(EBIN)/mio.app
 ERL_COMPILE_FLAGS += \
 	+warn_unused_vars +nowarn_shadow_vars +warn_unused_import \
 	+debug_info \
-#n	+'{parse_transform, smart_exceptions}' ## should be commented out on release
+	+'{parse_transform, smart_exceptions}' ## should be commented out on release
 
 SOURCES = mio mio_sup mio_node
 

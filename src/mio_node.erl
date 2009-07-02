@@ -69,9 +69,23 @@ getRandomId() ->
 handle_call(get, From, State) ->
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
 
+%% fetch list of  {key, value} tuple.
+handle_call(dump_to_right, From, State) ->
+    io:write(State#state.right),
+    case State#state.right of
+        [] -> {reply, [{State#state.key,  State#state.value}], State};
+        RightPid  -> RightPid
+    end;
+
 handle_call({insert, Key, Value}, From, State) ->
     {ok, Pid} = mio_sup:start_node(Key, Value),
-    {reply, ok, State};
+    MyKey = State#state.key,
+    if
+        Key > MyKey ->
+            {reply, ok, State#state{right=Pid}};
+        true ->
+            {reply, ok, State#state{left=Pid}}
+    end;
 
 handle_call(left, From, State) ->
     {reply, State#state.left, State};
@@ -82,10 +96,7 @@ handle_call(right, From, State) ->
 handle_call(add_right, From, State) ->
     {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
-    {reply, true, State};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, true, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
