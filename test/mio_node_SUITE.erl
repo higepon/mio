@@ -12,6 +12,8 @@
 init_per_suite(Config) ->
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
+    {ok, NodePid} = mio_sup:start_node(myKey, myValue),
+    register(mio_node, NodePid),
     Config.
 
 end_per_suite(Config) ->

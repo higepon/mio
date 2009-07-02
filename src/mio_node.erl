@@ -30,7 +30,7 @@
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
     error_logger:info_msg("args = ~p start_link\n", [Args]),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+    gen_server:start_link(?MODULE, Args, []).
 
 key_gt(Key1, Key2) ->
     Key1 > Key2.
@@ -53,6 +53,10 @@ init(Args) ->
     [MyKey, MyValue] = Args,
     {ok, #state{key=MyKey, value=MyValue, left=[], right=[]}}.
 
+getRandomId() ->
+    integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
+
+
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
 %%                                      {reply, Reply, State, Timeout} |
@@ -70,9 +74,7 @@ handle_call(left, From, State) ->
 handle_call(right, From, State) ->
     {reply, State#state.right, State};
 handle_call(add_right, From, State) ->
-    Pid = supervisor:start_child(mio_sup, {mio_node,
-                                            {mio_node, start_link, [[myKey, myValue]]},
-                                            permanent, brutal_kill, worker, [mio_node]}),
+    {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
     {reply, true, State};
 handle_call(_Request, _From, State) ->
