@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, key_gt/2]).
+-export([start_link/1, search/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -32,9 +32,8 @@ start_link(Args) ->
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
 
-key_gt(Key1, Key2) ->
-    Key1 > Key2.
-
+search(StartNode, Key) ->
+    gen_server:call(StartNode, {search, StartNode, Key}).
 
 %%====================================================================
 %% gen_server callbacks

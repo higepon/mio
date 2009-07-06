@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() ->
-    [get_call, atom_compare, left_right_call, dump_nodes_call, search_call].
+    [get_call, left_right_call, dump_nodes_call, search_call].
 
 get_call() ->
     [].
@@ -33,10 +33,6 @@ get_call(_Config) ->
 left_right_call(_Config) ->
     [] = gen_server:call(mio_node, left),
     [] = gen_server:call(mio_node, right).
-
-atom_compare(_Config) ->
-    false = abc > def,
-    true = mio_node:key_gt(def, abc).
 
 %% add_right_call(_Config) ->
 %%     true = gen_server:call(mio_node, add_right).
@@ -78,6 +74,7 @@ search_call(_Config) ->
     {ok, myValue2} = gen_server:call(mio_node, {search, mio_node, myKey}),
     %% search to right
     {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}),
+    {ok, myValue1} = mio_node:search(mio_node, myKey1),
     %% search to left
     {ok, myKexValue} = gen_server:call(mio_node, {search, mio_node, myKex}),
     ok.
