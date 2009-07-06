@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : mio_node_SUITE.erl
 %%% Author  : higepon <higepon@users.sourceforge.jp>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
@@ -19,7 +19,7 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
     ok.
 
-all() -> 
+all() ->
     [get_call, atom_compare, left_right_call, dump_nodes_call, search_call].
 
 get_call() ->
@@ -74,4 +74,5 @@ dump_nodes_call(_Config) ->
     ok.
 
 search_call(_Config) ->
-    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}).
+    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}),
+    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKex}).
