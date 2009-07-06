@@ -33,7 +33,13 @@ start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
 search(StartNode, Key) ->
-    gen_server:call(StartNode, {search, StartNode, Key}).
+    {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, Key}),
+    if
+        FoundKey =:= Key ->
+            {ok, FoundValue};
+        true ->
+            ng
+    end.
 
 %%====================================================================
 %% gen_server callbacks
@@ -150,20 +156,20 @@ handle_call({search, ReturnToMe, Key}, From, State) ->
         %% This is myKey, found!
         MyKey =:= Key ->
             error_logger:info_msg("~p search1\n", [?MODULE]),
-            {reply, {ok, MyValue}, State};
+            {reply, {ok, MyKey, MyValue}, State};
         MyKey < Key ->
             error_logger:info_msg("~p search qqq\n", [?MODULE]),
             case State#state.right of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    {reply, {ok, MyValue}, State}; % todo
+                    {reply, {ok, MyKey, MyValue}, State}; % todo
                 RightNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
                     gen_server:cast(RightNode, {search, ReturnToMe, Key}),
                     receive
-                        {ok, Value} ->
+                        {ok, Key, Value} ->
                             error_logger:info_msg("~p ok value=~p\n", [?MODULE, Value]),
-                            {reply, {ok, Value}, State}
+                            {reply, {ok, Key, Value}, State}
                     end
             end;
         true ->
@@ -171,13 +177,13 @@ handle_call({search, ReturnToMe, Key}, From, State) ->
             case State#state.left of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    {reply, {ok, MyValue}, State}; % todo
+                    {reply, {ok, MyKey, MyValue}, State}; % todo
                 LeftNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
                     receive
-                        {ok, Value} ->
-                            {reply, {ok, Value}, State}
+                        {ok, Key, Value} ->
+                            {reply, {ok, Key, Value}, State}
                     end
             end
     end;
@@ -219,13 +225,13 @@ handle_cast({search, ReturnToMe, Key}, State) ->
         %% This is myKey, found!
         MyKey =:= Key ->
             error_logger:info_msg("~p search1\n", [?MODULE]),
-            ReturnToMe ! {ok, MyValue};
+            ReturnToMe ! {ok, MyKey, MyValue};
         MyKey < Key ->
             error_logger:info_msg("~p search qqq\n", [?MODULE]),
             case State#state.right of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    ReturnToMe ! {ok, MyValue}; %% todo
+                    ReturnToMe ! {ok, MyKey, MyValue}; %% todo
                 RightNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
@@ -235,7 +241,7 @@ handle_cast({search, ReturnToMe, Key}, State) ->
             case State#state.left of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    ReturnToMe ! {ok, MyValue}; %% todo
+                    ReturnToMe ! {ok, MyKey, MyValue}; %% todo
                 LeftNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})

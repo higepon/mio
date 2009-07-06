@@ -71,10 +71,16 @@ dump_nodes_call(_Config) ->
 
 search_call(_Config) ->
     %% I have the value
-    {ok, myValue2} = gen_server:call(mio_node, {search, mio_node, myKey}),
+    {ok, myValue2} = mio_node:search(mio_node, myKey),
     %% search to right
-    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}),
+    {ok, myValue1} = mio_node:search(mio_node, myKey1),
     {ok, myValue1} = mio_node:search(mio_node, myKey1),
     %% search to left
-    {ok, myKexValue} = gen_server:call(mio_node, {search, mio_node, myKex}),
+    {ok, myKexValue} = mio_node:search(mio_node, myKex),
+
+    %% not found
+    %% returns closest node
+    {ok, myKey1, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey2}),
+    %% returns ng
+    ng = mio_node:search(mio_node, myKey2),
     ok.
