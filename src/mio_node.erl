@@ -164,7 +164,16 @@ handle_call({search, ReturnToMe, Key}, From, State) ->
                     {reply, Val, State}
             end;
         true ->
-            {reply, {ok, myValue1}, State}
+            error_logger:info_msg("~p search rrr\n", [?MODULE]),
+            case State#state.left of
+                [] ->
+                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    {reply, MyValue, State}; % todo
+                LeftNode ->
+                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    Val = gen_server:call(LeftNode, {search, ReturnToMe, Key}),
+                    {reply, Val, State}
+            end
     end;
 
 handle_call({insert, Key, Value}, From, State) ->

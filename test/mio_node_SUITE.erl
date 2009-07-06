@@ -64,9 +64,9 @@ dump_nodes_call(_Config) ->
     [{myKey, myValue2}] =  gen_server:call(mio_node, dump_to_left),
 
     %% insert to left
-    {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myValue1}),
-    [{myKex, myValue1}, {myKey, myValue2}] = gen_server:call(mio_node, dump_to_left),
-    [{myKex, myValue1}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_nodes),
+    {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
+    [{myKex, myKexValue}, {myKey, myValue2}] = gen_server:call(mio_node, dump_to_left),
+    [{myKex, myKexValue}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_nodes),
 
     %% ask to another node
 % todo, after search-op is implemented
@@ -75,4 +75,4 @@ dump_nodes_call(_Config) ->
 
 search_call(_Config) ->
     {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}),
-    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKex}).
+    {ok, myKexValue} = gen_server:call(mio_node, {search, mio_node, myKex}).
