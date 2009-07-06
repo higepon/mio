@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() -> 
-    [get_call, atom_compare, left_right_call, dump_to_right_call].
+    [get_call, atom_compare, left_right_call, dump_to_right_call, dump_to_left_call, dump_nodes_call].
 
 get_call() ->
     [].
@@ -43,5 +43,29 @@ atom_compare(_Config) ->
 
 
 dump_to_right_call(_Config) ->
+%%     [{myKey, myValue2}] =  gen_server:call(mio_node, dump_to_right),
+%%     {ok, Pid} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
+%%     [{myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_to_right),
+    ok.
+
+dump_to_left_call(_Config) ->
+%%     [{myKey, myValue2}] =  gen_server:call(mio_node, dump_to_left),
+%%     {ok, Pid} = gen_server:call(mio_node, {insert, myKex, myValue1}),
+%%     [{myKex, myValue1}, {myKey, myValue2}] =  gen_server:call(mio_node, dump_to_left),
+    ok.
+
+dump_nodes_call(_Config) ->
+    %% first conditoin
     [{myKey, myValue2}] =  gen_server:call(mio_node, dump_to_right),
-    ok = gen_server:call(mio_node, {insert, newKey, newValue}).
+
+    %% insert to right
+    {ok, Pid} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
+    [{myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_to_right),
+    [{myKey, myValue2}] =  gen_server:call(mio_node, dump_to_left),
+
+    %% insert to left
+    {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myValue1}),
+    [{myKex, myValue1}, {myKey, myValue2}] = gen_server:call(mio_node, dump_to_left),
+    [{myKex, myValue1}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_nodes),
+    ok.
+

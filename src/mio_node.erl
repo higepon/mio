@@ -69,13 +69,78 @@ getRandomId() ->
 handle_call(get, From, State) ->
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
 
-%% fetch list of  {key, value} tuple.
+%% fetch list of {key, value} tuple.
+handle_call(dump_nodes, From, State) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    HasRight = case State#state.right of
+                   [] -> false;
+                   _ -> true
+               end,
+    HasLeft = case State#state.left of
+                   [] -> false;
+                   _ -> true
+              end,
+    if
+        HasRight ->
+            gen_server:cast(State#state.right, {dump_to_right_cast, self(), []});
+        true -> []
+    end,
+    if
+        HasLeft ->
+            gen_server:cast(State#state.left, {dump_to_left_cast, self(), []});
+        true -> []
+    end,
+
+    if
+        HasRight ->
+            if
+                HasLeft ->
+                    receive
+                        {dump_right_accumed, RightAccumed} ->
+                            receive
+                                {dump_left_accumed, LeftAccumed} ->
+                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue}], RightAccumed]), State}
+                            end
+                    end;
+                true ->
+                    receive
+                        {dump_right_accumed, RightAccumed} ->
+                            {reply, [{MyKey, MyValue} | RightAccumed], State}
+                    end
+            end;
+        true ->
+            if
+                HasLeft ->
+                    receive
+                        {dump_left_accumed, LeftAccumed} ->
+                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
+                    end;
+                true ->
+                    {reply, [], State}
+            end
+    end;
+
 handle_call(dump_to_right, From, State) ->
     io:write(State#state.right),
     case State#state.right of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        RightPid  -> gen_server:cast(RightPid, self(), []),
-                     receive
+        RightPid -> gen_server:cast(RightPid, {dump_to_right_cast, self(), [{State#state.key,  State#state.value}]}),
+                    receive
+                        {dump_right_accumed, Accumed} ->
+                            {reply, Accumed, State}
+                    end
+    end;
+
+handle_call(dump_to_left, From, State) ->
+    io:write(State#state.left),
+    case State#state.left of
+        [] -> {reply, [{State#state.key,  State#state.value}], State};
+        RightPid -> gen_server:cast(RightPid, {dump_to_left_cast, self(), [{State#state.key,  State#state.value}]}),
+                    receive
+                        {dump_left_accumed, Accumed} ->
+                            {reply, Accumed, State}
+                    end
     end;
 
 handle_call({insert, Key, Value}, From, State) ->
@@ -83,9 +148,11 @@ handle_call({insert, Key, Value}, From, State) ->
     MyKey = State#state.key,
     if
         Key > MyKey ->
-            {reply, ok, State#state{right=Pid}};
+            error_logger:info_msg("~p insert to right\n", [?MODULE]),
+            {reply, {ok, Pid}, State#state{right=Pid}};
         true ->
-            {reply, ok, State#state{left=Pid}}
+            error_logger:info_msg("~p insert to left\n", [?MODULE]),
+            {reply, {ok, Pid}, State#state{left=Pid}}
     end;
 
 handle_call(left, From, State) ->
@@ -106,11 +173,21 @@ handle_call(add_right, From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
+    error_logger:info_msg("~p dump_to_right_cast right=~p\n", [?MODULE, State#state.right]),
     MyKey = State#state.key,
     MyValue = State#state.value,
     case State#state.right of
-        [] -> ReturnToMe ! [{MyKey, MyValue} | Accum];
+        [] -> ReturnToMe ! {dump_right_accumed, lists:reverse([{MyKey, MyValue} | Accum])};
         RightPid  -> gen_server:cast(RightPid, {dump_to_right_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+    end,
+    {noreply, State};
+handle_cast({dump_to_left_cast, ReturnToMe, Accum}, State) ->
+    error_logger:info_msg("~p dump_to_left_cast left=~p\n", [?MODULE, State#state.left]),
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    case State#state.left of
+        [] -> ReturnToMe ! {dump_left_accumed, [{MyKey, MyValue} | Accum]};
+        LeftPid  -> gen_server:cast(LeftPid, {dump_to_left_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
     end,
     {noreply, State}.
 
