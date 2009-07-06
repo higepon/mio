@@ -74,5 +74,10 @@ dump_nodes_call(_Config) ->
     ok.
 
 search_call(_Config) ->
+    %% I have the value
+    {ok, myValue2} = gen_server:call(mio_node, {search, mio_node, myKey}),
+    %% search to right
     {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}),
-    {ok, myKexValue} = gen_server:call(mio_node, {search, mio_node, myKex}).
+    %% search to left
+    {ok, myKexValue} = gen_server:call(mio_node, {search, mio_node, myKex}),
+    ok.

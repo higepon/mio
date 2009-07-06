@@ -157,22 +157,29 @@ handle_call({search, ReturnToMe, Key}, From, State) ->
             case State#state.right of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    {reply, MyValue, State}; % todo
+                    {reply, {ok, MyValue}, State}; % todo
                 RightNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
-                    Val = gen_server:call(RightNode, {search, ReturnToMe, Key}),
-                    {reply, Val, State}
+                    gen_server:cast(RightNode, {search, ReturnToMe, Key}),
+                    receive
+                        {ok, Value} ->
+                            error_logger:info_msg("~p ok value=~p\n", [?MODULE, Value]),
+                            {reply, {ok, Value}, State}
+                    end
             end;
         true ->
             error_logger:info_msg("~p search rrr\n", [?MODULE]),
             case State#state.left of
                 [] ->
                     error_logger:info_msg("~p search4\n", [?MODULE]),
-                    {reply, MyValue, State}; % todo
+                    {reply, {ok, MyValue}, State}; % todo
                 LeftNode ->
                     error_logger:info_msg("~p search3\n", [?MODULE]),
-                    Val = gen_server:call(LeftNode, {search, ReturnToMe, Key}),
-                    {reply, Val, State}
+                    gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
+                    receive
+                        {ok, Value} ->
+                            {reply, {ok, Value}, State}
+                    end
             end
     end;
 
@@ -205,6 +212,38 @@ handle_call(add_right, From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({search, ReturnToMe, Key}, State) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    error_logger:info_msg("~p search_cast MyKey=~p SearchKey=~p\n", [?MODULE, MyKey, Key]),
+    if
+        %% This is myKey, found!
+        MyKey =:= Key ->
+            error_logger:info_msg("~p search1\n", [?MODULE]),
+            ReturnToMe ! {ok, MyValue};
+        MyKey < Key ->
+            error_logger:info_msg("~p search qqq\n", [?MODULE]),
+            case State#state.right of
+                [] ->
+                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    ReturnToMe ! {ok, MyValue}; %% todo
+                RightNode ->
+                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    gen_server:cast(RightNode, {search, ReturnToMe, Key})
+            end;
+        true ->
+            error_logger:info_msg("~p search rrr\n", [?MODULE]),
+            case State#state.left of
+                [] ->
+                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    ReturnToMe ! {ok, MyValue}; %% todo
+                LeftNode ->
+                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    gen_server:cast(LeftNode, {search, ReturnToMe, Key})
+            end
+    end,
+    {noreply, State};
+
 handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
     error_logger:info_msg("~p dump_to_right_cast right=~p\n", [?MODULE, State#state.right]),
     MyKey = State#state.key,
