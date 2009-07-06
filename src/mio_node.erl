@@ -143,6 +143,9 @@ handle_call(dump_to_left, From, State) ->
                     end
     end;
 
+handle_call({search, ReturnToMe, Key}, From, State) ->
+    {reply, {ok, myValue1}, State};
+
 handle_call({insert, Key, Value}, From, State) ->
     {ok, Pid} = mio_sup:start_node(Key, Value),
     MyKey = State#state.key,

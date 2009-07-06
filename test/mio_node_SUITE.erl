@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() -> 
-    [get_call, atom_compare, left_right_call, dump_to_right_call, dump_to_left_call, dump_nodes_call].
+    [get_call, atom_compare, left_right_call, dump_nodes_call, search_call].
 
 get_call() ->
     [].
@@ -67,5 +67,11 @@ dump_nodes_call(_Config) ->
     {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myValue1}),
     [{myKex, myValue1}, {myKey, myValue2}] = gen_server:call(mio_node, dump_to_left),
     [{myKex, myValue1}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, dump_nodes),
+
+    %% ask to another node
+% todo, after search-op is implemented
+%    [{myKex, myValue1}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(Pid, dump_nodes),
     ok.
 
+search_call(_Config) ->
+    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, mykey1}).
