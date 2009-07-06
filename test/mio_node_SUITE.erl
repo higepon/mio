@@ -74,4 +74,4 @@ dump_nodes_call(_Config) ->
     ok.
 
 search_call(_Config) ->
-    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, mykey1}).
+    {ok, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey1}).

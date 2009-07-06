@@ -144,7 +144,28 @@ handle_call(dump_to_left, From, State) ->
     end;
 
 handle_call({search, ReturnToMe, Key}, From, State) ->
-    {reply, {ok, myValue1}, State};
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    error_logger:info_msg("~p MyKey=~p SearchKey=~p\n", [?MODULE, MyKey, Key]),
+    if
+        %% This is myKey, found!
+        MyKey =:= Key ->
+            error_logger:info_msg("~p search1\n", [?MODULE]),
+            {reply, {ok, MyValue}, State};
+        MyKey < Key ->
+            error_logger:info_msg("~p search qqq\n", [?MODULE]),
+            case State#state.right of
+                [] ->
+                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    {reply, MyValue, State}; % todo
+                RightNode ->
+                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    Val = gen_server:call(RightNode, {search, ReturnToMe, Key}),
+                    {reply, Val, State}
+            end;
+        true ->
+            {reply, {ok, myValue1}, State}
+    end;
 
 handle_call({insert, Key, Value}, From, State) ->
     {ok, Pid} = mio_sup:start_node(Key, Value),
