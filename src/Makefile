@@ -5,8 +5,9 @@ INCLUDE = $(ROOT)/include
 
 APP_TARGET = $(EBIN)/mio.app
 
+ ## N.B. Don't use +nowarn_shadow_vars !!!
 ERL_COMPILE_FLAGS += \
-	+warn_unused_vars +nowarn_shadow_vars +warn_unused_import \
+	+warn_unused_vars +warn_unused_import \
 	+debug_info \
 	+'{parse_transform, smart_exceptions}' ## should be commented out on release
 

@@ -17,6 +17,10 @@
          terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
+-define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
+-define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
+-define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+
 
 -record(state, {key, value, left, right}).
 
@@ -71,11 +75,13 @@ getRandomId() ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call(get, From, State) ->
+handle_call(get, _From, State) ->
+    ?L(),
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
 
 %% fetch list of {key, value} tuple.
-handle_call(dump_nodes, From, State) ->
+handle_call(dump_nodes, _From, State) ->
+    ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
     HasRight = case State#state.right of
@@ -126,7 +132,8 @@ handle_call(dump_nodes, From, State) ->
             end
     end;
 
-handle_call(dump_to_right, From, State) ->
+handle_call(dump_to_right, _From, State) ->
+    ?L(),
     io:write(State#state.right),
     case State#state.right of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
@@ -137,7 +144,8 @@ handle_call(dump_to_right, From, State) ->
                     end
     end;
 
-handle_call(dump_to_left, From, State) ->
+handle_call(dump_to_left, _From, State) ->
+    ?L(),
     io:write(State#state.left),
     case State#state.left of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
@@ -148,47 +156,52 @@ handle_call(dump_to_left, From, State) ->
                     end
     end;
 
-handle_call({search, ReturnToMe, Key}, From, State) ->
+handle_call({search, ReturnToMe, Key}, _From, State) ->
+
     MyKey = State#state.key,
     MyValue = State#state.value,
-    error_logger:info_msg("~p MyKey=~p SearchKey=~p\n", [?MODULE, MyKey, Key]),
+    ?LOGF("search_call: MyKey=~p searchKey=~p~n", [MyKey, Key]),
     if
         %% This is myKey, found!
         MyKey =:= Key ->
-            error_logger:info_msg("~p search1\n", [?MODULE]),
+            ?L(),
             {reply, {ok, MyKey, MyValue}, State};
         MyKey < Key ->
-            error_logger:info_msg("~p search qqq\n", [?MODULE]),
+            ?L(),
             case State#state.right of
                 [] ->
-                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 RightNode ->
-                    error_logger:info_msg("~p search3\n", [?MODULE]),
-                    gen_server:cast(RightNode, {search, ReturnToMe, Key}),
+                    ?L(),
+                    ok = gen_server:cast(RightNode, {search, ReturnToMe, Key}),
+                    ?L(),
                     receive
-                        {ok, Key, Value} ->
-                            error_logger:info_msg("~p ok value=~p\n", [?MODULE, Value]),
-                            {reply, {ok, Key, Value}, State}
+                        {ok, FoundKey, FoundValue} ->
+                            ?L(),
+                            {reply, {ok, FoundKey, FoundValue}, State};
+                        x -> ?LOG(x)
                     end
             end;
         true ->
-            error_logger:info_msg("~p search rrr\n", [?MODULE]),
+            ?L(),
             case State#state.left of
                 [] ->
-                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 LeftNode ->
-                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
                     receive
-                        {ok, Key, Value} ->
-                            {reply, {ok, Key, Value}, State}
+                        {ok, FoundKey, FoundValue} ->
+                            ?L(),
+                            {reply, {ok, FoundKey, FoundValue}, State}
                     end
             end
     end;
 
-handle_call({insert, Key, Value}, From, State) ->
+handle_call({insert, Key, Value}, _From, State) ->
+    ?L(),
     {ok, Pid} = mio_sup:start_node(Key, Value),
     MyKey = State#state.key,
     if
@@ -200,13 +213,13 @@ handle_call({insert, Key, Value}, From, State) ->
             {reply, {ok, Pid}, State#state{left=Pid}}
     end;
 
-handle_call(left, From, State) ->
+handle_call(left, _From, State) ->
     {reply, State#state.left, State};
 
-handle_call(right, From, State) ->
+handle_call(right, _From, State) ->
     {reply, State#state.right, State};
 
-handle_call(add_right, From, State) ->
+handle_call(add_right, _From, State) ->
     {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
     {reply, true, State}.
@@ -220,37 +233,40 @@ handle_call(add_right, From, State) ->
 handle_cast({search, ReturnToMe, Key}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    error_logger:info_msg("~p search_cast MyKey=~p SearchKey=~p\n", [?MODULE, MyKey, Key]),
+    ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
     if
         %% This is myKey, found!
         MyKey =:= Key ->
-            error_logger:info_msg("~p search1\n", [?MODULE]),
-            ReturnToMe ! {ok, MyKey, MyValue};
+            ?L(),
+            ReturnToMe ! {ok, MyKey, MyValue},
+            ?L();
         MyKey < Key ->
-            error_logger:info_msg("~p search qqq\n", [?MODULE]),
+            ?L(),
             case State#state.right of
                 [] ->
-                    error_logger:info_msg("~p search4\n", [?MODULE]),
-                    ReturnToMe ! {ok, MyKey, MyValue}; %% todo
+                    ?L(),
+                    ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
+                    ReturnToMe ! {ok, MyKey, MyValue},
+                    ?L();
                 RightNode ->
-                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    ?L(),
                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
             end;
         true ->
-            error_logger:info_msg("~p search rrr\n", [?MODULE]),
+            ?L(),
             case State#state.left of
                 [] ->
-                    error_logger:info_msg("~p search4\n", [?MODULE]),
+                    ?L(),
                     ReturnToMe ! {ok, MyKey, MyValue}; %% todo
                 LeftNode ->
-                    error_logger:info_msg("~p search3\n", [?MODULE]),
+                    ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
             end
     end,
     {noreply, State};
 
 handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
-    error_logger:info_msg("~p dump_to_right_cast right=~p\n", [?MODULE, State#state.right]),
+    ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
     case State#state.right of
@@ -259,7 +275,7 @@ handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
     end,
     {noreply, State};
 handle_cast({dump_to_left_cast, ReturnToMe, Accum}, State) ->
-    error_logger:info_msg("~p dump_to_left_cast left=~p\n", [?MODULE, State#state.left]),
+    ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
     case State#state.left of
