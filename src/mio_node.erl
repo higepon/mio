@@ -342,7 +342,8 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                     ?L(),
                     {RightKey, _} = gen_server:call(RightNode, get),
                     if
-                        RightKey >= SearchKey ->
+                        %% we can make short cut. todo
+                        RightKey =< SearchKey ->
                             ?L(),
                             gen_server:call(RightNode, {search, ReturnToMe, Level, SearchKey});
                         true ->
@@ -351,6 +352,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                     end
             end
     end.
+
 
 left(State, Level) ->
     case State#state.left of
