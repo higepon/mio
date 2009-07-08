@@ -42,7 +42,7 @@ dump_nodes_call(_Config) ->
 
     %% insert to left
     {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-    [{myKex, myKexValue}, {myKey, myValue2}, {myKey1, myValue1}] =  gen_server:call(mio_node, {dump_nodes, 0}),
+    [{myKex, myKexValue}, {myKey, myValue2}, {myKey1, myValue1}] =  mio_node:dump_nodes(mio_node, 0), %% dump on Level 0
 
     ok.
 

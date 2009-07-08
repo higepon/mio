@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2]).
+-export([start_link/1, search/2, dump_nodes/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -44,6 +44,9 @@ search(StartNode, Key) ->
         true ->
             ng
     end.
+
+dump_nodes(StartNode, Level) ->
+    gen_server:call(StartNode, {dump_nodes, Level}).
 
 %%====================================================================
 %% gen_server callbacks
