@@ -27,7 +27,7 @@ get_call() ->
 
 get_call(_Config) ->
     {myKey, myValue} = gen_server:call(mio_node, get),
-    {myKey, myValue2} = gen_server:call(mio_node, get),
+    {myKey, myValue} = gen_server:call(mio_node, get),
     ok.
 
 left_right_call(_Config) ->
@@ -42,7 +42,7 @@ dump_nodes_call(_Config) ->
 
     %% insert to left
     {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-    [{myKex, myKexValue}, {myKey, myValue2}, {myKey1, myValue1}] =  mio_node:dump_nodes(mio_node, 0), %% dump on Level 0
+    [{myKex, myKexValue}, {myKey, myValue}, {myKey1, myValue1}] =  mio_node:dump_nodes(mio_node, 0), %% dump on Level 0
 
     ok.
 
@@ -87,7 +87,8 @@ search_level2(_Config) ->
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
-    {ok, value5} = mio_node:search(Node5, key5),
+    {ok, value5} = mio_node:search(Node3, key5),
+
 
     ok.
 

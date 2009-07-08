@@ -38,7 +38,7 @@ start_link(Args) ->
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
-    %% If Level is not specified, Start node check his max level and use it.
+    %% If Level is not specified, The start node checks his max level and use it.
     {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
     if
         FoundKey =:= Key ->
@@ -95,7 +95,7 @@ getRandomId() ->
 %%--------------------------------------------------------------------
 handle_call(get, _From, State) ->
     ?L(),
-    {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
+    {reply, {State#state.key, State#state.value}, State};
 
 %% API for construct test nodes.
 handle_call({set_right, Level, Right}, _From, State) ->
@@ -166,14 +166,15 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
                   end,
     MyKey = State#state.key,
     MyValue = State#state.value,
-    ?LOGF("search_call: MyKey=~p searchKey=~p~n", [MyKey, Key]),
+    ?LOGF("search_call: MyKey=~p searchKey=~p SearchLevel=~p~n", [MyKey, Key, SearchLevel]),
     if
         %% This is myKey, found!
         MyKey =:= Key ->
             ?L(),
             {reply, {ok, MyKey, MyValue}, State};
         MyKey < Key ->
-            search_right(State, ReturnToMe, SearchLevel, Key);
+            ?L(),
+            {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
 %%             ?L(),
 %%             case right(State, 0) of
 %%                 [] ->
@@ -323,25 +324,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 
-search_right(State, ReturnToMe, Level, SearchKey) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    case Level of
-        0 ->
-            {reply, {ok, MyKey, MyValue}, State};
-        _ ->
-            RightNode = right(State, Level),
-            if
-                 RightNode ->
+search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
+    ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
+    case Level >= 0 of
+        false ->
+            ?L(),
+            {ok, MyKey, MyValue};
+        true ->
+            ?L(),
+            RightNode = lists:nth(Level + 1, RightNodes),
+            ?LOG(RightNode),
+            case RightNode of
+                [] ->
+                    ?L(),
+                    search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
+                RightNode ->
+                    ?L(),
                     {RightKey, _} = gen_server:call(RightNode, get),
                     if
                         RightKey >= SearchKey ->
-                            gen_server:call(right(State, Level), {search, ReturnToMe, Level, SearchKey});
+                            ?L(),
+                            gen_server:call(RightNode, {search, ReturnToMe, Level, SearchKey});
                         true ->
-                            search_right(State, ReturnToMe, Level - 1, SearchKey)
-                    end;
-                true ->
-                    search_right(State, ReturnToMe, Level - 1, SearchKey)
+                            ?L(),
+                            search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
+                    end
             end
     end.
 
