@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() ->
-    [get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2].
+    [get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2, test_set_nth].
 
 get_call() ->
     [].
@@ -84,4 +84,9 @@ search_level2(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
+    ok.
+
+test_set_nth(_Config) ->
+    [1, 3] = mio_node:set_nth(2, 3, [1, 2]),
+    [0, 2] = mio_node:set_nth(1, 0, [1, 2]),
     ok.

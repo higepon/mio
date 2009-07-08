@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3]).
+-export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3, set_nth/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -56,6 +56,12 @@ set_right(Node, Level, Right) ->
 set_left(Node, Level, Left) ->
     gen_server:call(Node, {set_left, Level, Left}).
 
+set_nth(Index, Value, List) ->
+    lists:append([lists:sublist(List, 1, Index - 1),
+                 [Value],
+                 lists:sublist(List, Index + 1, length(List))]).
+
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -90,12 +96,14 @@ getRandomId() ->
 handle_call(get, _From, State) ->
     ?L(),
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
+
+%% API for construct test nodes.
 handle_call({set_right, Level, Right}, _From, State) ->
     ?L(),
-    {reply, ok, State#state{right=[Right, lists:nth(2, State#state.right)]}};
+    {reply, ok, State#state{right=set_nth(Level + 1, Right, State#state.right)}};
 handle_call({set_left, Level, Left}, _From, State) ->
     ?L(),
-    {reply, ok, State#state{left=[Left, lists:nth(2, State#state.left)]}};
+    {reply, ok, State#state{left=set_nth(Level + 1, Left, State#state.left)}};
 
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
@@ -336,7 +344,6 @@ search_right(State, ReturnToMe, Level, SearchKey) ->
                     search_right(State, ReturnToMe, Level - 1, SearchKey)
             end
     end.
-
 
 left(State, Level) ->
     case State#state.left of
