@@ -94,13 +94,13 @@ handle_call(dump_nodes, _From, State) ->
               end,
     if
         HasRight ->
-            [Right | More] = State#state.right,
+            [Right | _] = State#state.right,
             gen_server:cast(Right, {dump_to_right_cast, self(), []});
         true -> []
     end,
     if
         HasLeft ->
-            [Left | More] = State#state.left,
+            [Left | _] = State#state.left,
             gen_server:cast(Left, {dump_to_left_cast, self(), []});
         true -> []
     end,
@@ -139,7 +139,7 @@ handle_call(dump_to_right, _From, State) ->
     io:write(State#state.right),
     case State#state.right of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        RightPid -> gen_server:cast(RightPid, {dump_to_right_cast, self(), [{State#state.key,  State#state.value}]}),
+        [RightPid | _ ]-> gen_server:cast(RightPid, {dump_to_right_cast, self(), [{State#state.key,  State#state.value}]}),
                     receive
                         {dump_right_accumed, Accumed} ->
                             {reply, Accumed, State}
@@ -151,7 +151,7 @@ handle_call(dump_to_left, _From, State) ->
     io:write(State#state.left),
     case State#state.left of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        RightPid -> gen_server:cast(RightPid, {dump_to_left_cast, self(), [{State#state.key,  State#state.value}]}),
+        [RightPid | _]-> gen_server:cast(RightPid, {dump_to_left_cast, self(), [{State#state.key,  State#state.value}]}),
                     receive
                         {dump_left_accumed, Accumed} ->
                             {reply, Accumed, State}
