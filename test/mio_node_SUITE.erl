@@ -84,6 +84,9 @@ search_level2(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
+
+    %% search!
+    {ok, value3} = mio_node:search(Node3, key3),
     ok.
 
 test_set_nth(_Config) ->
