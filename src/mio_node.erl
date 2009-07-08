@@ -132,29 +132,6 @@ handle_call({dump_nodes, Level}, _From, State) ->
             end
     end;
 
-handle_call({dump_to_right, Level}, _From, State) ->
-    ?L(),
-    io:write(State#state.right),
-    case right(State, Level) of
-        [] -> {reply, [{State#state.key,  State#state.value}], State};
-        RightNode-> gen_server:cast(RightNode, {dump_to_right_cast, Level, self(), [{State#state.key,  State#state.value}]}),
-                    receive
-                        {dump_right_accumed, Accumed} ->
-                            {reply, Accumed, State}
-                    end
-    end;
-
-handle_call({dump_to_left, Level}, _From, State) ->
-    ?L(),
-    io:write(State#state.left),
-    case left(State, Level) of
-        [] -> {reply, [{State#state.key,  State#state.value}], State};
-        LeftNode -> gen_server:cast(LeftNode, {dump_to_left_cast, Level, self(), [{State#state.key,  State#state.value}]}),
-                    receive
-                        {dump_left_accumed, Accumed} ->
-                            {reply, Accumed, State}
-                    end
-    end;
 
 handle_call({search, ReturnToMe, Key}, _From, State) ->
 
