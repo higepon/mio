@@ -148,11 +148,11 @@ handle_call({search, ReturnToMe, Key}, _From, State) ->
             {reply, {ok, MyKey, MyValue}, State};
         MyKey < Key ->
             ?L(),
-            case State#state.right of
+            case right(State, 0) of
                 [] ->
                     ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
-                [RightNode | More] ->
+                RightNode ->
                     ?L(),
                     ok = gen_server:cast(RightNode, {search, ReturnToMe, Key}),
                     ?L(),
@@ -165,11 +165,11 @@ handle_call({search, ReturnToMe, Key}, _From, State) ->
             end;
         true ->
             ?L(),
-            case State#state.left of
+            case left(State, 0) of
                 [] ->
                     ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
-                [LeftNode | More] ->
+                LeftNode ->
                     ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
                     receive
