@@ -156,7 +156,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 RightNode ->
                     ?L(),
-                    ok = gen_server:cast(RightNode, {search, ReturnToMe, Key}),
+                    ok = gen_server:cast(RightNode, {search, ReturnToMe, Level, Key}),
                     ?L(),
                     receive
                         {ok, FoundKey, FoundValue} ->
@@ -173,7 +173,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 LeftNode ->
                     ?L(),
-                    gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
+                    gen_server:cast(LeftNode, {search, ReturnToMe, Level, Key}),
                     receive
                         {ok, FoundKey, FoundValue} ->
                             ?L(),
@@ -212,7 +212,7 @@ handle_call(add_right, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({search, ReturnToMe, Key}, State) ->
+handle_cast({search, ReturnToMe, Level, Key}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
@@ -224,23 +224,23 @@ handle_cast({search, ReturnToMe, Key}, State) ->
             ?L();
         MyKey < Key ->
             ?L(),
-            case State#state.right of
+            case right(State, Level) of
                 [] ->
                     ?L(),
                     ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
                     ReturnToMe ! {ok, MyKey, MyValue},
                     ?L();
-                [RightNode | More] ->
+                RightNode ->
                     ?L(),
                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
             end;
         true ->
             ?L(),
-            case State#state.left of
+            case left(State, 0) of
                 [] ->
                     ?L(),
                     ReturnToMe ! {ok, MyKey, MyValue}; %% todo
-                [LeftNode | More] ->
+                LeftNode ->
                     ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
             end
