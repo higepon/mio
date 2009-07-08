@@ -80,28 +80,26 @@ handle_call(get, _From, State) ->
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
 
 %% fetch list of {key, value} tuple.
-handle_call(dump_nodes, _From, State) ->
+handle_call({dump_nodes, Level}, _From, State) ->
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    HasRight = case State#state.right of
+    HasRight = case right(State, Level) of
                    [] -> false;
                    _ -> true
                end,
-    HasLeft = case State#state.left of
+    HasLeft = case left(State, Level) of %%case State#state.left of
                    [] -> false;
                    _ -> true
               end,
     if
         HasRight ->
-            [Right | _] = State#state.right,
-            gen_server:cast(Right, {dump_to_right_cast, self(), []});
+            gen_server:cast(right(State, Level), {dump_to_right_cast, Level, self(), []});
         true -> []
     end,
     if
         HasLeft ->
-            [Left | _] = State#state.left,
-            gen_server:cast(Left, {dump_to_left_cast, self(), []});
+            gen_server:cast(left(State, Level), {dump_to_left_cast, Level, self(), []});
         true -> []
     end,
 
@@ -134,24 +132,24 @@ handle_call(dump_nodes, _From, State) ->
             end
     end;
 
-handle_call(dump_to_right, _From, State) ->
+handle_call({dump_to_right, Level}, _From, State) ->
     ?L(),
     io:write(State#state.right),
-    case State#state.right of
+    case right(State, Level) of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        [RightPid | _ ]-> gen_server:cast(RightPid, {dump_to_right_cast, self(), [{State#state.key,  State#state.value}]}),
+        RightNode-> gen_server:cast(RightNode, {dump_to_right_cast, Level, self(), [{State#state.key,  State#state.value}]}),
                     receive
                         {dump_right_accumed, Accumed} ->
                             {reply, Accumed, State}
                     end
     end;
 
-handle_call(dump_to_left, _From, State) ->
+handle_call({dump_to_left, Level}, _From, State) ->
     ?L(),
     io:write(State#state.left),
-    case State#state.left of
+    case left(State, Level) of
         [] -> {reply, [{State#state.key,  State#state.value}], State};
-        [RightPid | _]-> gen_server:cast(RightPid, {dump_to_left_cast, self(), [{State#state.key,  State#state.value}]}),
+        LeftNode -> gen_server:cast(LeftNode, {dump_to_left_cast, Level, self(), [{State#state.key,  State#state.value}]}),
                     receive
                         {dump_left_accumed, Accumed} ->
                             {reply, Accumed, State}
@@ -267,22 +265,22 @@ handle_cast({search, ReturnToMe, Key}, State) ->
     end,
     {noreply, State};
 
-handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
+handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    case State#state.right of
+    case right(State, Level) of
         [] -> ReturnToMe ! {dump_right_accumed, lists:reverse([{MyKey, MyValue} | Accum])};
-        [RightPid | More] -> gen_server:cast(RightPid, {dump_to_right_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        RightPid -> gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{MyKey, MyValue} | Accum]})
     end,
     {noreply, State};
-handle_cast({dump_to_left_cast, ReturnToMe, Accum}, State) ->
+handle_cast({dump_to_left_cast, Level, ReturnToMe, Accum}, State) ->
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    case State#state.left of
+    case left(State, Level) of
         [] -> ReturnToMe ! {dump_left_accumed, [{MyKey, MyValue} | Accum]};
-        [LeftPid | More] -> gen_server:cast(LeftPid, {dump_to_left_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        LeftPid -> gen_server:cast(LeftPid, {dump_to_left_cast, Level, ReturnToMe, [{MyKey, MyValue} | Accum]})
     end,
     {noreply, State}.
 
@@ -316,3 +314,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+
+left(State, Level) ->
+    case State#state.left of
+        [] -> [];
+        LeftNodes ->  lists:nth(Level + 1, LeftNodes) %% Erlang array is 1 origin.
+    end.
+
+right(State, Level) ->
+    case State#state.right of
+        [] -> [];
+        RightNodes ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
+    end.
