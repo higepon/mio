@@ -31,8 +31,8 @@ get_call(_Config) ->
     ok.
 
 left_right_call(_Config) ->
-    [] = gen_server:call(mio_node, left),
-    [] = gen_server:call(mio_node, right).
+    [[], []] = gen_server:call(mio_node, left),
+    [[], []] = gen_server:call(mio_node, right).
 
 
 

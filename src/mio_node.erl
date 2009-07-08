@@ -65,7 +65,7 @@ init(Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
     error_logger:info_msg("~p init\n", [Args]),
     [MyKey, MyValue] = Args,
-    {ok, #state{key=MyKey, value=MyValue, left=[], right=[]}}.
+    {ok, #state{key=MyKey, value=MyValue, left=[[], []], right=[[], []]}}.
 
 getRandomId() ->
     integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
@@ -140,6 +140,11 @@ handle_call({dump_nodes, Level}, _From, State) ->
 
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
+    SearchLevel = case Level of
+                      [] ->
+                          length(State#state.right) - 1; %% Level is 0 origin
+                      _ -> Level
+                  end,
     MyKey = State#state.key,
     MyValue = State#state.value,
     ?LOGF("search_call: MyKey=~p searchKey=~p~n", [MyKey, Key]),
@@ -156,7 +161,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 RightNode ->
                     ?L(),
-                    ok = gen_server:cast(RightNode, {search, ReturnToMe, Level, Key}),
+                    ok = gen_server:cast(RightNode, {search, ReturnToMe, SearchLevel, Key}),
                     ?L(),
                     receive
                         {ok, FoundKey, FoundValue} ->
@@ -173,7 +178,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
                     {reply, {ok, MyKey, MyValue}, State}; % todo
                 LeftNode ->
                     ?L(),
-                    gen_server:cast(LeftNode, {search, ReturnToMe, Level, Key}),
+                    gen_server:cast(LeftNode, {search, ReturnToMe, SearchLevel, Key}),
                     receive
                         {ok, FoundKey, FoundValue} ->
                             ?L(),
