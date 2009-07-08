@@ -66,6 +66,8 @@ search_call(_Config) ->
 search_level2(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue),
     {ok, myKey, myValue} = gen_server:call(Node, {search, Node, myKey}),
-    [{myKey, myValue}] = mio_node:dump_nodes(Node, 0), %% dump on Level 0
-    [{myKey, myValue}] = mio_node:dump_nodes(Node, 1), %% dump on Level 1
+
+    %% dump nodes on Level 0 and 1
+    [{myKey, myValue}] = mio_node:dump_nodes(Node, 0),
+    [{myKey, myValue}] = mio_node:dump_nodes(Node, 1),
     ok.
