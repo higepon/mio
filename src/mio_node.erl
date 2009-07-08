@@ -94,12 +94,14 @@ handle_call(dump_nodes, _From, State) ->
               end,
     if
         HasRight ->
-            gen_server:cast(State#state.right, {dump_to_right_cast, self(), []});
+            [Right | More] = State#state.right,
+            gen_server:cast(Right, {dump_to_right_cast, self(), []});
         true -> []
     end,
     if
         HasLeft ->
-            gen_server:cast(State#state.left, {dump_to_left_cast, self(), []});
+            [Left | More] = State#state.left,
+            gen_server:cast(Left, {dump_to_left_cast, self(), []});
         true -> []
     end,
 
@@ -172,7 +174,7 @@ handle_call({search, ReturnToMe, Key}, _From, State) ->
                 [] ->
                     ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
-                RightNode ->
+                [RightNode | More] ->
                     ?L(),
                     ok = gen_server:cast(RightNode, {search, ReturnToMe, Key}),
                     ?L(),
@@ -189,7 +191,7 @@ handle_call({search, ReturnToMe, Key}, _From, State) ->
                 [] ->
                     ?L(),
                     {reply, {ok, MyKey, MyValue}, State}; % todo
-                LeftNode ->
+                [LeftNode | More] ->
                     ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key}),
                     receive
@@ -207,10 +209,10 @@ handle_call({insert, Key, Value}, _From, State) ->
     if
         Key > MyKey ->
             error_logger:info_msg("~p insert to right\n", [?MODULE]),
-            {reply, {ok, Pid}, State#state{right=Pid}};
+            {reply, {ok, Pid}, State#state{right=[Pid, Pid]}};
         true ->
             error_logger:info_msg("~p insert to left\n", [?MODULE]),
-            {reply, {ok, Pid}, State#state{left=Pid}}
+            {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
 handle_call(left, _From, State) ->
@@ -248,7 +250,7 @@ handle_cast({search, ReturnToMe, Key}, State) ->
                     ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
                     ReturnToMe ! {ok, MyKey, MyValue},
                     ?L();
-                RightNode ->
+                [RightNode | More] ->
                     ?L(),
                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
             end;
@@ -258,7 +260,7 @@ handle_cast({search, ReturnToMe, Key}, State) ->
                 [] ->
                     ?L(),
                     ReturnToMe ! {ok, MyKey, MyValue}; %% todo
-                LeftNode ->
+                [LeftNode | More] ->
                     ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
             end
@@ -271,7 +273,7 @@ handle_cast({dump_to_right_cast, ReturnToMe, Accum}, State) ->
     MyValue = State#state.value,
     case State#state.right of
         [] -> ReturnToMe ! {dump_right_accumed, lists:reverse([{MyKey, MyValue} | Accum])};
-        RightPid  -> gen_server:cast(RightPid, {dump_to_right_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        [RightPid | More] -> gen_server:cast(RightPid, {dump_to_right_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
     end,
     {noreply, State};
 handle_cast({dump_to_left_cast, ReturnToMe, Accum}, State) ->
@@ -280,7 +282,7 @@ handle_cast({dump_to_left_cast, ReturnToMe, Accum}, State) ->
     MyValue = State#state.value,
     case State#state.left of
         [] -> ReturnToMe ! {dump_left_accumed, [{MyKey, MyValue} | Accum]};
-        LeftPid  -> gen_server:cast(LeftPid, {dump_to_left_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        [LeftPid | More] -> gen_server:cast(LeftPid, {dump_to_left_cast, ReturnToMe, [{MyKey, MyValue} | Accum]})
     end,
     {noreply, State}.
 
