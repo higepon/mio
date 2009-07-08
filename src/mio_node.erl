@@ -193,19 +193,20 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 %%             end;
         true ->
             ?L(),
-            case left(State, 0) of
-                [] ->
-                    ?L(),
-                    {reply, {ok, MyKey, MyValue}, State}; % todo
-                LeftNode ->
-                    ?L(),
-                    gen_server:cast(LeftNode, {search, ReturnToMe, SearchLevel, Key}),
-                    receive
-                        {ok, FoundKey, FoundValue} ->
-                            ?L(),
-                            {reply, {ok, FoundKey, FoundValue}, State}
-                    end
-            end
+            {reply, search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key), State}
+%%             case left(State, 0) of
+%%                 [] ->
+%%                     ?L(),
+%%                     {reply, {ok, MyKey, MyValue}, State}; % todo
+%%                 LeftNode ->
+%%                     ?L(),
+%%                     gen_server:cast(LeftNode, {search, ReturnToMe, SearchLevel, Key}),
+%%                     receive
+%%                         {ok, FoundKey, FoundValue} ->
+%%                             ?L(),
+%%                             {reply, {ok, FoundKey, FoundValue}, State}
+%%                     end
+%%             end
     end;
 
 handle_call({insert, Key, Value}, _From, State) ->
@@ -349,6 +350,35 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                         true ->
                             ?L(),
                             search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
+                    end
+            end
+    end.
+
+search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
+    ?LOGF("search_left: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p LeftNodes=~p~n", [MyKey, MyValue, SearchKey, Level, LeftNodes]),
+    case Level >= 0 of
+        false ->
+            ?L(),
+            {ok, MyKey, MyValue};
+        true ->
+            ?L(),
+            LeftNode = lists:nth(Level + 1, LeftNodes),
+            ?LOG(LeftNode),
+            case LeftNode of
+                [] ->
+                    ?L(),
+                    search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
+                LeftNode ->
+                    ?L(),
+                    {LeftKey, _} = gen_server:call(LeftNode, get),
+                    if
+                        %% we can make short cut. todo
+                        LeftKey >= SearchKey ->
+                            ?L(),
+                            gen_server:call(LeftNode, {search, ReturnToMe, Level, SearchKey});
+                        true ->
+                            ?L(),
+                            search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
                     end
             end
     end.
