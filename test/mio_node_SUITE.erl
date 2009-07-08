@@ -57,7 +57,7 @@ search_call(_Config) ->
 
     %% not found
     %% returns closest node
-    {ok, myKey1, myValue1} = gen_server:call(mio_node, {search, mio_node, myKey2}),
+    {ok, myKey1, myValue1} = gen_server:call(mio_node, {search, mio_node, [], myKey2}),
     %% returns ng
     ng = mio_node:search(mio_node, myKey2),
     ok.
@@ -65,7 +65,7 @@ search_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue),
-    {ok, myKey, myValue} = gen_server:call(Node, {search, Node, myKey}),
+    {ok, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
     [{myKey, myValue}] = mio_node:dump_nodes(Node, 0),

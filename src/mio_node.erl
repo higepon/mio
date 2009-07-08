@@ -37,7 +37,9 @@ start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
 search(StartNode, Key) ->
-    {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, Key}),
+    %% 2nd parameter [] of gen_server:call(search, ...) is Level.
+    %% If Level is not specified, Start node check his max level and use it.
+    {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
     if
         FoundKey =:= Key ->
             {ok, FoundValue};
@@ -136,7 +138,7 @@ handle_call({dump_nodes, Level}, _From, State) ->
     end;
 
 
-handle_call({search, ReturnToMe, Key}, _From, State) ->
+handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     MyKey = State#state.key,
     MyValue = State#state.value,
