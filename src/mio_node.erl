@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2]).
+-export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -50,6 +50,13 @@ search(StartNode, Key) ->
 dump_nodes(StartNode, Level) ->
     gen_server:call(StartNode, {dump_nodes, Level}).
 
+set_right(Node, Level, Right) ->
+    gen_server:call(Node, {set_right, Level, Right}).
+
+set_left(Node, Level, Left) ->
+    gen_server:call(Node, {set_left, Level, Left}).
+
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -83,6 +90,12 @@ getRandomId() ->
 handle_call(get, _From, State) ->
     ?L(),
     {reply, {State#state.key, State#state.value}, State#state{value=myValue2}};
+handle_call({set_right, Level, Right}, _From, State) ->
+    ?L(),
+    {reply, ok, State#state{right=[Right, lists:nth(2, State#state.right)]}};
+handle_call({set_left, Level, Left}, _From, State) ->
+    ?L(),
+    {reply, ok, State#state{left=[Left, lists:nth(2, State#state.left)]}};
 
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
@@ -136,8 +149,6 @@ handle_call({dump_nodes, Level}, _From, State) ->
                     {reply, [{MyKey, MyValue}], State}
             end
     end;
-
-
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     SearchLevel = case Level of
@@ -154,22 +165,23 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
             ?L(),
             {reply, {ok, MyKey, MyValue}, State};
         MyKey < Key ->
-            ?L(),
-            case right(State, 0) of
-                [] ->
-                    ?L(),
-                    {reply, {ok, MyKey, MyValue}, State}; % todo
-                RightNode ->
-                    ?L(),
-                    ok = gen_server:cast(RightNode, {search, ReturnToMe, SearchLevel, Key}),
-                    ?L(),
-                    receive
-                        {ok, FoundKey, FoundValue} ->
-                            ?L(),
-                            {reply, {ok, FoundKey, FoundValue}, State};
-                        x -> ?LOG(x)
-                    end
-            end;
+            search_right(State, ReturnToMe, SearchLevel, Key);
+%%             ?L(),
+%%             case right(State, 0) of
+%%                 [] ->
+%%                     ?L(),
+%%                     {reply, {ok, MyKey, MyValue}, State}; % todo
+%%                 RightNode ->
+%%                     ?L(),
+%%                     ok = gen_server:cast(RightNode, {search, ReturnToMe, SearchLevel, Key}),
+%%                     ?L(),
+%%                     receive
+%%                         {ok, FoundKey, FoundValue} ->
+%%                             ?L(),
+%%                             {reply, {ok, FoundKey, FoundValue}, State};
+%%                         x -> ?LOG(x)
+%%                     end
+%%             end;
         true ->
             ?L(),
             case left(State, 0) of
@@ -301,6 +313,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+
+
+search_right(State, ReturnToMe, Level, SearchKey) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    case Level of
+        0 ->
+            {reply, {ok, MyKey, MyValue}, State};
+        _ ->
+            RightNode = right(State, Level),
+            if
+                 RightNode ->
+                    {RightKey, _} = gen_server:call(RightNode, get),
+                    if
+                        RightKey >= SearchKey ->
+                            gen_server:call(right(State, Level), {search, ReturnToMe, Level, SearchKey});
+                        true ->
+                            search_right(State, ReturnToMe, Level - 1, SearchKey)
+                    end;
+                true ->
+                    search_right(State, ReturnToMe, Level - 1, SearchKey)
+            end
+    end.
+
 
 left(State, Level) ->
     case State#state.left of
