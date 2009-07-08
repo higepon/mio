@@ -327,8 +327,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
-    case Level >= 0 of
-        false ->
+    if 
+        Level < 0 ->
             ?L(),
             {ok, MyKey, MyValue};
         true ->
@@ -343,7 +343,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                     ?L(),
                     {RightKey, _} = gen_server:call(RightNode, get),
                     if
-                        %% we can make short cut. todo
+                        %% we can make short cut. when equal case todo
                         RightKey =< SearchKey ->
                             ?L(),
                             gen_server:call(RightNode, {search, ReturnToMe, Level, SearchKey});
@@ -356,8 +356,8 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
 
 search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
     ?LOGF("search_left: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p LeftNodes=~p~n", [MyKey, MyValue, SearchKey, Level, LeftNodes]),
-    case Level >= 0 of
-        false ->
+    if
+        Level < 0 ->
             ?L(),
             {ok, MyKey, MyValue};
         true ->
