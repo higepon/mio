@@ -131,7 +131,7 @@ handle_call({dump_nodes, Level}, _From, State) ->
                             {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
                     end;
                 true ->
-                    {reply, [], State}
+                    {reply, [{MyKey, MyValue}], State}
             end
     end;
 
