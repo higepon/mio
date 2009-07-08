@@ -87,6 +87,8 @@ search_level2(_Config) ->
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
+    {ok, value5} = mio_node:search(Node5, key5),
+
     ok.
 
 test_set_nth(_Config) ->
