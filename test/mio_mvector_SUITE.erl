@@ -22,6 +22,12 @@ not_equal(_Config) ->
     B = mio_mvector:make([1, 1]),
     false = mio_mvector:eq(A, B).
 
-all() ->
-    [make, equal, not_equal].
+get(_Config) ->
+    A = mio_mvector:make([0, 1, 2]),
+    [0, 1, 2] = mio_mvector:get(A, 0),
+    [1, 2] = mio_mvector:get(A, 1),
+    [2] = mio_mvector:get(A, 2),
+    ok.
 
+all() ->
+    [make, equal, not_equal, get].
