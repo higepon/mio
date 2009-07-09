@@ -104,12 +104,6 @@ search_level2_2(_Config) ->
 
     ok = link_nodes(0, [Node3, Node5, Node9]),
     ok = link_nodes(1, [Node3, Node9]),
-%%     ok = mio_node:set_right(Node3, 0, Node5),
-%%     ok = mio_node:set_left(Node5, 0, Node3),
-%%     ok = mio_node:set_right(Node5, 0, Node9),
-%%     ok = mio_node:set_left(Node9, 0, Node5),
-%%     ok = mio_node:set_right(Node3, 1, Node9),
-%%     ok = mio_node:set_left(Node9, 1, Node3),
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
@@ -143,23 +137,11 @@ search_level2_3(_Config) ->
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
 
     %% level 0
-    ok = mio_node:set_right(Node3, 0, Node5),
-    ok = mio_node:set_left(Node5, 0, Node3),
-    ok = mio_node:set_right(Node5, 0, Node7),
-    ok = mio_node:set_left(Node7, 0, Node5),
-    ok = mio_node:set_right(Node7, 0, Node8),
-    ok = mio_node:set_left(Node8, 0, Node7),
-    ok = mio_node:set_right(Node8, 0, Node9),
-    ok = mio_node:set_left(Node9, 0, Node8),
+    ok = link_nodes(0, [Node3, Node5, Node7, Node8, Node9]),
 
     %% level 1
-    ok = mio_node:set_right(Node3, 1, Node7),
-    ok = mio_node:set_left(Node7, 1, Node3),
-    ok = mio_node:set_right(Node7, 1, Node9),
-    ok = mio_node:set_left(Node9, 1, Node7),
-    ok = mio_node:set_right(Node5, 1, Node8),
-    ok = mio_node:set_left(Node8, 1, Node5),
-
+    ok = link_nodes(1, [Node3, Node7, Node9]),
+    ok = link_nodes(1, [Node5, Node8]),
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}, {key7, value7}, {key8, value8}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
