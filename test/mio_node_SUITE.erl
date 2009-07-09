@@ -86,7 +86,6 @@ search_level2_1(_Config) ->
     [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
 %    [[{key3, value3}], [{key5, value5}]] = mio_node:dump_nodes(Node3, 1),
 
-%    ok = lists:usort([[1, 0], [0, 0], [1, 0]]),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),

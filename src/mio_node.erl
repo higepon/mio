@@ -115,55 +115,54 @@ handle_call({set_left, Level, Left}, _From, State) ->
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
     ?L(),
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    HasRight = case right(State, Level) of
-                   [] -> false;
-                   _ -> true
-               end,
-    HasLeft = case left(State, Level) of %%case State#state.left of
-                   [] -> false;
-                   _ -> true
-              end,
-    if
-        HasRight ->
-            gen_server:cast(right(State, Level), {dump_to_right_cast, Level, self(), []});
-        true -> []
-    end,
-    if
-        HasLeft ->
-            gen_server:cast(left(State, Level), {dump_to_left_cast, Level, self(), []});
-        true -> []
-    end,
+    enum_nodes(State, Level);
+%%     HasRight = case right(State, Level) of
+%%                    [] -> false;
+%%                    _ -> true
+%%                end,
+%%     HasLeft = case left(State, Level) of %%case State#state.left of
+%%                    [] -> false;
+%%                    _ -> true
+%%               end,
+%%     if
+%%         HasRight ->
+%%             gen_server:cast(right(State, Level), {dump_to_right_cast, Level, self(), []});
+%%         true -> []
+%%     end,
+%%     if
+%%         HasLeft ->
+%%             gen_server:cast(left(State, Level), {dump_to_left_cast, Level, self(), []});
+%%         true -> []
+%%     end,
 
-    if
-        HasRight ->
-            if
-                HasLeft ->
-                    receive
-                        {dump_right_accumed, RightAccumed} ->
-                            receive
-                                {dump_left_accumed, LeftAccumed} ->
-                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue}], RightAccumed]), State}
-                            end
-                    end;
-                true ->
-                    receive
-                        {dump_right_accumed, RightAccumed} ->
-                            {reply, [{MyKey, MyValue} | RightAccumed], State}
-                    end
-            end;
-        true ->
-            if
-                HasLeft ->
-                    receive
-                        {dump_left_accumed, LeftAccumed} ->
-                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
-                    end;
-                true ->
-                    {reply, [{MyKey, MyValue}], State}
-            end
-    end;
+%%     if
+%%         HasRight ->
+%%             if
+%%                 HasLeft ->
+%%                     receive
+%%                         {dump_right_accumed, RightAccumed} ->
+%%                             receive
+%%                                 {dump_left_accumed, LeftAccumed} ->
+%%                                     {reply, lists:append([LeftAccumed, [{MyKey, MyValue}], RightAccumed]), State}
+%%                             end
+%%                     end;
+%%                 true ->
+%%                     receive
+%%                         {dump_right_accumed, RightAccumed} ->
+%%                             {reply, [{MyKey, MyValue} | RightAccumed], State}
+%%                     end
+%%             end;
+%%         true ->
+%%             if
+%%                 HasLeft ->
+%%                     receive
+%%                         {dump_left_accumed, LeftAccumed} ->
+%%                             {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
+%%                     end;
+%%                 true ->
+%%                     {reply, [{MyKey, MyValue}], State}
+%%             end
+%%     end;
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     SearchLevel = case Level of
@@ -401,4 +400,55 @@ right(State, Level) ->
     case State#state.right of
         [] -> [];
         RightNodes ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
+    end.
+
+enum_nodes(State, Level) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    HasRight = case right(State, Level) of
+                   [] -> false;
+                   _ -> true
+               end,
+    HasLeft = case left(State, Level) of %%case State#state.left of
+                   [] -> false;
+                   _ -> true
+              end,
+    if
+        HasRight ->
+            gen_server:cast(right(State, Level), {dump_to_right_cast, Level, self(), []});
+        true -> []
+    end,
+    if
+        HasLeft ->
+            gen_server:cast(left(State, Level), {dump_to_left_cast, Level, self(), []});
+        true -> []
+    end,
+
+    if
+        HasRight ->
+            if
+                HasLeft ->
+                    receive
+                        {dump_right_accumed, RightAccumed} ->
+                            receive
+                                {dump_left_accumed, LeftAccumed} ->
+                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue}], RightAccumed]), State}
+                            end
+                    end;
+                true ->
+                    receive
+                        {dump_right_accumed, RightAccumed} ->
+                            {reply, [{MyKey, MyValue} | RightAccumed], State}
+                    end
+            end;
+        true ->
+            if
+                HasLeft ->
+                    receive
+                        {dump_left_accumed, LeftAccumed} ->
+                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
+                    end;
+                true ->
+                    {reply, [{MyKey, MyValue}], State}
+            end
     end.
