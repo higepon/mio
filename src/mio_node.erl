@@ -115,7 +115,15 @@ handle_call({set_left, Level, Left}, _From, State) ->
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
     ?L(),
-    enum_nodes(State, Level);
+    enum_nodes(State, 0);
+%%     case Level of
+%%         0 ->
+%%             enum_nodes(State, 0);
+%%         _ ->
+%%             AllNodes = enum_nodes(State, 0),
+            
+
+
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     SearchLevel = case Level of
@@ -237,18 +245,20 @@ handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
     case right(State, Level) of
-        [] -> ReturnToMe ! {dump_right_accumed, lists:reverse([{MyKey, MyValue} | Accum])};
-        RightPid -> gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        [] -> ReturnToMe ! {dump_right_accumed, lists:reverse([{MyKey, MyValue, MyMVector} | Accum])};
+        RightPid -> gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State};
 handle_cast({dump_to_left_cast, Level, ReturnToMe, Accum}, State) ->
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
     case left(State, Level) of
-        [] -> ReturnToMe ! {dump_left_accumed, [{MyKey, MyValue} | Accum]};
-        LeftPid -> gen_server:cast(LeftPid, {dump_to_left_cast, Level, ReturnToMe, [{MyKey, MyValue} | Accum]})
+        [] -> ReturnToMe ! {dump_left_accumed, [{MyKey, MyValue, MyMVector} | Accum]};
+        LeftPid -> gen_server:cast(LeftPid, {dump_to_left_cast, Level, ReturnToMe, [{MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State}.
 
@@ -358,6 +368,7 @@ right(State, Level) ->
 enum_nodes(State, Level) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
     HasRight = case right(State, Level) of
                    [] -> false;
                    _ -> true
@@ -385,13 +396,13 @@ enum_nodes(State, Level) ->
                         {dump_right_accumed, RightAccumed} ->
                             receive
                                 {dump_left_accumed, LeftAccumed} ->
-                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue}], RightAccumed]), State}
+                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue, MyMVector}], RightAccumed]), State}
                             end
                     end;
                 true ->
                     receive
                         {dump_right_accumed, RightAccumed} ->
-                            {reply, [{MyKey, MyValue} | RightAccumed], State}
+                            {reply, [{MyKey, MyValue, MyMVector} | RightAccumed], State}
                     end
             end;
         true ->
@@ -399,9 +410,9 @@ enum_nodes(State, Level) ->
                 HasLeft ->
                     receive
                         {dump_left_accumed, LeftAccumed} ->
-                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue}]), State}
+                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue, MyMVector}]), State}
                     end;
                 true ->
-                    {reply, [{MyKey, MyValue}], State}
+                    {reply, [{MyKey, MyValue, MyMVector}], State}
             end
     end.

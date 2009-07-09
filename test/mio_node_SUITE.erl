@@ -42,7 +42,7 @@ dump_nodes_call(_Config) ->
 
     %% insert to left
     {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-    [{myKex, myKexValue}, {myKey, myValue}, {myKey1, myValue1}] =  mio_node:dump_nodes(mio_node, 0), %% dump on Level 0
+    [{myKex, myKexValue, [1, 0]}, {myKey, myValue, [1, 0]}, {myKey1, myValue1, [1, 0]}] =  mio_node:dump_nodes(mio_node, 0), %% dump on Level 0
 
     ok.
 
@@ -68,8 +68,8 @@ search_level2_simple(_Config) ->
     {ok, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
-    [{myKey, myValue}] = mio_node:dump_nodes(Node, 0),
-    [{myKey, myValue}] = mio_node:dump_nodes(Node, 1),
+    [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
+    [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 1),
     ok.
 
 search_level2_1(_Config) ->
@@ -83,7 +83,7 @@ search_level2_1(_Config) ->
     ok = link_nodes(0, [Node3, Node5]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
 %    [[{key3, value3}], [{key5, value5}]] = mio_node:dump_nodes(Node3, 1),
 
 
@@ -107,7 +107,7 @@ search_level2_2(_Config) ->
     ok = link_nodes(1, [Node3, Node9]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3}, {key5, value5}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [1, 0]}, {key5, value5, [1, 0]}, {key9, value9, [1, 0]}] = mio_node:dump_nodes(Node3, 0),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
@@ -145,7 +145,7 @@ search_level2_3(_Config) ->
     ok = link_nodes(1, [Node5, Node8]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3}, {key5, value5}, {key7, value7}, {key8, value8}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [1, 0]}, {key5, value5, [1, 0]}, {key7, value7, [1, 0]}, {key8, value8, [1, 0]}, {key9, value9, [1, 0]}] = mio_node:dump_nodes(Node3, 0),
 
     %% search!
     %%  level1: 3->7 level0: 7->8
