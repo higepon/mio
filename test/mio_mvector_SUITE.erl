@@ -23,10 +23,11 @@ not_equal(_Config) ->
     false = mio_mvector:eq(A, B).
 
 get(_Config) ->
-    A = mio_mvector:make([0, 1, 2]),
-    [0, 1, 2] = mio_mvector:get(A, 0),
-    [1, 2] = mio_mvector:get(A, 1),
-    [2] = mio_mvector:get(A, 2),
+    A = mio_mvector:make([3, 2, 1, 0]),
+    [3, 2, 1, 0] = mio_mvector:get(A, 0),
+    [3, 2, 1] = mio_mvector:get(A, 1),
+    [3, 2] = mio_mvector:get(A, 2),
+    [3] = mio_mvector:get(A, 3),
     ok.
 
 all() ->

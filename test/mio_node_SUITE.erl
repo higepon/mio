@@ -78,13 +78,15 @@ search_level2_1(_Config) ->
     %%     level1 [3] [5]
     %%     level0 [3 <-> 5]
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make(mio_mvector:make([0, 0]))),
-    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make(mio_mvector:make([1, 0]))),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make(mio_mvector:make([1, 1]))),
 
     ok = link_nodes(0, [Node3, Node5]),
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
 %    [[{key3, value3}], [{key5, value5}]] = mio_node:dump_nodes(Node3, 1),
+
+%    ok = lists:usort([[1, 0], [0, 0], [1, 0]]),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),

@@ -14,5 +14,5 @@ get(MVector, Level) ->
         0 ->
             MVector;
         _ ->
-            lists:nthtail(Level, MVector)
+            lists:sublist(MVector, length(MVector) - Level)
     end.
