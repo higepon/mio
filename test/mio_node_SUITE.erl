@@ -20,7 +20,7 @@ end_per_suite(Config) ->
     ok.
 
 all() ->
-    [get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2, test_set_nth].
+    [get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, test_set_nth].
 
 get_call() ->
     [].
@@ -72,9 +72,9 @@ search_level2_simple(_Config) ->
     [{myKey, myValue}] = mio_node:dump_nodes(Node, 1),
     ok.
 
-search_level2(_Config) ->
+search_level2_1(_Config) ->
     %% We want to test search-op without insert op.
-    %%   setup predefined nodes.
+    %%   setup predefined nodes as follows.
     %%     level1 [3] [5]
     %%     level0 [3 <-> 5]
     {ok, Node3} = mio_sup:start_node(key3, value3),
@@ -90,9 +90,40 @@ search_level2(_Config) ->
     {ok, value3} = mio_node:search(Node5, key3),
     {ok, value5} = mio_node:search(Node3, key5),
     {ok, value5} = mio_node:search(Node5, key5),
-
-
     ok.
+
+search_level2_2(_Config) ->
+    %% We want to test search-op without insert op.
+    %%   setup predefined nodes as follows.
+    %%     level1 [3 <-> 9] [5]
+    %%     level0 [3 <-> 5 <-> 9]
+    {ok, Node3} = mio_sup:start_node(key3, value3),
+    {ok, Node5} = mio_sup:start_node(key5, value5),
+    {ok, Node9} = mio_sup:start_node(key9, value9),
+    ok = mio_node:set_right(Node3, 0, Node5),
+    ok = mio_node:set_left(Node5, 0, Node3),
+    ok = mio_node:set_right(Node5, 0, Node9),
+    ok = mio_node:set_left(Node9, 0, Node5),
+    ok = mio_node:set_right(Node3, 1, Node9),
+    ok = mio_node:set_left(Node9, 1, Node3),
+
+    %% dump nodes on Level 0 and 1
+    [{key3, value3}, {key5, value5}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
+
+    %% search!
+    {ok, value3} = mio_node:search(Node3, key3),
+    {ok, value3} = mio_node:search(Node5, key3),
+    {ok, value3} = mio_node:search(Node9, key3),
+
+    {ok, value5} = mio_node:search(Node3, key5),
+    {ok, value5} = mio_node:search(Node5, key5),
+    {ok, value5} = mio_node:search(Node9, key5),
+
+    {ok, value9} = mio_node:search(Node3, key9),
+    {ok, value9} = mio_node:search(Node5, key9),
+    {ok, value9} = mio_node:search(Node9, key9),
+    ok.
+
 
 test_set_nth(_Config) ->
     [1, 3] = mio_node:set_nth(2, 3, [1, 2]),
