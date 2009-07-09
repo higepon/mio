@@ -31,6 +31,13 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
+%% init_log() ->
+%%     %% TODO, where should I write this setting?
+%%     error_logger:tty(false),
+%%     error_logger:logfile("error.log"),
+%%     %% TODO End
+%%     ok.
+
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
     error_logger:info_msg("args = ~p start_link\n", [Args]),
@@ -327,7 +334,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
-    if 
+    if
         Level < 0 ->
             ?L(),
             {ok, MyKey, MyValue};
