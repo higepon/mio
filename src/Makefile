@@ -11,7 +11,7 @@ ERL_COMPILE_FLAGS += \
 	+debug_info \
 	+'{parse_transform, smart_exceptions}' ## should be commented out on release
 
-SOURCES = mio mio_sup mio_node
+SOURCES = mio mio_sup mio_node mio_mvector
 
 MODS = ${SOURCES:%=$(EBIN)/%.$(EMULATOR)} $(APP_TARGET)
 

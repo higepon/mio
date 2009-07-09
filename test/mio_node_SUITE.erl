@@ -14,7 +14,7 @@ init_per_suite(Config) ->
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
-    {ok, NodePid} = mio_sup:start_node(myKey, myValue, [1, 0]),
+    {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     register(mio_node, NodePid),
     Config.
 
@@ -64,7 +64,7 @@ search_call(_Config) ->
 
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
-    {ok, Node} = mio_sup:start_node(myKey, myValue, [1, 0]),
+    {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make(mio_mvector:make([1, 0]))),
     {ok, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
@@ -77,8 +77,8 @@ search_level2_1(_Config) ->
     %%   setup predefined nodes as follows.
     %%     level1 [3] [5]
     %%     level0 [3 <-> 5]
-    {ok, Node3} = mio_sup:start_node(key3, value3, [1, 0]),
-    {ok, Node5} = mio_sup:start_node(key5, value5, [1, 0]),
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make(mio_mvector:make([1, 0]))),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make(mio_mvector:make([1, 0]))),
     ok = mio_node:set_right(Node3, 0, Node5),
     ok = mio_node:set_left(Node5, 0, Node3),
 
@@ -98,9 +98,9 @@ search_level2_2(_Config) ->
     %%   setup predefined nodes as follows.
     %%     level1 [3 <-> 9] [5]
     %%     level0 [3 <-> 5 <-> 9]
-    {ok, Node3} = mio_sup:start_node(key3, value3, [1, 0]),
-    {ok, Node5} = mio_sup:start_node(key5, value5, [1, 0]),
-    {ok, Node9} = mio_sup:start_node(key9, value9, [1, 0]),
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([1, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
     ok = mio_node:set_right(Node3, 0, Node5),
     ok = mio_node:set_left(Node5, 0, Node3),
     ok = mio_node:set_right(Node5, 0, Node9),
@@ -133,11 +133,11 @@ search_level2_3(_Config) ->
     %%   setup predefined nodes as follows.
     %%     level1 [3 <-> 7 <-> 9] [5 <-> 8]
     %%     level0 [3 <-> 5 <-> 7 <-> 8 <-> 9]
-    {ok, Node3} = mio_sup:start_node(key3, value3, [1, 0]),
-    {ok, Node5} = mio_sup:start_node(key5, value5, [1, 0]),
-    {ok, Node7} = mio_sup:start_node(key7, value7, [1, 0]),
-    {ok, Node8} = mio_sup:start_node(key8, value8, [1, 0]),
-    {ok, Node9} = mio_sup:start_node(key9, value9, [1, 0]),
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([1, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 0])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node8} = mio_sup:start_node(key8, value8, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
 
     %% level 0
     ok = mio_node:set_right(Node3, 0, Node5),
