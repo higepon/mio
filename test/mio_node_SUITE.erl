@@ -79,8 +79,8 @@ search_level2_1(_Config) ->
     %%     level0 [3 <-> 5]
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make(mio_mvector:make([1, 0]))),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make(mio_mvector:make([1, 0]))),
-    ok = mio_node:set_right(Node3, 0, Node5),
-    ok = mio_node:set_left(Node5, 0, Node3),
+
+    ok = link_nodes(0, [Node3, Node5]),
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}] = mio_node:dump_nodes(Node3, 0),
@@ -101,12 +101,15 @@ search_level2_2(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([1, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 0])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
-    ok = mio_node:set_right(Node3, 0, Node5),
-    ok = mio_node:set_left(Node5, 0, Node3),
-    ok = mio_node:set_right(Node5, 0, Node9),
-    ok = mio_node:set_left(Node9, 0, Node5),
-    ok = mio_node:set_right(Node3, 1, Node9),
-    ok = mio_node:set_left(Node9, 1, Node3),
+
+    ok = link_nodes(0, [Node3, Node5, Node9]),
+    ok = link_nodes(1, [Node3, Node9]),
+%%     ok = mio_node:set_right(Node3, 0, Node5),
+%%     ok = mio_node:set_left(Node5, 0, Node3),
+%%     ok = mio_node:set_right(Node5, 0, Node9),
+%%     ok = mio_node:set_left(Node9, 0, Node5),
+%%     ok = mio_node:set_right(Node3, 1, Node9),
+%%     ok = mio_node:set_left(Node9, 1, Node3),
 
     %% dump nodes on Level 0 and 1
     [{key3, value3}, {key5, value5}, {key9, value9}] = mio_node:dump_nodes(Node3, 0),
@@ -210,3 +213,17 @@ test_set_nth(_Config) ->
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3].
+
+%%--------------------------------------------------------------------
+%%% Internal functions
+%%--------------------------------------------------------------------
+link_node(Level, NodeA, NodeB) ->
+    ok = mio_node:set_right(NodeA, Level, NodeB),
+    ok = mio_node:set_left(NodeB, Level, NodeA).
+
+link_nodes(Level, [NodeA | [NodeB | More]]) ->
+    link_node(Level, NodeA, NodeB),
+    link_nodes(Level, [NodeB | More]);
+link_nodes(Level, []) -> ok;
+link_nodes(Level, [Node | []]) -> ok.
+
