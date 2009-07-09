@@ -22,7 +22,7 @@
 -define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
 
 
--record(state, {key, value, left, right}).
+-record(state, {key, value, membership_vector, left, right}).
 
 %%====================================================================
 %% API
@@ -84,8 +84,8 @@ set_nth(Index, Value, List) ->
 init(Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
     error_logger:info_msg("~p init\n", [Args]),
-    [MyKey, MyValue] = Args,
-    {ok, #state{key=MyKey, value=MyValue, left=[[], []], right=[[], []]}}.
+    [MyKey, MyValue, MyMembershipVector] = Args,
+    {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=[[], []], right=[[], []]}}.
 
 getRandomId() ->
     integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
@@ -218,7 +218,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
 handle_call({insert, Key, Value}, _From, State) ->
     ?L(),
-    {ok, Pid} = mio_sup:start_node(Key, Value),
+    {ok, Pid} = mio_sup:start_node(Key, Value, [1, 0]),
     MyKey = State#state.key,
     if
         Key > MyKey ->
@@ -236,7 +236,7 @@ handle_call(right, _From, State) ->
     {reply, State#state.right, State};
 
 handle_call(add_right, _From, State) ->
-    {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight),
+    {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight, [1, 0]),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
     {reply, true, State}.
 
