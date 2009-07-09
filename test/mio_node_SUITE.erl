@@ -121,7 +121,10 @@ search_level2_2(_Config) ->
 
     {ok, value9} = mio_node:search(Node3, key9),
     {ok, value9} = mio_node:search(Node5, key9),
-    {ok, value9} = mio_node:search(Node9, key9),
+
+    ng = mio_node:search(Node5, key10),
+    %% closest node should be returned
+    {ok, key5, value5} = gen_server:call(Node5, {search, Node5, [], key8}),
     ok.
 
 
