@@ -238,15 +238,17 @@ test_set_nth(_Config) ->
     ok.
 
 link_op(_Config) ->
+    {ok, Node2} = mio_sup:start_node(key2, value2, mio_mvector:make([0, 0])),
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
 
     %% link on level 0
     Level = 0,
     ok = mio_node:link_op(Node3, Node5, right, Level),
+    ok = mio_node:link_op(Node3, Node2, left, Level),
 
     %% check
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    [{key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     ok.
 
 
