@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3, set_nth/3, link_op/4]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -60,11 +60,11 @@ link_op(Node, NodeToLink, Direction, Level) ->
 dump_nodes(StartNode, Level) ->
     gen_server:call(StartNode, {dump_nodes, Level}).
 
-set_right(Node, Level, Right) ->
-    gen_server:call(Node, {set_right, Level, Right}).
+link_right_op(Node, Level, Right) ->
+    gen_server:call(Node, {link_right_op, Level, Right}).
 
-set_left(Node, Level, Left) ->
-    gen_server:call(Node, {set_left, Level, Left}).
+link_left_op(Node, Level, Left) ->
+    gen_server:call(Node, {link_left_op, Level, Left}).
 
 set_nth(Index, Value, List) ->
     lists:append([lists:sublist(List, 1, Index - 1),
@@ -108,10 +108,10 @@ handle_call(get, _From, State) ->
     {reply, {State#state.key, State#state.value}, State};
 
 %% API for construct test nodes.
-handle_call({set_right, Level, Right}, _From, State) ->
+handle_call({link_right_op, Level, Right}, _From, State) ->
     ?L(),
     {reply, ok, State#state{right=set_nth(Level + 1, Right, State#state.right)}};
-handle_call({set_left, Level, Left}, _From, State) ->
+handle_call({link_left_op, Level, Left}, _From, State) ->
     ?L(),
     {reply, ok, State#state{left=set_nth(Level + 1, Left, State#state.left)}};
 
@@ -204,7 +204,7 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
         RightNode ->
             gen_server:call(RightNode, {link_op, Self, left, Level})
     end,
-    gen_server:call(NodeToLink, {set_left, Level, Self}),
+    gen_server:call(NodeToLink, {link_left_op, Level, Self}),
     {reply, ok, State#state{right=set_nth(Level + 1, NodeToLink, State#state.right)}};
 handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
     Self = self(),
@@ -213,7 +213,7 @@ handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
         LeftNode ->
             gen_server:call(LeftNode, {link_op, Self, right, Level})
     end,
-    gen_server:call(NodeToLink, {set_right, Level, Self}),
+    gen_server:call(NodeToLink, {link_right_op, Level, Self}),
     {reply, ok, State#state{left=set_nth(Level + 1, NodeToLink, State#state.left)}};
 
 
