@@ -108,8 +108,10 @@ search_level2_2(_Config) ->
     %% dump nodes on Level 0 and 1
     [{key3, value3, [1, 0]}, {key5, value5, [0, 1]}, {key9, value9, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
 
-    [[{key5, value5, [0, 1]}], [{key3, value3, [1, 0]}, {key9, value9, [1, 1]}]] = mio_node:dump_nodes(Node3, 1),
-
+    Level1Nodes = [[{key5, value5, [0, 1]}], [{key3, value3, [1, 0]}, {key9, value9, [1, 1]}]],
+    Level1Nodes = mio_node:dump_nodes(Node3, 1),
+    Level1Nodes = mio_node:dump_nodes(Node5, 1),
+    Level1Nodes = mio_node:dump_nodes(Node9, 1),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
