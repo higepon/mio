@@ -237,8 +237,21 @@ test_set_nth(_Config) ->
 
     ok.
 
+link_op(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+
+    %% link on level 0
+    Level = 0,
+    ok = mio_node:link_op(Node3, Node5, right, Level),
+
+    %% check
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    ok.
+
+
 all() ->
-    [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3].
+    [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3, link_op].
 
 %%--------------------------------------------------------------------
 %%% Internal functions

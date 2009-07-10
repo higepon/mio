@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3, set_nth/3]).
+-export([start_link/1, search/2, dump_nodes/2, set_right/3, set_left/3, set_nth/3, link_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -53,6 +53,9 @@ search(StartNode, Key) ->
         true ->
             ng
     end.
+
+link_op(Node, NodeToLink, Direction, Level) ->
+    gen_server:call(Node, {link_op, NodeToLink, Direction, Level}).
 
 dump_nodes(StartNode, Level) ->
     gen_server:call(StartNode, {dump_nodes, Level}).
@@ -129,16 +132,6 @@ handle_call({dump_nodes, Level}, _From, State) ->
                       end, MVectors), State}
     end;
 
-
-
-%%     case Level of
-%%         0 ->
-%%             enum_nodes(State, 0);
-%%         _ ->
-%%             AllNodes = enum_nodes(State, 0),
-
-
-
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     SearchLevel = case Level of
@@ -204,6 +197,50 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
+handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
+    Self = self(),
+    case right(State, Level) of
+        [] -> [];
+        RightNode ->
+            gen_server:call(RightNode, {link_op, Self, left, Level})
+    end,
+    gen_server:call(NodeToLink, {set_left, Level, Self}),
+    {reply, ok, State#state{right=set_nth(Level + 1, NodeToLink, State#state.right)}};
+handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
+    Self = self(),
+    case left(State, Level) of
+        [] -> [];
+        LeftNode ->
+            gen_server:call(LeftNode, {link_op, Self, right, Level})
+    end,
+    gen_server:call(NodeToLink, {set_right, Level, Self}),
+    {reply, ok, State#state{left=set_nth(Level + 1, NodeToLink, State#state.left)}};
+
+
+
+%%      (let ([left self]
+%%            [right (node-right level self)])
+%%        (cond
+%%         [(and right (< (node-key right) (node-key self)))
+%%          ;; Someone inserted the other node as follows.
+%%          ;;   Before 30 => 50
+%%          ;;             40
+%%          ;;   Now 30 => 33 => 50
+%%          ;;                40
+%%          ;; We resend link-op to the right
+%%          (assert #f) ;; not tested
+%%          (link-op right n side level)]
+%%         [else
+%%          (node-right-set! level self n)
+%%          ;; tell the neighbor to link the newone
+%%          (when right
+%%            (link-op right n 'LEFT level))])
+%%        (node-left-set! level n self)
+%%        (node-right-set! level n right))]
+
+%    {reply, ok, State};
+
+
 handle_call(left, _From, State) ->
     {reply, State#state.left, State};
 
@@ -214,6 +251,8 @@ handle_call(add_right, _From, State) ->
     {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight, [1, 0]),
     error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
     {reply, true, State}.
+
+
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
