@@ -64,7 +64,7 @@ search_call(_Config) ->
 
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
-    {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make(mio_mvector:make([1, 0]))),
+    {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     {ok, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
@@ -77,8 +77,8 @@ search_level2_1(_Config) ->
     %%   setup predefined nodes as follows.
     %%     level1 [3] [5]
     %%     level0 [3 <-> 5]
-    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make(mio_mvector:make([0, 0]))),
-    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make(mio_mvector:make([1, 1]))),
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
 
     ok = link_nodes(0, [Node3, Node5]),
 
