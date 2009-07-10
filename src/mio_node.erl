@@ -107,13 +107,6 @@ handle_call(get, _From, State) ->
     ?L(),
     {reply, {State#state.key, State#state.value}, State};
 
-%% API for construct test nodes.
-handle_call({link_right_op, Level, Right}, _From, State) ->
-    ?L(),
-    {reply, ok, State#state{right=set_nth(Level + 1, Right, State#state.right)}};
-handle_call({link_left_op, Level, Left}, _From, State) ->
-    ?L(),
-    {reply, ok, State#state{left=set_nth(Level + 1, Left, State#state.left)}};
 
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
@@ -197,6 +190,14 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
+%% link_op
+handle_call({link_right_op, Level, Right}, _From, State) ->
+    ?L(),
+    {reply, ok, State#state{right=set_nth(Level + 1, Right, State#state.right)}};
+handle_call({link_left_op, Level, Left}, _From, State) ->
+    ?L(),
+    {reply, ok, State#state{left=set_nth(Level + 1, Left, State#state.left)}};
+
 handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
     Self = self(),
     case right(State, Level) of
@@ -205,7 +206,7 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
             gen_server:call(RightNode, {link_op, Self, left, Level})
     end,
     gen_server:call(NodeToLink, {link_left_op, Level, Self}),
-    {reply, ok, State#state{right=set_nth(Level + 1, NodeToLink, State#state.right)}};
+    {reply, ok, set_right(State, Level, NodeToLink)};%State#state{right=set_nth(Level + 1, NodeToLink, State#state.right)}};
 handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
     Self = self(),
     case left(State, Level) of
@@ -418,6 +419,10 @@ right(State, Level) ->
         [] -> [];
         RightNodes ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
     end.
+
+set_right(State, Level, Node) ->
+    State#state{right=set_nth(Level + 1, Node, State#state.right)}.
+
 
 enum_nodes(State, Level) ->
     MyKey = State#state.key,
