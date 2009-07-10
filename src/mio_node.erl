@@ -115,13 +115,28 @@ handle_call({set_left, Level, Left}, _From, State) ->
 %% fetch list of {key, value} tuple.
 handle_call({dump_nodes, Level}, _From, State) ->
     ?L(),
-    enum_nodes(State, 0);
+    Level0Nodes = enum_nodes(State, 0),
+    case Level of
+        0 -> {reply, Level0Nodes, State};
+        _ ->
+            MVectors= lists:usort(fun(A, B) -> mio_mvector:gt(Level, A, B) end,
+                                  lists:map(fun({_, _, MVector}) -> MVector end,
+                                            Level0Nodes)),
+            {reply, lists:map(fun(X) ->
+                           lists:filter(
+                             fun({_, _, MV}) -> mio_mvector:eq(Level, MV, X) end,
+                             Level0Nodes)
+                      end, MVectors), State}
+    end;
+
+
+
 %%     case Level of
 %%         0 ->
 %%             enum_nodes(State, 0);
 %%         _ ->
 %%             AllNodes = enum_nodes(State, 0),
-            
+
 
 
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
@@ -396,13 +411,13 @@ enum_nodes(State, Level) ->
                         {dump_right_accumed, RightAccumed} ->
                             receive
                                 {dump_left_accumed, LeftAccumed} ->
-                                    {reply, lists:append([LeftAccumed, [{MyKey, MyValue, MyMVector}], RightAccumed]), State}
+                                    lists:append([LeftAccumed, [{MyKey, MyValue, MyMVector}], RightAccumed])
                             end
                     end;
                 true ->
                     receive
                         {dump_right_accumed, RightAccumed} ->
-                            {reply, [{MyKey, MyValue, MyMVector} | RightAccumed], State}
+                            [{MyKey, MyValue, MyMVector} | RightAccumed]
                     end
             end;
         true ->
@@ -410,9 +425,9 @@ enum_nodes(State, Level) ->
                 HasLeft ->
                     receive
                         {dump_left_accumed, LeftAccumed} ->
-                            {reply, lists:append(LeftAccumed, [{MyKey, MyValue, MyMVector}]), State}
+                            lists:append(LeftAccumed, [{MyKey, MyValue, MyMVector}])
                     end;
                 true ->
-                    {reply, [{MyKey, MyValue, MyMVector}], State}
+                    [{MyKey, MyValue, MyMVector}]
             end
     end.

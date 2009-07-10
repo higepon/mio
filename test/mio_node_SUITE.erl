@@ -69,7 +69,7 @@ search_level2_simple(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
-    [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 1),
+    [[{myKey, myValue, [1, 0]}]] = mio_node:dump_nodes(Node, 1),
     ok.
 
 search_level2_1(_Config) ->
@@ -192,6 +192,38 @@ search_level2_3(_Config) ->
 test_set_nth(_Config) ->
     [1, 3] = mio_node:set_nth(2, 3, [1, 2]),
     [0, 2] = mio_node:set_nth(1, 0, [1, 2]),
+
+    Level = 1,
+    Level0Nodes = [{key3, value3, [0, 1]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}, {key8, value8, [0, 0]}, {key9, value9, [1, 0]}],
+    MVectors= lists:usort(fun(A, B) ->
+                                  mio_mvector:gt(Level, A, B)
+                          end,
+                          lists:map(fun({_, _, MVector}) ->
+                                            MVector
+                                    end,
+                                    Level0Nodes)),
+   error_logger:info_msg("~p", [lists:map(fun(X) ->
+                           lists:filter(
+                             fun({_, _, MV}) ->
+                                        mio_mvector:eq(Level, MV, X)
+                             end,
+                             Level0Nodes
+                             )
+                  end,
+                  MVectors)]),
+
+
+
+%%     [{myKex, myKexValue, [1, 0]}] = lists:usort(fun(A, B) ->
+%%                                                         {_, _, AMVector} = A,
+%%                                                         {_, _, BMVector} = B,
+%%                                                         mio_mvector:gt(AMVector, BMVector)
+%%                                                 end,
+%%                                                 mio_node:dump_nodes(mio_node, 0)),
+
+
+
+
     ok.
 
 all() ->
@@ -209,4 +241,3 @@ link_nodes(Level, [NodeA | [NodeB | More]]) ->
     link_nodes(Level, [NodeB | More]);
 link_nodes(Level, []) -> ok;
 link_nodes(Level, [Node | []]) -> ok.
-
