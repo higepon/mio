@@ -135,11 +135,11 @@ search_level2_3(_Config) ->
     %%   setup predefined nodes as follows.
     %%     level1 [3 <-> 7 <-> 9] [5 <-> 8]
     %%     level0 [3 <-> 5 <-> 7 <-> 8 <-> 9]
-    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([1, 0])),
-    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 0])),
-    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([0, 1])),
     {ok, Node8} = mio_sup:start_node(key8, value8, mio_mvector:make([1, 0])),
-    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 0])),
 
     %% level 0
     ok = link_nodes(0, [Node3, Node5, Node7, Node8, Node9]),
@@ -149,7 +149,14 @@ search_level2_3(_Config) ->
     ok = link_nodes(1, [Node5, Node8]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3, [1, 0]}, {key5, value5, [1, 0]}, {key7, value7, [1, 0]}, {key8, value8, [1, 0]}, {key9, value9, [1, 0]}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [0, 1]}, {key8, value8, [1, 0]}, {key9, value9, [0, 0]}] = mio_node:dump_nodes(Node3, 0),
+    Level1Nodes = [[{key3, value3, [0, 0]}, {key7, value7, [0, 1]}, {key9, value9, [0, 0]}], [{key5, value5, [1, 1]}, {key8, value8, [1, 0]}]],
+
+    Level1Nodes= mio_node:dump_nodes(Node3, 1),
+    Level1Nodes= mio_node:dump_nodes(Node5, 1),
+    Level1Nodes= mio_node:dump_nodes(Node7, 1),
+    Level1Nodes= mio_node:dump_nodes(Node8, 1),
+    Level1Nodes= mio_node:dump_nodes(Node9, 1),
 
     %% search!
     %%  level1: 3->7 level0: 7->8
