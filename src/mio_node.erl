@@ -119,7 +119,7 @@ handle_call({dump_nodes, Level}, _From, State) ->
     case Level of
         0 -> {reply, Level0Nodes, State};
         _ ->
-            MVectors= lists:usort(fun(A, B) -> mio_mvector:gt(Level, A, B) end,
+            MVectors= lists:usort(fun(A, B) -> mio_mvector:gt(Level, B, A) end,
                                   lists:map(fun({_, _, MVector}) -> MVector end,
                                             Level0Nodes)),
             {reply, lists:map(fun(X) ->
