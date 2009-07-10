@@ -191,33 +191,12 @@ handle_call({insert, Key, Value}, _From, State) ->
     end;
 
 %% link_op
-handle_call({link_right_op, Level, Right}, _From, State) ->
+handle_call({link_right_op, Level, RightNode}, _From, State) ->
     ?L(),
-    {reply, ok, State#state{right=set_nth(Level + 1, Right, State#state.right)}};
-handle_call({link_left_op, Level, Left}, _From, State) ->
+    {reply, ok, set_right(State, Level, RightNode)};
+handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     ?L(),
-    {reply, ok, State#state{left=set_nth(Level + 1, Left, State#state.left)}};
-
-handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
-    Self = self(),
-    case right(State, Level) of
-        [] -> [];
-        RightNode ->
-            gen_server:call(RightNode, {link_op, Self, left, Level})
-    end,
-    gen_server:call(NodeToLink, {link_left_op, Level, Self}),
-    {reply, ok, set_right(State, Level, NodeToLink)};%State#state{right=set_nth(Level + 1, NodeToLink, State#state.right)}};
-handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
-    Self = self(),
-    case left(State, Level) of
-        [] -> [];
-        LeftNode ->
-            gen_server:call(LeftNode, {link_op, Self, right, Level})
-    end,
-    gen_server:call(NodeToLink, {link_right_op, Level, Self}),
-    {reply, ok, State#state{left=set_nth(Level + 1, NodeToLink, State#state.left)}};
-
-
+    {reply, ok, set_left(State, Level, LeftNode)};
 
 %%      (let ([left self]
 %%            [right (node-right level self)])
@@ -231,15 +210,56 @@ handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
 %%          ;; We resend link-op to the right
 %%          (assert #f) ;; not tested
 %%          (link-op right n side level)]
-%%         [else
-%%          (node-right-set! level self n)
-%%          ;; tell the neighbor to link the newone
-%%          (when right
-%%            (link-op right n 'LEFT level))])
-%%        (node-left-set! level n self)
-%%        (node-right-set! level n right))]
 
-%    {reply, ok, State};
+
+
+handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
+    Self = self(),
+    case right(State, Level) of
+        [] -> gen_server:call(NodeToLink, {link_left_op, Level, Self}),
+              ?L(),
+              {reply, ok, set_right(State, Level, NodeToLink)};
+        RightNode ->
+            {RightKey, _} = gen_server:call(RightNode, get),
+            {NodeKey, _} = gen_server:call(NodeToLink, get),
+            MyKey = State#state.key,
+            if
+                RightKey < NodeKey ->
+                    ?L(),
+                    gen_server:call(RightNode, {link_op, NodeToLink, right, Level});
+                    {reply, ok, State};
+                true ->
+                    ?L(),
+                    gen_server:call(RightNode, {link_op, Self, left, Level}),
+                    gen_server:call(NodeToLink, {link_left_op, Level, Self}),
+                    ?L(),
+                    {reply, ok, set_right(State, Level, NodeToLink)}
+            end
+    end;
+handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
+    Self = self(),
+    case left(State, Level) of
+        [] ->
+            gen_server:call(NodeToLink, {link_right_op, Level, Self}),
+            {reply, ok, set_left(State, Level, NodeToLink)};
+        LeftNode ->
+            {LeftKey, _} = gen_server:call(LeftNode, get),
+            {NodeKey, _} = gen_server:call(NodeToLink, get),
+            MyKey = State#state.key,
+            if
+                LeftKey > NodeKey ->
+                    ?L(),
+                    gen_server:call(LeftNode, {link_op, NodeToLink, left, Level}),
+                    {reply, ok, State};
+                true ->
+                    ?L(),
+                    gen_server:call(LeftNode, {link_op, Self, right, Level}),
+                    gen_server:call(NodeToLink, {link_right_op, Level, Self}),
+                   {reply, ok, set_left(State, Level, NodeToLink)}
+            end
+    end;
+
+
 
 
 handle_call(left, _From, State) ->
@@ -422,6 +442,9 @@ right(State, Level) ->
 
 set_right(State, Level, Node) ->
     State#state{right=set_nth(Level + 1, Node, State#state.right)}.
+
+set_left(State, Level, Node) ->
+    State#state{left=set_nth(Level + 1, Node, State#state.left)}.
 
 
 enum_nodes(State, Level) ->
