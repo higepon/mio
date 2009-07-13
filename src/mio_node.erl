@@ -44,7 +44,17 @@ start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
 insert_op(Introducer, NodeToInsert, NodeKey) ->
-    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
+    if
+        %% there's no buddy
+        Introducer =:= NodeToInsert ->
+            ok;
+        true ->
+            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], NodeKey}),
+            ng
+    end.
+
+
+%    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
@@ -197,16 +207,8 @@ handle_call({insert, Key, Value}, _From, State) ->
     end;
 
 handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
-    Introducer = self(),
-    if
-        %% there's no buddy
-        Introducer =:= NodeToInsert ->
-            {reply, ok, State#state{left=[[], []], right=[[], []]}};
-        true ->
-            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
-            {reply, ng, State} %% todo
-
-
+    ok;
+    
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
 %%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
 %%       (let loop ([level 1])
@@ -223,7 +225,7 @@ handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
 %%                            (loop (+ level 1)))
 %%                     '()))])))]))
 
-    end;
+%%    end;
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
