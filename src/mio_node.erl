@@ -203,7 +203,7 @@ handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
         Introducer =:= NodeToInsert ->
             {reply, ok, State#state{left=[[], []], right=[[], []]}};
         true ->
-%%            {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
+            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
             {reply, ng, State} %% todo
 
 
