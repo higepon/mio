@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -56,6 +56,9 @@ search(StartNode, Key) ->
 
 link_op(Node, NodeToLink, Direction, Level) ->
     gen_server:call(Node, {link_op, NodeToLink, Direction, Level}).
+
+buddy_op(Node, MembershipVector, Direction, Level) ->
+    gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
 dump_nodes(StartNode, Level) ->
     gen_server:call(StartNode, {dump_nodes, Level}).
@@ -189,6 +192,51 @@ handle_call({insert, Key, Value}, _From, State) ->
             error_logger:info_msg("~p insert to left\n", [?MODULE]),
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
+
+handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
+    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    if
+        Found ->
+            {reply, {ok, self()}, State};
+        true ->
+            case Direction of
+                right ->
+                    case right(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        RightNode ->
+                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
+                    end;
+                _ ->
+                    case left(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        LeftNode ->
+                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
+                    end
+            end
+    end;
+
+
+
+%% (define (buddy-op self start n level membership side)
+%%   (define (return-buddy-op start buddy)
+%%     buddy)
+%%   (cond
+%%    [(membership=? level n self)
+%%     (return-buddy-op start self)]
+%%    [else
+%%     (case side
+%%       [(RIGHT)
+%%        (if (node-right (- level 1) self)
+%%            (buddy-op (node-right (- level 1) self) start n level membership side)
+%%            (return-buddy-op  start #f))]
+%%       [(LEFT)
+%%        (if (node-left (- level 1) self)
+%%            (buddy-op (node-left (- level 1) self) start n level membership side)
+%%            (return-buddy-op start #f))]
+%%       [else
+%%        (assert #f)])]))
+
+%    {reply, {ok, buddy}, State};
 
 %% link_op
 handle_call({link_right_op, Level, RightNode}, _From, State) ->

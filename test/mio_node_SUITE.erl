@@ -275,15 +275,28 @@ link_op_propagation(_Config) ->
     %% 2 <-> 3 <-> 5 <-> 6
     ok = mio_node:link_op(Node3, Node6, right, Level),
 
-
     %% check
     [{key1, value1, [0, 0]}, {key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key6, value6, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    ok.
+
+buddy_op(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([0, 1])),
+    {ok, Node8} = mio_sup:start_node(key8, value8, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 0])),
+
+    %% level 0
+    ok = link_nodes(0, [Node3, Node5, Node7, Node8, Node9]),
+    {ok, Buddy} = mio_node:buddy_op(Node5, [0, 0], right, 0),
+    {key9, value9} = gen_server:call(Buddy, get),
+
     ok.
 
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3,
-     link_op, link_op_propagation].
+     link_op, link_op_propagation, buddy_op].
 
 %%--------------------------------------------------------------------
 %%% Internal functions
