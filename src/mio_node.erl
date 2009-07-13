@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/3]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -44,26 +44,15 @@ start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
 insert_loop(Level) ->
-    ok.
+%%     MaxLevel = 2, %% todo
+%%     if
+%%         Level > MaxLevel -> [];
+%%         true ->
+%%             if 
 
-insert_op(Introducer, NodeToInsert, NodeKey) ->
-    if
-        %% there's no buddy
-        Introducer =:= NodeToInsert ->
-            ok;
-        true ->
-            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], NodeKey}),
-            {IntroducerKey, _} = gen_server:call(Introducer, get),
-            link_op(Neighbor,
-                    NodeToInsert,
-                    if
-                        nodeKey < IntroducerKey -> right;
-                        true -> left
-                    end,
-                    0),
-            insert_loop(1),
-            ok
-    end.
+            
+
+    ok.
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
 %%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
@@ -80,6 +69,11 @@ insert_op(Introducer, NodeToInsert, NodeKey) ->
 %%                     (begin (link-op it n 'LEFT level)
 %%                            (loop (+ level 1)))
 %%                     '()))])))]))
+
+
+insert_op(NodeToInsert, Introducer) ->
+    gen_server:call(NodeToInsert, {insert_op, Introducer}).
+
 
 
 %    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
@@ -234,8 +228,27 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
-handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
-    ok;
+handle_call({insert_op, Introducer}, _From, State) ->
+    MyKey = State#state.key,
+    if
+        %% there's no buddy
+        Introducer =:= self() ->
+            {reply, ok, State};
+        true ->
+            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
+            {IntroducerKey, _} = gen_server:call(Introducer, get),
+            ?LOG(NeighBorKey),
+            ?LOG(IntroducerKey),
+            link_op(Neighbor,
+                    self(),
+                    if
+                        IntroducerKey < MyKey-> right;
+                        true -> left
+                    end,
+                    0),
+%%             insert_loop(1),
+            {reply, ng, State}
+    end;
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
 %%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
@@ -327,7 +340,11 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
     ?L(),
     Self = self(),
     case right(State, Level) of
-        [] -> gen_server:call(NodeToLink, {link_left_op, Level, Self}),
+        [] -> 
+            ?L(),
+            ?LOG(NodeToLink),
+            ?LOG(Self),
+            gen_server:call(NodeToLink, {link_left_op, Level, Self}),
               ?L(),
               {reply, ok, set_right(State, Level, NodeToLink)};
         RightNode ->
