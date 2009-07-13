@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/2]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,13 +43,13 @@ start_link(Args) ->
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
 
-insert_op(Introducer, NodeToInsert) ->
-    gen_server:call(Introducer, {insert_op, NodeToInsert}).
+insert_op(Introducer, NodeToInsert, NodeKey) ->
+    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
     %% If Level is not specified, The start node checks his max level and use it.
-    {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
+    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
     if
         FoundKey =:= Key ->
             {ok, FoundValue};
@@ -145,7 +145,7 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
         %% This is myKey, found!
         MyKey =:= Key ->
             ?L(),
-            {reply, {ok, MyKey, MyValue}, State};
+            {reply, {ok, self(), MyKey, MyValue}, State};
         MyKey < Key ->
             ?L(),
             {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
@@ -196,13 +196,33 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
-handle_call({insert_op, NodeToInsert}, _From, State) ->
+handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
     Introducer = self(),
     if
+        %% there's no buddy
         Introducer =:= NodeToInsert ->
-            {reply, ok, State};
+            {reply, ok, State#state{left=[[], []], right=[[], []]}};
         true ->
+%%            {ok, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
             {reply, ng, State} %% todo
+
+
+%%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
+%%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
+%%       (let loop ([level 1])
+%%         (cond
+%%          [(> level (max-level)) '()]
+%%          [else
+%%           (aif (and (node-left (- level 1) n)
+%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
+%%                (begin (link-op it n 'RIGHT level)
+%%                       (loop (+ level 1)))
+%%                (aif (and (node-right (- level 1) n)
+%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
+%%                     (begin (link-op it n 'LEFT level)
+%%                            (loop (+ level 1)))
+%%                     '()))])))]))
+
     end;
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
@@ -354,7 +374,7 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
         %% This is myKey, found!
         MyKey =:= Key ->
             ?L(),
-            ReturnToMe ! {ok, MyKey, MyValue},
+            ReturnToMe ! {ok, self(), MyKey, MyValue},
             ?L();
         MyKey < Key ->
             ?L(),
@@ -362,7 +382,7 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
                 [] ->
                     ?L(),
                     ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
-                    ReturnToMe ! {ok, MyKey, MyValue},
+                    ReturnToMe ! {ok, self(), MyKey, MyValue},
                     ?L();
                 RightNode ->
                     ?L(),
@@ -373,7 +393,7 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
             case left(State, 0) of
                 [] ->
                     ?L(),
-                    ReturnToMe ! {ok, MyKey, MyValue}; %% todo
+                    ReturnToMe ! {ok, self(), MyKey, MyValue}; %% todo
                 LeftNode ->
                     ?L(),
                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
@@ -439,7 +459,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     if
         Level < 0 ->
             ?L(),
-            {ok, MyKey, MyValue};
+            {ok, self(), MyKey, MyValue};
         true ->
             ?L(),
             RightNode = lists:nth(Level + 1, RightNodes),
@@ -468,7 +488,7 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
     if
         Level < 0 ->
             ?L(),
-            {ok, MyKey, MyValue};
+            {ok, self(), MyKey, MyValue};
         true ->
             ?L(),
             LeftNode = lists:nth(Level + 1, LeftNodes),

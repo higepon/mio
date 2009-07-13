@@ -65,7 +65,7 @@ search_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {ok, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
+    {ok, _, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
     [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
@@ -127,7 +127,7 @@ search_level2_2(_Config) ->
 
     ng = mio_node:search(Node5, key10),
     %% closest node should be returned
-    {ok, key5, value5} = gen_server:call(Node5, {search, Node5, [], key8}),
+    {ok, _, key5, value5} = gen_server:call(Node5, {search, Node5, [], key8}),
     ok.
 
 search_level2_3(_Config) ->
@@ -196,8 +196,8 @@ search_level2_3(_Config) ->
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {ok, key9, value9} = gen_server:call(Node5, {search, Node5, [], key9_9}),
-    {ok, key7, value7} = gen_server:call(Node9, {search, Node9, [], key6}),
+    {ok, _, key9, value9} = gen_server:call(Node5, {search, Node5, [], key9_9}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search, Node9, [], key6}),
     ok.
 
 test_set_nth(_Config) ->
@@ -302,12 +302,21 @@ buddy_op(_Config) ->
 
 insert_op_self(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
-    ok = mio_node:insert_op(Node3, Node3).
+    ok = mio_node:insert_op(Node3, Node3, key3).
+
+insert_op_two_nodes(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    ok = mio_node:insert_op(Node3, Node3, key3),
+    ok = mio_node:insert_op(Node3, Node5, key5),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
+    ok.
 
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3,
-     link_op, link_op_propagation, buddy_op, insert_op_self].
+     link_op, link_op_propagation, buddy_op, insert_op_self, insert_op_two_nodes].
 
 %%--------------------------------------------------------------------
 %%% Internal functions
