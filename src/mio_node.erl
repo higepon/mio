@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,6 +42,9 @@ start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
+
+insert_op(Introducer, NodeToInsert) ->
+    gen_server:call(Introducer, {insert_op, NodeToInsert}).
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
@@ -192,6 +195,10 @@ handle_call({insert, Key, Value}, _From, State) ->
             error_logger:info_msg("~p insert to left\n", [?MODULE]),
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
+
+handle_call({insert_op, NodeToInsert}, _From, State) ->
+    Introducer = self(),
+    {reply, ok, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),

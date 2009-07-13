@@ -300,10 +300,14 @@ buddy_op(_Config) ->
 
     ok.
 
+insert_op_self(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    ok = mio_node:insert_op(Node3, Node3).
+
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3,
-     link_op, link_op_propagation, buddy_op].
+     link_op, link_op_propagation, buddy_op, insert_op_self].
 
 %%--------------------------------------------------------------------
 %%% Internal functions
