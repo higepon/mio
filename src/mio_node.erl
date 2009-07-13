@@ -43,6 +43,9 @@ start_link(Args) ->
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
 
+insert_loop(Level) ->
+    ok.
+
 insert_op(Introducer, NodeToInsert, NodeKey) ->
     if
         %% there's no buddy
@@ -58,7 +61,8 @@ insert_op(Introducer, NodeToInsert, NodeKey) ->
                         true -> left
                     end,
                     0),
-            ng
+            insert_loop(1),
+            ok
     end.
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
