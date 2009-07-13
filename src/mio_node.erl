@@ -214,19 +214,21 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 
 
 handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
+    ?L(),
     Self = self(),
     case right(State, Level) of
         [] -> gen_server:call(NodeToLink, {link_left_op, Level, Self}),
               ?L(),
               {reply, ok, set_right(State, Level, NodeToLink)};
         RightNode ->
+            ?L(),
             {RightKey, _} = gen_server:call(RightNode, get),
             {NodeKey, _} = gen_server:call(NodeToLink, get),
             MyKey = State#state.key,
             if
                 RightKey < NodeKey ->
                     ?L(),
-                    gen_server:call(RightNode, {link_op, NodeToLink, right, Level});
+                    gen_server:call(RightNode, {link_op, NodeToLink, right, Level}),
                     {reply, ok, State};
                 true ->
                     ?L(),
@@ -237,12 +239,15 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
             end
     end;
 handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
+    ?L(),
     Self = self(),
     case left(State, Level) of
         [] ->
+            ?L(),
             gen_server:call(NodeToLink, {link_right_op, Level, Self}),
             {reply, ok, set_left(State, Level, NodeToLink)};
         LeftNode ->
+            ?L(),
             {LeftKey, _} = gen_server:call(LeftNode, get),
             {NodeKey, _} = gen_server:call(NodeToLink, get),
             MyKey = State#state.key,
