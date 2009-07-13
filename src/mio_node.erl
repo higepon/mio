@@ -50,8 +50,32 @@ insert_op(Introducer, NodeToInsert, NodeKey) ->
             ok;
         true ->
             {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], NodeKey}),
+            {IntroducerKey, _} = gen_server:call(Introducer, get),
+            link_op(Neighbor,
+                    NodeToInsert,
+                    if
+                        nodeKey < IntroducerKey -> right;
+                        true -> left
+                    end,
+                    0),
             ng
     end.
+
+%%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
+%%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
+%%       (let loop ([level 1])
+%%         (cond
+%%          [(> level (max-level)) '()]
+%%          [else
+%%           (aif (and (node-left (- level 1) n)
+%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
+%%                (begin (link-op it n 'RIGHT level)
+%%                       (loop (+ level 1)))
+%%                (aif (and (node-right (- level 1) n)
+%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
+%%                     (begin (link-op it n 'LEFT level)
+%%                            (loop (+ level 1)))
+%%                     '()))])))]))
 
 
 %    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
@@ -208,7 +232,7 @@ handle_call({insert, Key, Value}, _From, State) ->
 
 handle_call({insert_op, NodeToInsert, NodeKey}, _From, State) ->
     ok;
-    
+
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
 %%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
 %%       (let loop ([level 1])
