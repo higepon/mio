@@ -198,7 +198,12 @@ handle_call({insert, Key, Value}, _From, State) ->
 
 handle_call({insert_op, NodeToInsert}, _From, State) ->
     Introducer = self(),
-    {reply, ok, State};
+    if
+        Introducer =:= NodeToInsert ->
+            {reply, ok, State};
+        true ->
+            {reply, ng, State} %% todo
+    end;
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
