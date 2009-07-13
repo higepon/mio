@@ -269,15 +269,15 @@ link_op_propagation(_Config) ->
 
     %% propagation case to left
     %% 1 <-> 2 <-> 3 <-> 5
-%    ok = mio_node:link_op(Node3, Node1, left, Level),
+    ok = mio_node:link_op(Node3, Node1, left, Level),
 
     %% propagation case to right
     %% 2 <-> 3 <-> 5 <-> 6
-%    ok = mio_node:link_op(Node3, Node6, right, Level),
+    ok = mio_node:link_op(Node3, Node6, right, Level),
 
 
     %% check
-%    [{key1, value1, [0, 0]}, {key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    [{key1, value1, [0, 0]}, {key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key6, value6, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     ok.
 
 
