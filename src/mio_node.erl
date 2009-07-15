@@ -36,7 +36,7 @@
 %%     ok.
 
 new_dump(StartNode) ->
-    {Key, Value} = gen_server:call(StartNode, get),
+    {Key, Value, MembershipVector} = gen_server:call(StartNode, get),
     gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
     receive
         {dump_right_accumed, Result} ->
@@ -121,7 +121,7 @@ getRandomId() ->
 %%--------------------------------------------------------------------
 handle_call(get, _From, State) ->
     ?L(),
-    {reply, {State#state.key, State#state.value}, State};
+    {reply, {State#state.key, State#state.value, State#state.membership_vector}, State};
 
 
 %% fetch list of {key, value} tuple.
@@ -336,8 +336,8 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
               {reply, ok, set_right(State, Level, NodeToLink)};
         RightNode ->
             ?L(),
-            {RightKey, _} = gen_server:call(RightNode, get),
-            {NodeKey, _} = gen_server:call(NodeToLink, get),
+            {RightKey, _, _} = gen_server:call(RightNode, get),
+            {NodeKey, _, _} = gen_server:call(NodeToLink, get),
             MyKey = State#state.key,
             if
                 RightKey < NodeKey ->
@@ -362,8 +362,8 @@ handle_call({link_op, NodeToLink, left, Level}, _From, State) ->
             {reply, ok, set_left(State, Level, NodeToLink)};
         LeftNode ->
             ?L(),
-            {LeftKey, _} = gen_server:call(LeftNode, get),
-            {NodeKey, _} = gen_server:call(NodeToLink, get),
+            {LeftKey, _, _} = gen_server:call(LeftNode, get),
+            {NodeKey, _, _} = gen_server:call(NodeToLink, get),
             MyKey = State#state.key,
             if
                 LeftKey > NodeKey ->
@@ -529,7 +529,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                     search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
                 RightNode ->
                     ?L(),
-                    {RightKey, _} = gen_server:call(RightNode, get),
+                    {RightKey, _, _} = gen_server:call(RightNode, get),
                     if
                         %% we can make short cut. when equal case todo
                         RightKey =< SearchKey ->
@@ -558,7 +558,7 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
                     search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
                 LeftNode ->
                     ?L(),
-                    {LeftKey, _} = gen_server:call(LeftNode, get),
+                    {LeftKey, _, _} = gen_server:call(LeftNode, get),
                     if
                         %% we can make short cut. todo
                         LeftKey >= SearchKey ->
