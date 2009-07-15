@@ -10,7 +10,7 @@
 -compile(export_all).
 
 init_per_suite(Config) ->
-%    error_logger:tty(false),
+    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -310,14 +310,39 @@ insert_op_two_nodes(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node5, Node3),
+
+    %% check on level 0
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
-%%     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
+
+    %% check on level 1
+    [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node3, 1),
+    [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node5, 1),
     ok.
+
+insert_op_three_nodes(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    ok = mio_node:insert_op(Node3, Node3),
+    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node7, Node3),
+
+    %% check on level 0
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}] = mio_node:dump_nodes(Node3, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}] = mio_node:dump_nodes(Node5, 0),
+    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}] = mio_node:dump_nodes(Node7, 0),
+
+%%     %% check on level 1
+%%     [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node3, 1),
+%%     [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node5, 1),
+    ok.
+
 
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1, search_level2_2, search_level2_3,
-     link_op, link_op_propagation, buddy_op, insert_op_self, insert_op_two_nodes].
+     link_op, link_op_propagation, buddy_op, insert_op_self, insert_op_two_nodes, insert_op_three_nodes].
 
 %%--------------------------------------------------------------------
 %%% Internal functions
