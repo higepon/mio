@@ -1,6 +1,3 @@
-%%%-------------------------------------------------------------------
-%%% File    : mio_node.erl
-%%% Author  : higepon <higepon@users.sourceforge.jp>
 %%% Description : Skip Graph Node
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
@@ -10,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, link_op/4, buddy_op/4, insert_op/2]).
+-export([start_link/1, search/2, dump_nodes/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -48,9 +45,9 @@ insert_loop(Level) ->
 %%     if
 %%         Level > MaxLevel -> [];
 %%         true ->
-%%             if 
+%%             if
 
-            
+
 
     ok.
 
@@ -88,9 +85,6 @@ search(StartNode, Key) ->
         true ->
             ng
     end.
-
-link_op(Node, NodeToLink, Direction, Level) ->
-    gen_server:call(Node, {link_op, NodeToLink, Direction, Level}).
 
 buddy_op(Node, MembershipVector, Direction, Level) ->
     gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
@@ -228,6 +222,10 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
+
+%%   N.B.
+%%   insert_op may issue other xxx_op, for example link_right_op.
+%%   These issued op should not be circular.
 handle_call({insert_op, Introducer}, _From, State) ->
     MyKey = State#state.key,
     if
@@ -239,15 +237,19 @@ handle_call({insert_op, Introducer}, _From, State) ->
             {IntroducerKey, _} = gen_server:call(Introducer, get),
             ?LOG(NeighBorKey),
             ?LOG(IntroducerKey),
-            link_op(Neighbor,
-                    self(),
-                    if
-                        IntroducerKey < MyKey-> right;
-                        true -> left
-                    end,
-                    0),
+            %% link on level 0
+            if
+                IntroducerKey < MyKey ->
+                    link_left_op(Neighbor, 0, self()),
+                    LinkedState = set_right(State, 0, Neighbor),
+                    {reply, ng, LinkedState};
+                true ->
+                    link_right_op(Neighbor, 0, self()),
+                    LinkedState = set_left(State, 0, Neighbor),
+                    {reply, ng, LinkedState}
+            end
 %%             insert_loop(1),
-            {reply, ng, State}
+
     end;
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
@@ -340,7 +342,7 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
     ?L(),
     Self = self(),
     case right(State, Level) of
-        [] -> 
+        [] ->
             ?L(),
             ?LOG(NodeToLink),
             gen_server:call(NodeToLink, {link_left_op, Level, Self}),
