@@ -333,8 +333,8 @@ insert_op_three_nodes(_Config) ->
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}] = mio_node:dump_nodes(Node5, 0),
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}] = mio_node:dump_nodes(Node7, 0),
 
-%%     %% check on level 1
-%%     [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node3, 1),
+    %% check on level 1
+    [[{key3,value3,[0, 0]}], [{key5,value5,[1, 1]}, {key7,value7,[1, 0]}]] = mio_node:dump_nodes(Node3, 1),
 %%     [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node5, 1),
     ok.
 
