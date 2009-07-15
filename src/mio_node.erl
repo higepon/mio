@@ -238,18 +238,19 @@ handle_call({insert_op, Introducer}, _From, State) ->
             ?LOG(NeighBorKey),
             ?LOG(IntroducerKey),
             %% link on level 0
-            if
-                IntroducerKey < MyKey ->
-                    link_left_op(Neighbor, 0, self()),
-                    LinkedState = set_right(State, 0, Neighbor),
-                    {reply, ng, LinkedState};
-                true ->
-                    link_right_op(Neighbor, 0, self()),
-                    LinkedState = set_left(State, 0, Neighbor),
-                    {reply, ng, LinkedState}
-            end
-%%             insert_loop(1),
+            LinkedState = if
+                              IntroducerKey < MyKey ->
+                                  link_left_op(Neighbor, 0, self()),
+                                  LinkedState = set_right(State, 0, Neighbor),
+                              true ->
+                                  link_right_op(Neighbor, 0, self()),
+                                  LinkedState = set_left(State, 0, Neighbor),
+                          end,
+            MaxLevel = length(LinkedState#state.right),
 
+
+%%             insert_loop(1),
+            {reply, ng, LinkedState}
     end;
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
