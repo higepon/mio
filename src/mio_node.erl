@@ -241,13 +241,13 @@ handle_call({insert_op, Introducer}, _From, State) ->
             LinkedState = if
                               IntroducerKey < MyKey ->
                                   link_left_op(Neighbor, 0, self()),
-                                  LinkedState = set_right(State, 0, Neighbor),
+                                  set_right(State, 0, Neighbor);
                               true ->
                                   link_right_op(Neighbor, 0, self()),
-                                  LinkedState = set_left(State, 0, Neighbor),
+                                  set_left(State, 0, Neighbor)
                           end,
             MaxLevel = length(LinkedState#state.right),
-
+            ReturnState = insert_loop(1, MaxLevel, LinkedState),
 
 %%             insert_loop(1),
             {reply, ng, LinkedState}
@@ -501,7 +501,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-
+insert_loop(Level, MaxLevel, LinkedState) ->
+    LinkedState.
 
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
