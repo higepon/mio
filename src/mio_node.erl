@@ -343,7 +343,6 @@ handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
         [] -> 
             ?L(),
             ?LOG(NodeToLink),
-            ?LOG(Self),
             gen_server:call(NodeToLink, {link_left_op, Level, Self}),
               ?L(),
               {reply, ok, set_right(State, Level, NodeToLink)};

@@ -322,7 +322,10 @@ all() ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 link_node(Level, NodeA, NodeB) ->
-    ok = mio_node:link_op(NodeA, NodeB, right, Level).
+    mio_node:link_right_op(NodeA, Level, NodeB),
+    mio_node:link_left_op(NodeB, Level, NodeA).
+
+%%    ok = mio_node:link_op(NodeA, NodeB, right, Level).
 
 link_nodes(Level, [NodeA | [NodeB | More]]) ->
     link_node(Level, NodeA, NodeB),
