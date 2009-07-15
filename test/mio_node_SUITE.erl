@@ -244,8 +244,8 @@ link_op(_Config) ->
 
     %% link on level 0
     Level = 0,
-    ok = mio_node:link_op(Node3, Node5, right, Level),
-    ok = mio_node:link_op(Node3, Node2, left, Level),
+    ok = link_node(Level, Node3, Node5),
+    ok = link_node(Level, Node2, Node3),
 
     %% check
     [{key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
