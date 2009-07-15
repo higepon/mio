@@ -309,8 +309,8 @@ insert_op_two_nodes(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node5, Node3),
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
+%%     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+%%     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
     ok.
 
 
