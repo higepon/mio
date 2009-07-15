@@ -40,32 +40,7 @@ start_link(Args) ->
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
 
-insert_loop(Level) ->
-%%     MaxLevel = 2, %% todo
-%%     if
-%%         Level > MaxLevel -> [];
-%%         true ->
-%%             if
 
-
-
-    ok.
-
-%%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
-%%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
-%%       (let loop ([level 1])
-%%         (cond
-%%          [(> level (max-level)) '()]
-%%          [else
-%%           (aif (and (node-left (- level 1) n)
-%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
-%%                (begin (link-op it n 'RIGHT level)
-%%                       (loop (+ level 1)))
-%%                (aif (and (node-right (- level 1) n)
-%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
-%%                     (begin (link-op it n 'LEFT level)
-%%                            (loop (+ level 1)))
-%%                     '()))])))]))
 
 
 insert_op(NodeToInsert, Introducer) ->
@@ -234,23 +209,22 @@ handle_call({insert_op, Introducer}, _From, State) ->
             {reply, ok, State};
         true ->
             {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
-            {IntroducerKey, _} = gen_server:call(Introducer, get),
+%            {IntroducerKey, _} = gen_server:call(Introducer, get),
             ?LOG(NeighBorKey),
-            ?LOG(IntroducerKey),
+%            ?LOG(IntroducerKey),
             %% link on level 0
             LinkedState = if
-                              IntroducerKey < MyKey ->
-                                  link_left_op(Neighbor, 0, self()),
-                                  set_right(State, 0, Neighbor);
-                              true ->
+                              NeighBorKey < MyKey ->
                                   link_right_op(Neighbor, 0, self()),
-                                  set_left(State, 0, Neighbor)
+                                  set_left(State, 0, Neighbor);
+                              true ->
+                                  link_left_op(Neighbor, 0, self()),
+                                  set_right(State, 0, Neighbor)
                           end,
             MaxLevel = length(LinkedState#state.right),
+            %% link on level > 0
             ReturnState = insert_loop(1, MaxLevel, LinkedState),
-
-%%             insert_loop(1),
-            {reply, ng, LinkedState}
+            {reply, ok, ReturnState}
     end;
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
@@ -502,7 +476,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 insert_loop(Level, MaxLevel, LinkedState) ->
-    LinkedState.
+    if
+        Level > MaxLevel -> LinkedState;
+        true ->
+            insert_loop(Level + 1, MaxLevel, LinkedState)
+    end.
+
+%%       (let loop ([level 1])
+%%         (cond
+%%          [(> level (max-level)) '()]
+%%          [else
+%%           (aif (and (node-left (- level 1) n)
+%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
+%%                (begin (link-op it n 'RIGHT level)
+%%                       (loop (+ level 1)))
+%%                (aif (and (node-right (- level 1) n)
+%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
+%%                     (begin (link-op it n 'LEFT level)
+%%                            (loop (+ level 1)))
+%%                     '()))])))]))
+
 
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
