@@ -346,8 +346,10 @@ insert_op_many_nodes(_Config) ->
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
 
+    %% insert and check
     ok = mio_node:insert_op(Node3, Node3),
     [{_, key3, value3, [0, 0]}] = mio_node:dump(Node3, 0),
+    [[{_, key3, value3, [0, 0]}]] = mio_node:dump(Node3, 1),
 
 
 %%     ok = mio_node:insert_op(Node5, Node3),
