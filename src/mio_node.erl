@@ -135,9 +135,11 @@ getRandomId() ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+get_call(State) ->
+    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State}.
+
 handle_call(get, _From, State) ->
-    ?L(),
-    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State};
+    get_call(State);
 
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
