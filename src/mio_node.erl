@@ -448,8 +448,8 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                 [] ->
                     case right(LinkedState, 0) of
                         [] ->
-                            ?L(),
-                            LinkedState; % left, right, no buddy
+                            insert_loop(Level + 1, MaxLevel, LinkedState);
+%                            LinkedState; % left, right, no buddy
                         RightNodeOnLevel0 ->
                             ?L(),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
