@@ -69,7 +69,13 @@ enum_nodes_simple(StartNode, Level) ->
 
 
 new_dump(StartNode, Level) ->
-    Level0Nodes = enum_nodes_simple(StartNode, Level).
+    Level0Nodes = enum_nodes_simple(StartNode, Level),
+    case Level of
+        0 ->
+            Level0Nodes;
+        _ ->
+            Level0Nodes
+    end.
 %%     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
 %%     RightNode = node_on_level(RightNodes, Level),
 %%     LeftNode = node_on_level(LeftNodes, Level),
