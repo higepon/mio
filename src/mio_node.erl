@@ -203,7 +203,7 @@ handle_call({insert, Key, Value}, _From, State) ->
 
 %% link_op
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
-    ?L(),
+    ?LOGF("link_right_op Level=~p RightNode=~p", [Level, RightNode]),
     {reply, ok, set_right(State, Level, RightNode)};
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     ?L(),
@@ -434,7 +434,7 @@ insert_op_call(State, Introducer) ->
                                   link_left_op(Neighbor, 0, self()),
                                   set_right(State, 0, Neighbor)
                           end,
-            MaxLevel = length(LinkedState#state.right),
+            MaxLevel = length(LinkedState#state.right) - 1,
             %% link on level > 0
             ReturnState = insert_loop(1, MaxLevel, LinkedState),
             {reply, ok, ReturnState}
@@ -444,14 +444,20 @@ insert_loop(Level, MaxLevel, LinkedState) ->
     if
         Level > MaxLevel -> LinkedState;
         true ->
-%%             case left(LinkedState, 0) of
-%%                 [] -> [];
-%%                 LeftNodeOnLevel0 ->
-%%                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
-%%                     ?LOG(Buddy),
-%%                     ?LOG(gen_server:call(Buddy, get_op))
-%%             end,
-            insert_loop(Level + 1, MaxLevel, LinkedState)
+            case left(LinkedState, 0) of
+                [] ->
+                   LinkedState; % todo find buddy on right
+                LeftNodeOnLevel0 ->
+                    {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+                    case Buddy of
+                        [] ->
+                            LinkedState; %% todo find buddy on right
+                        _ ->
+                            link_right_op(Buddy, Level, self()),
+                            NewLinkedState = set_left(LinkedState, Level, Buddy),
+                            insert_loop(Level + 1, MaxLevel, NewLinkedState)
+                    end
+            end
     end.
 
 %%       (let loop ([level 1])
