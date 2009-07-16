@@ -47,13 +47,39 @@ dump_side(StartNode, Side) ->
             end
     end.
 
+%%             ?LOG(Level0Nodes),
+%%             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+%%                                     lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+%%                                               Level0Nodes))),
+%%             ?LOG(StartNodes),
+%%             {reply, lists:map(fun(StartNode) ->
+%%                                       lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
+%%                                                 dump_to_right(State, StartNode, Level))
+%%                               end, StartNodes),
+%%              State}
+
+
 new_dump(StartNode, Level) ->
     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
-    lists:append([dump_side(LeftNode, left),
-                  [{StartNode, Key, Value, MembershipVector}],
-                  dump_side(RightNode, right)]).
+    Level0Nodes = lists:append([dump_side(LeftNode, left),
+                                [{StartNode, Key, Value, MembershipVector}],
+                                dump_side(RightNode, right)]).
+%%     case Level of
+%%         0 ->
+%%             Level0Nodes;
+%%         _ ->
+%%             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+%%                                                                           lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+%%                                                                                     Level0Nodes))),
+%%             lists:map(fun(StartNode) ->
+%%                               lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
+%%                                         dump_to_right(State, StartNode, Level))
+%%                       end, StartNodes),
+
+
+
 
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
