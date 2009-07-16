@@ -35,13 +35,50 @@
 %%     %% TODO End
 %%     ok.
 
-new_dump(StartNode) ->
-    {Key, Value, MembershipVector, Right, Left} = gen_server:call(StartNode, get),
-    gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
-    receive
-        {dump_right_accumed, Result} ->
-            Result
+dump_right(StartNode) ->
+    case StartNode of
+        [] ->
+            [];
+        _ ->
+            gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
+            receive
+                {dump_right_accumed, RightAccumed} ->
+                    RightAccumed
+            end
     end.
+
+dump_left(StartNode) ->
+    case StartNode of
+        [] ->
+            [];
+        _ ->
+            gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
+            receive
+                {dump_right_accumed, LeftAccumed} ->
+                    LeftAccumed
+            end
+    end.
+
+
+
+
+new_dump(StartNode) ->
+    Level = 0,
+    {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
+    RightNode = node_on_level(RightNodes, Level),
+    LeftNode = node_on_level(LeftNodes, Level),
+    lists:append([dump_left(LeftNode),
+                  [{StartNode, Key, Value, MembershipVector}],
+                  dump_right(RightNode)]).
+%%     gen_server:cast(Right, {dump_to_right_cast, 0, self(), []}),
+%%     gen_server:cast(Left, {dump_to_left_cast, 0, self(), []}),
+%%     receive
+%%         {dump_right_accumed, RightAccumed} ->
+%%             receive
+%%                 {dump_left_accumed, LeftAccumed} ->
+%%                     lists:append([RightAccumed, [{StartNode, Key, Value, MembershipVector}], LeftAccumed])
+%%             end
+%%     end.
 
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
@@ -573,6 +610,22 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
             end
     end.
 
+node_on_level(Nodes, Level) ->
+    case Nodes of
+        [] -> [];
+        _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
+    end.
+%% _left(LeftNodes, Level) ->
+%%     case LeftNodes of
+%%         [] -> [];
+%%         _ ->  lists:nth(Level + 1, LeftNodes) %% Erlang array is 1 origin.
+%%     end.
+
+%% _right(RightNodes, Level) ->
+%%     case RightNodes of
+%%         [] -> [];
+%%         _ ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
+%%     end.
 
 left(State, Level) ->
     case State#state.left of
