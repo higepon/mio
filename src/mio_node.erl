@@ -35,30 +35,6 @@
 %%     %% TODO End
 %%     ok.
 
-dump_right(StartNode) ->
-    case StartNode of
-        [] ->
-            [];
-        _ ->
-            gen_server:cast(StartNode, {dump_side_cast, right, 0, self(), []}),
-            receive
-                {dump_side_accumed, RightAccumed} ->
-                    RightAccumed
-            end
-    end.
-
-dump_left(StartNode) ->
-    case StartNode of
-        [] ->
-            [];
-        _ ->
-            gen_server:cast(StartNode, {dump_side_cast, left, 0, self(), []}),
-            receive
-                {dump_side_accumed, LeftAccumed} ->
-                    LeftAccumed
-            end
-    end.
-
 dump_side(StartNode, Side) ->
     case StartNode of
         [] ->
@@ -70,9 +46,6 @@ dump_side(StartNode, Side) ->
                     Accumed
             end
     end.
-
-
-
 
 new_dump(StartNode) ->
     Level = 0,

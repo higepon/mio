@@ -85,6 +85,7 @@ search_level2_1(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:new_dump(Node3),
     [[{key3, value3, [0, 0]}], [{key5, value5, [1, 1]}]] = mio_node:dump_nodes(Node3, 1),
 
     %% search!
@@ -343,6 +344,7 @@ insert_op_three_nodes(_Config) ->
 
 all() ->
     [test_set_nth, get_call, left_right_call, dump_nodes_call, search_call, search_level2_simple, search_level2_1
+%     search_level2_2
      %,search_level2_2%, search_level2_3
      %link_op, link_op_propagation, buddy_op, insert_op_self, insert_op_two_nodes, insert_op_three_nodes].
      ].
