@@ -448,15 +448,16 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                 [] ->
                     case right(LinkedState, 0) of
                         [] ->
+                            %% we have no buddy on this level.
                             insert_loop(Level + 1, MaxLevel, LinkedState);
-%                            LinkedState; % left, right, no buddy
                         RightNodeOnLevel0 ->
                             ?L(),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                             ?LOG(Buddy),
                             case Buddy of
                                 [] ->
-                                    LinkedState; %% todo find buddy on right
+                                    %% we have no buddy on this level.
+                                    insert_loop(Level + 1, MaxLevel, LinkedState);
                                 _ ->
                                     link_left_op(Buddy, Level, self()),
                                     NewLinkedState = set_right(LinkedState, Level, Buddy),
