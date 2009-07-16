@@ -71,6 +71,7 @@ search_level2_simple(_Config) ->
     [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
     [{_, myKey, myValue, [1, 0]}] = mio_node:new_dump(Node, 0),
     [[{myKey, myValue, [1, 0]}]] = mio_node:dump_nodes(Node, 1),
+    [[{_, myKey, myValue, [1, 0]}]] = mio_node:new_dump(Node, 1),
     ok.
 
 search_level2_1(_Config) ->

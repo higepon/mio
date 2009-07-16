@@ -78,7 +78,7 @@ new_dump(StartNode, Level) ->
                                                                           lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
                                                                                     Level0Nodes))),
             lists:map(fun(StartNode) ->
-                              lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
+                              lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
                                         enum_nodes_simple(StartNode, Level))
                       end,
                       StartNodes)
