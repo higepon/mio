@@ -36,7 +36,7 @@ left_right_call(_Config) ->
 
 
 
-dump_nodes_call(_Config) ->
+dump(_Config) ->
     %% insert to right
     {ok, Pid} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
 
@@ -327,7 +327,7 @@ all() ->
     [test_set_nth,
      get_call,
      left_right_call,
-     dump_nodes_call,
+     dump,
      search_call,
      search_level2_simple,
      search_level2_1,
