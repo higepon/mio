@@ -70,15 +70,6 @@ new_dump(StartNode) ->
     lists:append([dump_left(LeftNode),
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_right(RightNode)]).
-%%     gen_server:cast(Right, {dump_to_right_cast, 0, self(), []}),
-%%     gen_server:cast(Left, {dump_to_left_cast, 0, self(), []}),
-%%     receive
-%%         {dump_right_accumed, RightAccumed} ->
-%%             receive
-%%                 {dump_left_accumed, LeftAccumed} ->
-%%                     lists:append([RightAccumed, [{StartNode, Key, Value, MembershipVector}], LeftAccumed])
-%%             end
-%%     end.
 
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
@@ -472,6 +463,23 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
             end
     end,
     {noreply, State};
+
+%% handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
+%%     ?L(),
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     MyMVector = State#state.membership_vector,
+%%     case right(State, Level) of
+%%         [] ->
+%%             ?L(),
+%%             ?LOG([{self(), MyKey, MyValue, MyMVector} | Accum]),
+%%             ReturnToMe ! {dump_right_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+%%         RightPid ->
+%%             ?L(),
+%%             gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+%%     end,
+%%     {noreply, State};
+
 
 
 handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
