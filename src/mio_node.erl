@@ -35,12 +35,12 @@
 %%     %% TODO End
 %%     ok.
 
-dump_side(StartNode, Side) ->
+dump_side(StartNode, Side, Level) ->
     case StartNode of
         [] ->
             [];
         _ ->
-            gen_server:cast(StartNode, {dump_side_cast, Side, 0, self(), []}),
+            gen_server:cast(StartNode, {dump_side_cast, Side, Level, self(), []}),
             receive
                 {dump_side_accumed, Accumed} ->
                     Accumed
@@ -58,14 +58,24 @@ dump_side(StartNode, Side) ->
 %%                               end, StartNodes),
 %%              State}
 
-
-new_dump(StartNode, Level) ->
+enum_nodes_simple(StartNode, Level) ->
     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
-    Level0Nodes = lists:append([dump_side(LeftNode, left),
-                                [{StartNode, Key, Value, MembershipVector}],
-                                dump_side(RightNode, right)]).
+    lists:append([dump_side(LeftNode, left, Level),
+                  [{StartNode, Key, Value, MembershipVector}],
+                  dump_side(RightNode, right, Level)]).
+
+
+
+new_dump(StartNode, Level) ->
+    enum_nodes_simple(StartNode, Level).
+%%     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
+%%     RightNode = node_on_level(RightNodes, Level),
+%%     LeftNode = node_on_level(LeftNodes, Level),
+%%     Level0Nodes = lists:append([dump_side(LeftNode, left),
+%%                                 [{StartNode, Key, Value, MembershipVector}],
+%%                                 dump_side(RightNode, right)]).
 %%     case Level of
 %%         0 ->
 %%             Level0Nodes;
