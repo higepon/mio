@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, new_dump/2]).
+-export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -40,7 +40,7 @@ dump_side(StartNode, Side, Level) ->
             end
     end.
 
-enum_nodes_simple(StartNode, Level) ->
+enum_nodes_(StartNode, Level) ->
     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
@@ -48,8 +48,8 @@ enum_nodes_simple(StartNode, Level) ->
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side(RightNode, right, Level)]).
 
-new_dump(StartNode, Level) ->
-    Level0Nodes = enum_nodes_simple(StartNode, 0),
+dump(StartNode, Level) ->
+    Level0Nodes = enum_nodes_(StartNode, 0),
     case Level of
         0 ->
             Level0Nodes;
@@ -64,7 +64,7 @@ new_dump(StartNode, Level) ->
             ?LOG(StartNodes),
             lists:map(fun(Node) ->
                               lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
-                                        enum_nodes_simple(Node, Level))
+                                        enum_nodes_(Node, Level))
                       end,
                       StartNodes)
     end.
