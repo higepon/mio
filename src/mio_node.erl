@@ -40,7 +40,7 @@ dump_right(StartNode) ->
         [] ->
             [];
         _ ->
-            gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
+            gen_server:cast(StartNode, {dump_side_cast, right, 0, self(), []}),
             receive
                 {dump_right_accumed, RightAccumed} ->
                     RightAccumed
@@ -52,7 +52,7 @@ dump_left(StartNode) ->
         [] ->
             [];
         _ ->
-            gen_server:cast(StartNode, {dump_to_right_cast, 0, self(), []}),
+            gen_server:cast(StartNode, {dump_side_cast, left, 0, self(), []}),
             receive
                 {dump_right_accumed, LeftAccumed} ->
                     LeftAccumed
@@ -480,6 +480,31 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
 %%     end,
 %%     {noreply, State};
 
+handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
+    ?L(),
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
+    case right(State, Level) of
+        [] ->
+            ?L(),
+            ?LOG([{self(), MyKey, MyValue, MyMVector} | Accum]),
+            ReturnToMe ! {dump_right_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+        RightPid ->
+            ?L(),
+            gen_server:cast(RightPid, {dump_side_cast, right, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+    end,
+    {noreply, State};
+handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
+    ?L(),
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
+    case left(State, Level) of
+        [] -> ReturnToMe ! {dump_left_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
+        LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+    end,
+    {noreply, State};
 
 
 handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
