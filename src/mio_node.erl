@@ -615,23 +615,9 @@ node_on_level(Nodes, Level) ->
         [] -> [];
         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
     end.
-%% _left(LeftNodes, Level) ->
-%%     case LeftNodes of
-%%         [] -> [];
-%%         _ ->  lists:nth(Level + 1, LeftNodes) %% Erlang array is 1 origin.
-%%     end.
-
-%% _right(RightNodes, Level) ->
-%%     case RightNodes of
-%%         [] -> [];
-%%         _ ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
-%%     end.
 
 left(State, Level) ->
-    case State#state.left of
-        [] -> [];
-        LeftNodes ->  lists:nth(Level + 1, LeftNodes) %% Erlang array is 1 origin.
-    end.
+    node_on_level(State#state.left).
 
 right(State, Level) ->
     case State#state.right of
