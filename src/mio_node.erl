@@ -74,7 +74,14 @@ new_dump(StartNode, Level) ->
         0 ->
             Level0Nodes;
         _ ->
-            Level0Nodes
+            StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+                                                                                    Level0Nodes))),
+            lists:map(fun(StartNode) ->
+                              lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
+                                        enum_nodes_simple(StartNode, Level))
+                      end,
+                      StartNodes)
     end.
 %%     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
 %%     RightNode = node_on_level(RightNodes, Level),
