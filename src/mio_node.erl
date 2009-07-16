@@ -135,33 +135,12 @@ getRandomId() ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-get_op_call(State) ->
-    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State}.
-
-buddy_op_call(State, MembershipVector, Direction, Level) ->
-    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
-    if
-        Found ->
-            {reply, {ok, self()}, State};
-        true ->
-            case Direction of
-                right ->
-                    case right(State, Level) of
-                        [] -> {reply, {ok, []}, State};
-                        RightNode ->
-                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
-                    end;
-                _ ->
-                    case left(State, Level) of
-                        [] -> {reply, {ok, []}, State};
-                        LeftNode ->
-                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
-                    end
-            end
-    end.
+handle_call({insert_op, Introducer}, _From, State) ->
+    insert_op_call(State, Introducer);
 
 handle_call(get_op, _From, State) ->
     get_op_call(State);
+
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     buddy_op_call(State, MembershipVector, Direction, Level);
 
@@ -202,34 +181,6 @@ handle_call({insert, Key, Value}, _From, State) ->
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
-%%   N.B.
-%%   insert_op may issue other xxx_op, for example link_right_op.
-%%   These issued op should not be circular.
-handle_call({insert_op, Introducer}, _From, State) ->
-    MyKey = State#state.key,
-    if
-        %% there's no buddy
-        Introducer =:= self() ->
-            {reply, ok, State};
-        true ->
-            {ok, Neighbor, NeighBorKey, NeighBorValue} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
-%            {IntroducerKey, _} = gen_server:call(Introducer, get),
-            ?LOG(NeighBorKey),
-%            ?LOG(IntroducerKey),
-            %% link on level 0
-            LinkedState = if
-                              NeighBorKey < MyKey ->
-                                  link_right_op(Neighbor, 0, self()),
-                                  set_left(State, 0, Neighbor);
-                              true ->
-                                  link_left_op(Neighbor, 0, self()),
-                                  set_right(State, 0, Neighbor)
-                          end,
-            MaxLevel = length(LinkedState#state.right),
-            %% link on level > 0
-            ReturnState = insert_loop(1, MaxLevel, LinkedState),
-            {reply, ok, ReturnState}
-    end;
 
 %%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
 %%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
@@ -256,22 +207,7 @@ handle_call({link_right_op, Level, RightNode}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode)};
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     ?L(),
-    {reply, ok, set_left(State, Level, LeftNode)};
-
-
-
-
-handle_call(left, _From, State) ->
-    {reply, State#state.left, State};
-
-handle_call(right, _From, State) ->
-    {reply, State#state.right, State};
-
-handle_call(add_right, _From, State) ->
-    {ok, Pid} = mio_sup:start_node(myKeyRight, myValueRight, [1, 0]),
-    error_logger:info_msg("~p Pid=~p\n", [?MODULE, Pid]),
-    {reply, true, State}.
-
+    {reply, ok, set_left(State, Level, LeftNode)}.
 
 
 %%--------------------------------------------------------------------
@@ -370,26 +306,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-insert_loop(Level, MaxLevel, LinkedState) ->
-    if
-        Level > MaxLevel -> LinkedState;
-        true ->
-            insert_loop(Level + 1, MaxLevel, LinkedState)
-    end.
-
-%%       (let loop ([level 1])
-%%         (cond
-%%          [(> level (max-level)) '()]
-%%          [else
-%%           (aif (and (node-left (- level 1) n)
-%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
-%%                (begin (link-op it n 'RIGHT level)
-%%                       (loop (+ level 1)))
-%%                (aif (and (node-right (- level 1) n)
-%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
-%%                     (begin (link-op it n 'LEFT level)
-%%                            (loop (+ level 1)))
-%%                     '()))])))]))
 
 
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
@@ -467,3 +383,78 @@ set_right(State, Level, Node) ->
 
 set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
+
+
+get_op_call(State) ->
+    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State}.
+
+buddy_op_call(State, MembershipVector, Direction, Level) ->
+    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    if
+        Found ->
+            {reply, {ok, self()}, State};
+        true ->
+            case Direction of
+                right ->
+                    case right(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        RightNode ->
+                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
+                    end;
+                _ ->
+                    case left(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        LeftNode ->
+                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
+                    end
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%%  Insert operation
+%%--------------------------------------------------------------------
+%%   N.B.
+%%   insert_op may issue other xxx_op, for example link_right_op.
+%%   These issued op should not be circular.
+insert_op_call(State, Introducer) ->
+    MyKey = State#state.key,
+    if
+        %% there's no buddy
+        Introducer =:= self() ->
+            {reply, ok, State};
+        true ->
+            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
+            LinkedState = if
+                              NeighBorKey < MyKey ->
+                                  link_right_op(Neighbor, 0, self()),
+                                  set_left(State, 0, Neighbor);
+                              true ->
+                                  link_left_op(Neighbor, 0, self()),
+                                  set_right(State, 0, Neighbor)
+                          end,
+            MaxLevel = length(LinkedState#state.right),
+            %% link on level > 0
+            ReturnState = insert_loop(1, MaxLevel, LinkedState),
+            {reply, ok, ReturnState}
+    end.
+
+insert_loop(Level, MaxLevel, LinkedState) ->
+    if
+        Level > MaxLevel -> LinkedState;
+        true ->
+            insert_loop(Level + 1, MaxLevel, LinkedState)
+    end.
+
+%%       (let loop ([level 1])
+%%         (cond
+%%          [(> level (max-level)) '()]
+%%          [else
+%%           (aif (and (node-left (- level 1) n)
+%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
+%%                (begin (link-op it n 'RIGHT level)
+%%                       (loop (+ level 1)))
+%%                (aif (and (node-right (- level 1) n)
+%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
+%%                     (begin (link-op it n 'LEFT level)
+%%                            (loop (+ level 1)))
+%%                     '()))])))]))

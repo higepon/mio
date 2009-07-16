@@ -21,20 +21,10 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
     ok.
 
-
-get_call() ->
-    [].
-
 get_call(_Config) ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     ok.
-
-left_right_call(_Config) ->
-    [[], []] = gen_server:call(mio_node, left),
-    [[], []] = gen_server:call(mio_node, right).
-
-
 
 dump(_Config) ->
     %% insert to right
@@ -326,7 +316,6 @@ insert_op_three_nodes(_Config) ->
 all() ->
     [test_set_nth,
      get_call,
-     left_right_call,
      dump,
      search_call,
      search_level2_simple,
