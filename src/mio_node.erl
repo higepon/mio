@@ -28,13 +28,6 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-%% init_log() ->
-%%     %% TODO, where should I write this setting?
-%%     error_logger:tty(false),
-%%     error_logger:logfile("error.log"),
-%%     %% TODO End
-%%     ok.
-
 dump_side(StartNode, Side, Level) ->
     case StartNode of
         [] ->
@@ -47,17 +40,6 @@ dump_side(StartNode, Side, Level) ->
             end
     end.
 
-%%             ?LOG(Level0Nodes),
-%%             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-%%                                     lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-%%                                               Level0Nodes))),
-%%             ?LOG(StartNodes),
-%%             {reply, lists:map(fun(StartNode) ->
-%%                                       lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
-%%                                                 dump_to_right(State, StartNode, Level))
-%%                               end, StartNodes),
-%%              State}
-
 enum_nodes_simple(StartNode, Level) ->
     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
     RightNode = node_on_level(RightNodes, Level),
@@ -65,8 +47,6 @@ enum_nodes_simple(StartNode, Level) ->
     lists:append([dump_side(LeftNode, left, Level),
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side(RightNode, right, Level)]).
-
-
 
 new_dump(StartNode, Level) ->
     Level0Nodes = enum_nodes_simple(StartNode, 0),
@@ -88,41 +68,14 @@ new_dump(StartNode, Level) ->
                       end,
                       StartNodes)
     end.
-%%     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
-%%     RightNode = node_on_level(RightNodes, Level),
-%%     LeftNode = node_on_level(LeftNodes, Level),
-%%     Level0Nodes = lists:append([dump_side(LeftNode, left),
-%%                                 [{StartNode, Key, Value, MembershipVector}],
-%%                                 dump_side(RightNode, right)]).
-%%     case Level of
-%%         0 ->
-%%             Level0Nodes;
-%%         _ ->
-%%             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-%%                                                                           lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-%%                                                                                     Level0Nodes))),
-%%             lists:map(fun(StartNode) ->
-%%                               lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
-%%                                         dump_to_right(State, StartNode, Level))
-%%                       end, StartNodes),
-
-
-
 
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
     error_logger:info_msg("args = ~p start_link\n", [Args]),
     gen_server:start_link(?MODULE, Args, []).
 
-
-
-
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
-
-
-
-%    gen_server:call(Introducer, {insert_op, NodeToInsert, NodeKey}).
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
@@ -138,9 +91,6 @@ search(StartNode, Key) ->
 
 buddy_op(Node, MembershipVector, Direction, Level) ->
     gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
-
-%% dump_nodes(StartNode, Level) ->
-%%     gen_server:call(StartNode, {dump_nodes, Level}).
 
 link_right_op(Node, Level, Right) ->
     gen_server:call(Node, {link_right_op, Level, Right}).
@@ -189,27 +139,6 @@ handle_call(get, _From, State) ->
     ?L(),
     {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State};
 
-
-
-%% fetch list of {key, value} tuple.
-%% handle_call({dump_nodes, Level}, _From, State) ->
-%%     ?L(),
-%%     Level0Nodes = enum_nodes(State, 0),
-%%     case Level of
-%%         0 -> {reply, lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end, Level0Nodes), State};
-%%         _ ->
-%%             ?LOG(Level0Nodes),
-%%             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-%%                                     lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-%%                                               Level0Nodes))),
-%%             ?LOG(StartNodes),
-%%             {reply, lists:map(fun(StartNode) ->
-%%                                       lists:map(fun({_, Key, Value, MV}) -> {Key, Value, MV} end,
-%%                                                 dump_to_right(State, StartNode, Level))
-%%                               end, StartNodes),
-%%              State}
-%%     end;
-
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
     SearchLevel = case Level of
@@ -228,38 +157,9 @@ handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
         MyKey < Key ->
             ?L(),
             {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
-%%             ?L(),
-%%             case right(State, 0) of
-%%                 [] ->
-%%                     ?L(),
-%%                     {reply, {ok, MyKey, MyValue}, State}; % todo
-%%                 RightNode ->
-%%                     ?L(),
-%%                     ok = gen_server:cast(RightNode, {search, ReturnToMe, SearchLevel, Key}),
-%%                     ?L(),
-%%                     receive
-%%                         {ok, FoundKey, FoundValue} ->
-%%                             ?L(),
-%%                             {reply, {ok, FoundKey, FoundValue}, State};
-%%                         x -> ?LOG(x)
-%%                     end
-%%             end;
         true ->
             ?L(),
             {reply, search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key), State}
-%%             case left(State, 0) of
-%%                 [] ->
-%%                     ?L(),
-%%                     {reply, {ok, MyKey, MyValue}, State}; % todo
-%%                 LeftNode ->
-%%                     ?L(),
-%%                     gen_server:cast(LeftNode, {search, ReturnToMe, SearchLevel, Key}),
-%%                     receive
-%%                         {ok, FoundKey, FoundValue} ->
-%%                             ?L(),
-%%                             {reply, {ok, FoundKey, FoundValue}, State}
-%%                     end
-%%             end
     end;
 
 handle_call({insert, Key, Value}, _From, State) ->
@@ -274,7 +174,6 @@ handle_call({insert, Key, Value}, _From, State) ->
             error_logger:info_msg("~p insert to left\n", [?MODULE]),
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
-
 
 %%   N.B.
 %%   insert_op may issue other xxx_op, for example link_right_op.
@@ -345,29 +244,6 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
             end
     end;
 
-
-
-%% (define (buddy-op self start n level membership side)
-%%   (define (return-buddy-op start buddy)
-%%     buddy)
-%%   (cond
-%%    [(membership=? level n self)
-%%     (return-buddy-op start self)]
-%%    [else
-%%     (case side
-%%       [(RIGHT)
-%%        (if (node-right (- level 1) self)
-%%            (buddy-op (node-right (- level 1) self) start n level membership side)
-%%            (return-buddy-op  start #f))]
-%%       [(LEFT)
-%%        (if (node-left (- level 1) self)
-%%            (buddy-op (node-left (- level 1) self) start n level membership side)
-%%            (return-buddy-op start #f))]
-%%       [else
-%%        (assert #f)])]))
-
-%    {reply, {ok, buddy}, State};
-
 %% link_op
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
     ?L(),
@@ -375,21 +251,6 @@ handle_call({link_right_op, Level, RightNode}, _From, State) ->
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     ?L(),
     {reply, ok, set_left(State, Level, LeftNode)};
-
-%%      (let ([left self]
-%%            [right (node-right level self)])
-%%        (cond
-%%         [(and right (< (node-key right) (node-key self)))
-%%          ;; Someone inserted the other node as follows.
-%%          ;;   Before 30 => 50
-%%          ;;             40
-%%          ;;   Now 30 => 33 => 50
-%%          ;;                40
-%%          ;; We resend link-op to the right
-%%          (assert #f) ;; not tested
-%%          (link-op right n side level)]
-
-
 
 handle_call({link_op, NodeToLink, right, Level}, _From, State) ->
     ?L(),
@@ -502,22 +363,6 @@ handle_cast({search, ReturnToMe, Level, Key}, State) ->
     end,
     {noreply, State};
 
-%% handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
-%%     ?L(),
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     case right(State, Level) of
-%%         [] ->
-%%             ?L(),
-%%             ?LOG([{self(), MyKey, MyValue, MyMVector} | Accum]),
-%%             ReturnToMe ! {dump_right_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
-%%         RightPid ->
-%%             ?L(),
-%%             gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State};
-
 handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
     ?L(),
     MyKey = State#state.key,
@@ -543,34 +388,6 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State}.
-
-
-%% handle_cast({dump_to_right_cast, Level, ReturnToMe, Accum}, State) ->
-%%     ?L(),
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     case right(State, Level) of
-%%         [] ->
-%%             ?L(),
-%%             ?LOG([{self(), MyKey, MyValue, MyMVector} | Accum]),
-%%             ReturnToMe ! {dump_right_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
-%%         RightPid ->
-%%             ?L(),
-%%             gen_server:cast(RightPid, {dump_to_right_cast, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State};
-%% handle_cast({dump_to_left_cast, Level, ReturnToMe, Accum}, State) ->
-%%     ?L(),
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     case left(State, Level) of
-%%         [] -> ReturnToMe ! {dump_left_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
-%%         LeftPid -> gen_server:cast(LeftPid, {dump_to_left_cast, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State}.
-
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -698,88 +515,3 @@ set_right(State, Level, Node) ->
 
 set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
-
-
-%% dump_to_right(State, StartNode, Level) ->
-%%     ?L(),
-%%     if self() =:= StartNode ->
-%%             %% can't call myself.
-%%     ?L(),
-%%                     MyKey = State#state.key,
-%%                     MyValue = State#state.value,
-%%                     MyMVector = State#state.membership_vector,
-
-%%             case right(State, Level) of
-%%                 [] ->
-%%                         ?L(),
-%%                     [{self(), MyKey, MyValue, MyMVector}];
-%%                 RightNode ->
-%%                         ?L(),
-%%                     gen_server:cast(RightNode, {dump_to_right_cast, Level, self(), [{self(), MyKey, MyValue, MyMVector}]}),
-%%                     receive
-%%                         {dump_right_accumed, RightAccumed} ->
-%%                             ?L(),
-%%                             RightAccumed
-%%                     end
-%%             end;
-%%        true->
-%%             gen_server:cast(StartNode, {dump_to_right_cast, Level, self(), []}),
-%%             receive
-%%                 {dump_right_accumed, RightAccumed} ->
-%%                     ?L(),
-%%                     RightAccumed
-%%             end
-%%     end.
-
-
-%% enum_nodes(State, Level) ->
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     HasRight = case right(State, Level) of
-%%                    [] -> false;
-%%                    _ -> true
-%%                end,
-%%     HasLeft = case left(State, Level) of %%case State#state.left of
-%%                    [] -> false;
-%%                    _ -> true
-%%               end,
-%%     if
-%%         HasRight ->
-%%             gen_server:cast(right(State, Level), {dump_to_right_cast, Level, self(), []});
-%%         true -> []
-%%     end,
-%%     if
-%%         HasLeft ->
-%%             gen_server:cast(left(State, Level), {dump_to_left_cast, Level, self(), []});
-%%         true -> []
-%%     end,
-
-%%     if
-%%         HasRight ->
-%%             if
-%%                 HasLeft ->
-%%                     receive
-%%                         {dump_right_accumed, RightAccumed} ->
-%%                             receive
-%%                                 {dump_left_accumed, LeftAccumed} ->
-%%                                     lists:append([LeftAccumed, [{self(), MyKey, MyValue, MyMVector}], RightAccumed])
-%%                             end
-%%                     end;
-%%                 true ->
-%%                     receive
-%%                         {dump_right_accumed, RightAccumed} ->
-%%                             [{self(), MyKey, MyValue, MyMVector} | RightAccumed]
-%%                     end
-%%             end;
-%%         true ->
-%%             if
-%%                 HasLeft ->
-%%                     receive
-%%                         {dump_left_accumed, LeftAccumed} ->
-%%                             lists:append(LeftAccumed, [{self(), MyKey, MyValue, MyMVector}])
-%%                     end;
-%%                 true ->
-%%                     [{self(), MyKey, MyValue, MyMVector}]
-%%             end
-%%     end.
