@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump/2]).
+-export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump/2, node_on_level/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -390,6 +390,7 @@ get_op_call(State) ->
 
 buddy_op_call(State, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    ?LOG(Found),
     if
         Found ->
             {reply, {ok, self()}, State};
@@ -402,6 +403,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
                             {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
                     end;
                 _ ->
+                    ?LOG(State),
                     case left(State, Level) of
                         [] -> {reply, {ok, []}, State};
                         LeftNode ->
@@ -442,6 +444,13 @@ insert_loop(Level, MaxLevel, LinkedState) ->
     if
         Level > MaxLevel -> LinkedState;
         true ->
+%%             case left(LinkedState, 0) of
+%%                 [] -> [];
+%%                 LeftNodeOnLevel0 ->
+%%                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+%%                     ?LOG(Buddy),
+%%                     ?LOG(gen_server:call(Buddy, get_op))
+%%             end,
             insert_loop(Level + 1, MaxLevel, LinkedState)
     end.
 

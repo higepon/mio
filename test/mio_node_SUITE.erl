@@ -9,8 +9,14 @@
 
 -compile(export_all).
 
+-define(SERVER, ?MODULE).
+-define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
+-define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
+-define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+
+
 init_per_suite(Config) ->
-    error_logger:tty(false),
+%    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -310,8 +316,18 @@ insert_op_three_nodes(_Config) ->
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node5, 0),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node7, 0),
 
-%%     %% check on level 1
-%%     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node3, 1),
+    %% check next node is correct?
+    {_, _, _, RightNode7, LeftNodes7} = gen_server:call(Node7, get_op),
+    [] = mio_node:node_on_level(RightNode7, 0),
+    Node5 = mio_node:node_on_level(LeftNodes7, 0),
+
+    {_, _, _, RightNode, LeftNodes} = gen_server:call(Node5, get_op),
+    Node7 = mio_node:node_on_level(RightNode, 0),
+    Node3 = mio_node:node_on_level(LeftNodes, 0),
+
+    %% check on level 1
+    ?LOG(mio_node:dump(Node3, 1)),
+%    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node3, 1),
 %%     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
