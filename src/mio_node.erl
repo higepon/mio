@@ -474,7 +474,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     ?LOGF("I'm ~p buddy=~p mv=~p\n", [LinkedState#state.key, Buddy, mio_mvector:get(LinkedState#state.membership_vector, Level)]),
                     case Buddy of
                         [] ->
-                            LinkedState; %% todo find buddy on right
+                            insert_loop(Level + 1, MaxLevel, LinkedState);
                         _ ->
                             link_right_op(Buddy, Level, self()),
                             NewLinkedState = set_left(LinkedState, Level, Buddy),
