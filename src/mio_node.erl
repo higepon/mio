@@ -59,6 +59,18 @@ dump_left(StartNode) ->
             end
     end.
 
+dump_side(StartNode, Side) ->
+    case StartNode of
+        [] ->
+            [];
+        _ ->
+            gen_server:cast(StartNode, {dump_side_cast, Side, 0, self(), []}),
+            receive
+                {dump_side_accumed, Accumed} ->
+                    Accumed
+            end
+    end.
+
 
 
 
@@ -67,9 +79,9 @@ new_dump(StartNode) ->
     {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
-    lists:append([dump_left(LeftNode),
+    lists:append([dump_side(LeftNode, left),
                   [{StartNode, Key, Value, MembershipVector}],
-                  dump_right(RightNode)]).
+                  dump_side(RightNode, right)]).
 
 start_link(Args) ->
     error_logger:info_msg("~p start_link\n", [?MODULE]),
