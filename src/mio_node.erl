@@ -41,7 +41,7 @@ dump_side(StartNode, Side, Level) ->
     end.
 
 enum_nodes_(StartNode, Level) ->
-    {Key, Value, MembershipVector, RightNodes, LeftNodes} = gen_server:call(StartNode, get_op),
+    {Key, Value, MembershipVector, LeftNodes, RightNodes} = gen_server:call(StartNode, get_op),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
     lists:append([dump_side(LeftNode, left, Level),
@@ -386,7 +386,7 @@ set_left(State, Level, Node) ->
 
 
 get_op_call(State) ->
-    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State}.
+    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}, State}.
 
 buddy_op_call(State, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
