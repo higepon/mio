@@ -10,7 +10,7 @@
 -compile(export_all).
 
 init_per_suite(Config) ->
-    error_logger:tty(false),
+%    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -88,6 +88,7 @@ search_level2_1(_Config) ->
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:new_dump(Node3, 0),
     [[{key3, value3, [0, 0]}], [{key5, value5, [1, 1]}]] = mio_node:dump_nodes(Node3, 1),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:new_dump(Node3, 1),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),

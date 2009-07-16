@@ -69,7 +69,7 @@ enum_nodes_simple(StartNode, Level) ->
 
 
 new_dump(StartNode, Level) ->
-    Level0Nodes = enum_nodes_simple(StartNode, Level),
+    Level0Nodes = enum_nodes_simple(StartNode, 0),
     case Level of
         0 ->
             Level0Nodes;
@@ -77,9 +77,14 @@ new_dump(StartNode, Level) ->
             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
                                                                           lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
                                                                                     Level0Nodes))),
-            lists:map(fun(StartNode) ->
+            ?LOG(Level0Nodes),
+            ?LOG(lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+                                                                                    Level0Nodes))),
+            ?LOG(StartNodes),
+            lists:map(fun(Node) ->
                               lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
-                                        enum_nodes_simple(StartNode, Level))
+                                        enum_nodes_simple(Node, Level))
                       end,
                       StartNodes)
     end.
