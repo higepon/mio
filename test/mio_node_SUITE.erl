@@ -299,18 +299,21 @@ insert_op_three_nodes(_Config) ->
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node5, Node3),
-    ok = mio_node:insert_op(Node7, Node3),
 
-    %% check on level 0
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node5, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node7, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
 
-    %% check on level 1
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
+%    ok = mio_node:insert_op(Node7, Node3),
+
+%%     %% check on level 0
+%%     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node3, 0),
+%%     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node5, 0),
+%%     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node7, 0),
+
+%%     %% check on level 1
+%%     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node3, 1),
+%%     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
-
 
 
 all() ->
@@ -326,8 +329,8 @@ all() ->
      link_op_propagation,
      buddy_op,
      insert_op_self,
-     insert_op_two_nodes
-                                                %, insert_op_three_nodes].
+     insert_op_two_nodes,
+     insert_op_three_nodes
      ].
 
 %%--------------------------------------------------------------------
