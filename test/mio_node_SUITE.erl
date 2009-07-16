@@ -26,8 +26,8 @@ get_call() ->
     [].
 
 get_call(_Config) ->
-    {myKey, myValue, _, _, _} = gen_server:call(mio_node, get),
-    {myKey, myValue, _, _, _} = gen_server:call(mio_node, get),
+    {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
+    {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     ok.
 
 left_right_call(_Config) ->
@@ -273,13 +273,13 @@ buddy_op(_Config) ->
     %% level 0
     ok = link_nodes(0, [Node3, Node5, Node7, Node8, Node9]),
     {ok, Buddy} = mio_node:buddy_op(Node5, [0, 0], right, 0),
-    {key9, value9, _, _, _} = gen_server:call(Buddy, get),
+    {key9, value9, _, _, _} = gen_server:call(Buddy, get_op),
 
     {ok, Buddy2} = mio_node:buddy_op(Node3, [0, 0], right, 0),
-    {key3, value3, _, _, _} = gen_server:call(Buddy2, get),
+    {key3, value3, _, _, _} = gen_server:call(Buddy2, get_op),
 
     {ok, Buddy3} = mio_node:buddy_op(Node8, [0, 1], left, 0),
-    {key7, value7, _, _, _} = gen_server:call(Buddy3, get),
+    {key7, value7, _, _, _} = gen_server:call(Buddy3, get_op),
 
 
     ok.
