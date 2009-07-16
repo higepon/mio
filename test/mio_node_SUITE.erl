@@ -69,7 +69,7 @@ search_level2_simple(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
-    [{_, myKey, myValue, [1, 0]}] = mio_node:new_dump(Node),
+    [{_, myKey, myValue, [1, 0]}] = mio_node:new_dump(Node, 0),
     [[{myKey, myValue, [1, 0]}]] = mio_node:dump_nodes(Node, 1),
     ok.
 
@@ -85,7 +85,7 @@ search_level2_1(_Config) ->
 
     %% dump nodes on Level 0 and 1
     [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:new_dump(Node3),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:new_dump(Node3, 0),
     [[{key3, value3, [0, 0]}], [{key5, value5, [1, 1]}]] = mio_node:dump_nodes(Node3, 1),
 
     %% search!
