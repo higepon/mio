@@ -397,16 +397,17 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
         true ->
             case Direction of
                 right ->
-                    case right(State, Level) of
+                    case right(State, 0) of %% N.B. should be on Level 0
                         [] -> {reply, {ok, []}, State};
                         RightNode ->
                             {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
                     end;
                 _ ->
                     ?LOG(State),
-                    case left(State, Level) of
+                    case left(State, 0) of
                         [] -> {reply, {ok, []}, State};
                         LeftNode ->
+                            ?L(),
                             {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
                     end
             end
@@ -467,7 +468,10 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             end
                     end;
                 LeftNodeOnLevel0 ->
+                    ?LOG(before_buddy_op),
+                    ?LOG(gen_server:call(LeftNodeOnLevel0, get_op)),
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+                    ?LOGF("I'm ~p buddy=~p mv=~p\n", [LinkedState#state.key, Buddy, mio_mvector:get(LinkedState#state.membership_vector, Level)]),
                     case Buddy of
                         [] ->
                             LinkedState; %% todo find buddy on right
