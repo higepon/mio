@@ -441,6 +441,8 @@ insert_op_call(State, Introducer) ->
     end.
 
 insert_loop(Level, MaxLevel, LinkedState) ->
+    %% Find buddy node and link it.
+    %% buddy node has same membership_vector on this level.
     if
         Level > MaxLevel -> LinkedState;
         true ->
@@ -476,17 +478,3 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     end
             end
     end.
-
-%%       (let loop ([level 1])
-%%         (cond
-%%          [(> level (max-level)) '()]
-%%          [else
-%%           (aif (and (node-left (- level 1) n)
-%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
-%%                (begin (link-op it n 'RIGHT level)
-%%                       (loop (+ level 1)))
-%%                (aif (and (node-right (- level 1) n)
-%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
-%%                     (begin (link-op it n 'LEFT level)
-%%                            (loop (+ level 1)))
-%%                     '()))])))]))
