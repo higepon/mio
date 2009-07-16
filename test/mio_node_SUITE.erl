@@ -68,9 +68,7 @@ search_level2_simple(_Config) ->
     {ok, _, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
-    [{myKey, myValue, [1, 0]}] = mio_node:dump_nodes(Node, 0),
     [{_, myKey, myValue, [1, 0]}] = mio_node:new_dump(Node, 0),
-    [[{myKey, myValue, [1, 0]}]] = mio_node:dump_nodes(Node, 1),
     [[{_, myKey, myValue, [1, 0]}]] = mio_node:new_dump(Node, 1),
     ok.
 
@@ -85,9 +83,7 @@ search_level2_1(_Config) ->
     ok = link_nodes(0, [Node3, Node5]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:new_dump(Node3, 0),
-    [[{key3, value3, [0, 0]}], [{key5, value5, [1, 1]}]] = mio_node:dump_nodes(Node3, 1),
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:new_dump(Node3, 1),
 
     %% search!
@@ -110,16 +106,11 @@ search_level2_2(_Config) ->
     ok = link_nodes(1, [Node3, Node9]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3, [1, 0]}, {key5, value5, [0, 1]}, {key9, value9, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     [{_, key3, value3, [1, 0]}, {_, key5, value5, [0, 1]}, {_, key9, value9, [1, 1]}] = mio_node:new_dump(Node3, 0),
 
-    Level1Nodes = [[{key5, value5, [0, 1]}], [{key3, value3, [1, 0]}, {key9, value9, [1, 1]}]],
-    Level1Nodes = mio_node:dump_nodes(Node3, 1),
     [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:new_dump(Node3, 1),
-    Level1Nodes = mio_node:dump_nodes(Node5, 1),
     [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:new_dump(Node5, 1),
     [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:new_dump(Node9, 1),
-%%    Level1Nodes = mio_node:dump_nodes(Node9, 1),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
@@ -157,9 +148,6 @@ search_level2_3(_Config) ->
     ok = link_nodes(1, [Node5, Node8]),
 
     %% dump nodes on Level 0 and 1
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key7, value7, [0, 1]}, {key8, value8, [1, 0]}, {key9, value9, [0, 0]}] = mio_node:dump_nodes(Node3, 0),
-%%     Level1Nodes = [[{key3, value3, [0, 0]}, {key7, value7, [0, 1]}, {key9, value9, [0, 0]}], [{key5, value5, [1, 1]}, {key8, value8, [1, 0]}]],
-
     [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:new_dump(Node3, 1),
     [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:new_dump(Node5, 1),
     [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:new_dump(Node7, 1),
@@ -230,19 +218,6 @@ test_set_nth(_Config) ->
                              )
                   end,
                   MVectors)]),
-
-
-
-%%     [{myKex, myKexValue, [1, 0]}] = lists:usort(fun(A, B) ->
-%%                                                         {_, _, AMVector} = A,
-%%                                                         {_, _, BMVector} = B,
-%%                                                         mio_mvector:gt(AMVector, BMVector)
-%%                                                 end,
-%%                                                 mio_node:dump_nodes(mio_node, 0)),
-
-
-
-
     ok.
 
 link_op(_Config) ->
@@ -256,7 +231,7 @@ link_op(_Config) ->
     ok = link_node(Level, Node2, Node3),
 
     %% check
-    [{key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
+    [{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:new_dump(Node3, 0),
     ok.
 
 link_op_propagation(_Config) ->
@@ -320,8 +295,8 @@ insert_op_two_nodes(_Config) ->
     ok = mio_node:insert_op(Node5, Node3),
 
     %% check on level 0
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
-    [{key3, value3, [0, 0]}, {key5, value5, [1, 1]}] = mio_node:dump_nodes(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:new_dump(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:new_dump(Node5, 0),
 
     %% check on level 1
     [[{key3,value3,[0,0]}], [{key5,value5,[1,1]}]] = mio_node:dump_nodes(Node3, 1),
