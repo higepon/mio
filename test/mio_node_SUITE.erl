@@ -16,7 +16,7 @@
 
 
 init_per_suite(Config) ->
-    error_logger:tty(false),
+%    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -309,6 +309,17 @@ insert_op_two_nodes_2(_Config) ->
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
+insert_op_two_nodes_3(_Config) ->
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node6} = mio_sup:start_node(key6, value6, mio_mvector:make([1, 1])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
+    ok = mio_node:insert_op(Node5, Node5),
+    ok = mio_node:insert_op(Node9, Node5),
+    ok = mio_node:insert_op(Node6, Node5),
+
+    [{_, key5, value5, [1, 1]}, {_, key6, value6, [1, 1]}, {_, key9, value9, [1, 0]}] = mio_node:dump(Node5, 0),
+    ok.
+
 insert_op_three_nodes(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -385,7 +396,8 @@ all() ->
      buddy_op,
      insert_op_self,
      insert_op_two_nodes,
-     insert_op_two_nodes_2,
+    insert_op_two_nodes_2,
+      insert_op_two_nodes_3,
      insert_op_three_nodes,
      insert_op_many_nodes
 
