@@ -351,6 +351,13 @@ insert_op_many_nodes(_Config) ->
     [{_, key3, value3, [0, 0]}] = mio_node:dump(Node3, 0),
     [[{_, key3, value3, [0, 0]}]] = mio_node:dump(Node3, 1),
 
+    %% insert and check
+    ok = mio_node:insert_op(Node5, Node3),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node5, 0),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node5, 1),
+
 
 %%     ok = mio_node:insert_op(Node5, Node3),
 %%     ok = mio_node:insert_op(Node9, Node5),
