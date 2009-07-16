@@ -138,8 +138,53 @@ getRandomId() ->
 get_op_call(State) ->
     {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.right, State#state.left}, State}.
 
+buddy_op_call(State, MembershipVector, Direction, Level) ->
+    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    if
+        Found ->
+            {reply, {ok, self()}, State};
+        true ->
+            case Direction of
+                right ->
+                    case right(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        RightNode ->
+                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
+                    end;
+                _ ->
+                    case left(State, Level) of
+                        [] -> {reply, {ok, []}, State};
+                        LeftNode ->
+                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
+                    end
+            end
+    end.
+
 handle_call(get_op, _From, State) ->
     get_op_call(State);
+handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
+    buddy_op_call(State, MembershipVector, Direction, Level);
+%%     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+%%     if
+%%         Found ->
+%%             {reply, {ok, self()}, State};
+%%         true ->
+%%             case Direction of
+%%                 right ->
+%%                     case right(State, Level) of
+%%                         [] -> {reply, {ok, []}, State};
+%%                         RightNode ->
+%%                             {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
+%%                     end;
+%%                 _ ->
+%%                     case left(State, Level) of
+%%                         [] -> {reply, {ok, []}, State};
+%%                         LeftNode ->
+%%                             {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
+%%                     end
+%%             end
+%%     end;
+
 
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
 
@@ -224,27 +269,6 @@ handle_call({insert_op, Introducer}, _From, State) ->
 
 %%    end;
 
-handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
-    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
-    if
-        Found ->
-            {reply, {ok, self()}, State};
-        true ->
-            case Direction of
-                right ->
-                    case right(State, Level) of
-                        [] -> {reply, {ok, []}, State};
-                        RightNode ->
-                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
-                    end;
-                _ ->
-                    case left(State, Level) of
-                        [] -> {reply, {ok, []}, State};
-                        LeftNode ->
-                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
-                    end
-            end
-    end;
 
 %% link_op
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
