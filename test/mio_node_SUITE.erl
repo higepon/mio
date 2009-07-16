@@ -309,8 +309,6 @@ insert_op_two_nodes_2(_Config) ->
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
-
-
 insert_op_three_nodes(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -342,6 +340,26 @@ insert_op_three_nodes(_Config) ->
     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
+insert_op_many_nodes(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
+
+    ok = mio_node:insert_op(Node3, Node3),
+    [{_, key3, value3, [0, 0]}] = mio_node:dump(Node3, 0),
+
+
+%%     ok = mio_node:insert_op(Node5, Node3),
+%%     ok = mio_node:insert_op(Node9, Node5),
+%%     ok = mio_node:insert_op(Node7, Node9),
+
+%%     ?LOG(mio_node:dump(Node9, 0)),
+%%     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node9, 0),
+%%     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
+
+    ok.
+
 
 all() ->
     [
@@ -359,7 +377,8 @@ all() ->
      insert_op_self,
      insert_op_two_nodes,
      insert_op_two_nodes_2,
-     insert_op_three_nodes
+     insert_op_three_nodes,
+     insert_op_many_nodes
 
      ].
 
