@@ -446,7 +446,23 @@ insert_loop(Level, MaxLevel, LinkedState) ->
         true ->
             case left(LinkedState, 0) of
                 [] ->
-                   LinkedState; % todo find buddy on right
+                    case right(LinkedState, 0) of
+                        [] ->
+                            ?L(),
+                            LinkedState; % left, right, no buddy
+                        RightNodeOnLevel0 ->
+                            ?L(),
+                            {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+                            ?LOG(Buddy),
+                            case Buddy of
+                                [] ->
+                                    LinkedState; %% todo find buddy on right
+                                _ ->
+                                    link_left_op(Buddy, Level, self()),
+                                    NewLinkedState = set_right(LinkedState, Level, Buddy),
+                                    insert_loop(Level + 1, MaxLevel, NewLinkedState)
+                            end
+                    end;
                 LeftNodeOnLevel0 ->
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                     case Buddy of
