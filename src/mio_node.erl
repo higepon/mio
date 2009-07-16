@@ -617,13 +617,10 @@ node_on_level(Nodes, Level) ->
     end.
 
 left(State, Level) ->
-    node_on_level(State#state.left).
+    node_on_level(State#state.left, Level).
 
 right(State, Level) ->
-    case State#state.right of
-        [] -> [];
-        RightNodes ->  lists:nth(Level + 1, RightNodes) %% Erlang array is 1 origin.
-    end.
+    node_on_level(State#state.right, Level).
 
 set_right(State, Level, Node) ->
     State#state{right=set_nth(Level + 1, Node, State#state.right)}.
