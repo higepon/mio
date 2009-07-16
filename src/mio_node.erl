@@ -427,14 +427,23 @@ insert_op_call(State, Introducer) ->
             {reply, ok, State};
         true ->
             {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
+            ?LOG(MyKey),
+            ?LOG(NeighBorKey),
             LinkedState = if
                               NeighBorKey < MyKey ->
                                   link_right_op(Neighbor, 0, self()),
                                   set_left(State, 0, Neighbor);
                               true ->
+                                  ?LOG(link_level_0),
+                                  {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),
                                   link_left_op(Neighbor, 0, self()),
-                                  set_right(State, 0, Neighbor)
+                                  case node_on_level(NeighborLeft, 0) of
+                                      [] -> [];
+                                      X -> link_right_op(X, 0, self())
+                                  end,
+                                  set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
                           end,
+            ?LOG(LinkedState),
             MaxLevel = length(LinkedState#state.right) - 1,
             %% link on level > 0
             ReturnState = insert_loop(1, MaxLevel, LinkedState),

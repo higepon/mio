@@ -16,7 +16,7 @@
 
 
 init_per_suite(Config) ->
-%    error_logger:tty(false),
+    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -364,8 +364,9 @@ insert_op_many_nodes(_Config) ->
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
 
     %% insert and check
-%    ok = mio_node:insert_op(Node7, Node9),
-%    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node5, 0),
+    ok = mio_node:insert_op(Node7, Node9),
+    ?LOG(mio_node:dump(Node5, 0)),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node5, 0),
 %    [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
 
 
