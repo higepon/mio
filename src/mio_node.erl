@@ -476,8 +476,13 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                     %% we have no buddy on this level.
                                     insert_loop(Level + 1, MaxLevel, LinkedState);
                                 _ ->
+                                    {_, _, _, BuddyLeft, _} = gen_server:call(Buddy, get_op),
                                     link_left_op(Buddy, Level, self()),
-                                    NewLinkedState = set_right(LinkedState, Level, Buddy),
+                                    case node_on_level(BuddyLeft, Level) of
+                                        [] -> [];
+                                        X -> link_right_op(X, Level, self())
+                                    end,
+                                    NewLinkedState = set_left(set_right(LinkedState, Level, Buddy), Level, node_on_level(BuddyLeft, Level)),
                                     insert_loop(Level + 1, MaxLevel, NewLinkedState)
                             end
                     end;
@@ -490,8 +495,14 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                         [] ->
                             insert_loop(Level + 1, MaxLevel, LinkedState);
                         _ ->
+                            {_, _, _, _, BuddyRight} = gen_server:call(Buddy, get_op),
                             link_right_op(Buddy, Level, self()),
-                            NewLinkedState = set_left(LinkedState, Level, Buddy),
+                            case node_on_level(BuddyRight, Level) of
+                                [] -> [];
+                                X ->
+                                    link_left_op(X, Level, self())
+                            end,
+                            NewLinkedState = set_right(set_left(LinkedState, Level, Buddy), Level, node_on_level(BuddyRight, Level)),
                             insert_loop(Level + 1, MaxLevel, NewLinkedState)
                     end
             end

@@ -43,8 +43,8 @@ dump(_Config) ->
     ok.
 
 search_call(_Config) ->
-    %% I have the value
-    {ok, myValue2} = mio_node:search(mio_node, myKey),
+%%     %% I have the value
+%%     {ok, myValue2} = mio_node:search(mio_node, myKey),
 %%     %% search to right
 %%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
 %%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
@@ -313,12 +313,20 @@ insert_op_two_nodes_3(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node6} = mio_sup:start_node(key6, value6, mio_mvector:make([1, 1])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 0])),
+
+    % insert and check on level 1
     ok = mio_node:insert_op(Node5, Node5),
+    [[{_, key5, value5, [1, 1]}]] = mio_node:dump(Node5, 1),
+
+    % insert and check on level 1
     ok = mio_node:insert_op(Node9, Node5),
+    [[{_, key5, value5, [1, 1]}, {_, key9, value9, [1, 0]}]] = mio_node:dump(Node5, 1),
+
     ok = mio_node:insert_op(Node6, Node5),
 
-    ?LOG(mio_node:dump(Node5, 0)),
     [{_, key5, value5, [1, 1]}, {_, key6, value6, [1, 1]}, {_, key9, value9, [1, 0]}] = mio_node:dump(Node5, 0),
+    ?LOG(mio_node:dump(Node5, 1)),
+    [[{_, key5, value5, [1, 1]}, {_, key6, value6, [1, 1]}, {_, key9, value9, [1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
 insert_op_three_nodes(_Config) ->
