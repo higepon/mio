@@ -43,8 +43,8 @@ dump(_Config) ->
     ok.
 
 search_call(_Config) ->
-%%     %% I have the value
-%%     {ok, myValue2} = mio_node:search(mio_node, myKey),
+    %% I have the value
+    {ok, myValue2} = mio_node:search(mio_node, myKey),
 %%     %% search to right
 %%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
 %%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
