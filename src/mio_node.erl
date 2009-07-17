@@ -431,8 +431,13 @@ insert_op_call(State, Introducer) ->
             ?LOG(NeighBorKey),
             LinkedState = if
                               NeighBorKey < MyKey ->
+                                  {_, _, _, _, NeighborRight} = gen_server:call(Neighbor, get_op),
                                   link_right_op(Neighbor, 0, self()),
-                                  set_left(State, 0, Neighbor); %%% TODO
+                                  case node_on_level(NeighborRight, 0) of
+                                      [] -> [];
+                                      X -> link_left_op(X, 0, self())
+                                  end,
+                                  set_right(set_left(State, 0, Neighbor), 0, node_on_level(NeighborRight, 0));
                               true ->
                                   ?LOG(link_level_0),
                                   {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),

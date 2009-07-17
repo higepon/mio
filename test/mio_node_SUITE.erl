@@ -317,6 +317,7 @@ insert_op_two_nodes_3(_Config) ->
     ok = mio_node:insert_op(Node9, Node5),
     ok = mio_node:insert_op(Node6, Node5),
 
+    ?LOG(mio_node:dump(Node5, 0)),
     [{_, key5, value5, [1, 1]}, {_, key6, value6, [1, 1]}, {_, key9, value9, [1, 0]}] = mio_node:dump(Node5, 0),
     ok.
 
@@ -376,7 +377,6 @@ insert_op_many_nodes(_Config) ->
 
     %% insert and check
     ok = mio_node:insert_op(Node7, Node9),
-    ?LOG(mio_node:dump(Node5, 0)),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node5, 0),
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node3, 1),
     ok.
@@ -396,11 +396,10 @@ all() ->
      buddy_op,
      insert_op_self,
      insert_op_two_nodes,
-    insert_op_two_nodes_2,
-      insert_op_two_nodes_3,
+     insert_op_two_nodes_2,
+     insert_op_two_nodes_3,
      insert_op_three_nodes,
      insert_op_many_nodes
-
      ].
 
 %%--------------------------------------------------------------------
