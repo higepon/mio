@@ -80,14 +80,22 @@ insert_op(NodeToInsert, Introducer) ->
 %% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
 %% For this purpose, we do range search in this process, which is not node process.
 range_search_op(StartNode, Key1, Key2, Limit) ->
-    {ok, ClosestNode, ClosestKey, ClosestValue} = search(StartNode, Key1),
+    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key1}),
+    ?LOG(ClosestKey),
     if ClosestKey > Key2 ->
             [];
        ClosestKey =:= Key2 ->
             [{ClosestNode, ClosestKey, ClosestValue}];
        true ->
+            ?L(),
             ReturnToMe = self(),
-            gen_server:cast(ClosestNode, {range_search_op_cast, ReturnToMe, Key1, Key2, [], Limit})
+            gen_server:cast(ClosestNode, {range_search_op_cast, ReturnToMe, Key1, Key2, [], Limit}),
+            receive
+                {range_search_accumed, Accumed} ->
+                    Accumed
+            after 1000 ->
+                    [timeout]
+            end
     end.
 
 search(StartNode, Key) ->
@@ -266,6 +274,44 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
     case left(State, Level) of
         [] -> ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+    end,
+    {noreply, State};
+
+handle_cast({range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
+    ?L(),
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    MyMVector = State#state.membership_vector,
+    if Limit =:= 0 ->
+            ?L(),
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+       Key1 =< MyKey andalso MyKey < Key2 ->
+            ?L(),
+            case right(State, 0) of
+                [] ->
+                    ?L(),
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+                RightNode ->
+                    ?L(),
+                    gen_server:cast(RightNode,
+                                    {range_search_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyMVector} | Accum], Limit - 1})
+            end;
+       Key1 =< MyKey andalso MyKey =:= Key2 ->
+            ?L(),
+            ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+       MyKey < Key1 ->
+            ?L(),
+            case right(State, 0) of
+                [] ->
+                    ?L(),
+                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+                RightNode ->
+                    gen_server:cast(RightNode,
+                                    {range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
+            end;
+       true ->
+            ?L(),
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
     end,
     {noreply, State}.
 

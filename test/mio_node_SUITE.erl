@@ -401,6 +401,10 @@ range_search_op(_Config) ->
 
     % range search!
     [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:range_search_op(Node3, key4, key8, 10),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:range_search_op(Node3, key4, key7, 10),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:range_search_op(Node3, key5, key8, 10),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:range_search_op(Node3, key5, key7, 10),
+    [{_, key5, value5, [1, 1]}] = mio_node:range_search_op(Node3, key4, key8, 1),
     ok.
 
 
@@ -408,23 +412,23 @@ range_search_op(_Config) ->
 
 all() ->
     [
-     test_set_nth,
-     get_call,
-     dump,
-     search_call,
-     search_level2_simple,
-     search_level2_1,
-     search_level2_2,
-     search_level2_3,
-     link_op,
-     link_op_propagation,
-     buddy_op,
-     insert_op_self,
-     insert_op_two_nodes,
-     insert_op_two_nodes_2,
-     insert_op_two_nodes_3,
-     insert_op_three_nodes,
-     insert_op_many_nodes,
+%%      test_set_nth,
+%%      get_call,
+%%      dump,
+%%      search_call,
+%%      search_level2_simple,
+%%      search_level2_1,
+%%      search_level2_2,
+%%      search_level2_3,
+%%      link_op,
+%%      link_op_propagation,
+%%      buddy_op,
+%%      insert_op_self,
+%%      insert_op_two_nodes,
+%%      insert_op_two_nodes_2,
+%%      insert_op_two_nodes_3,
+%%      insert_op_three_nodes,
+%%      insert_op_many_nodes,
      range_search_op
      ].
 
