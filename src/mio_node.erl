@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump/2, node_on_level/2]).
+-export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump/2, node_on_level/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -77,6 +77,9 @@ start_link(Args) ->
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
 
+range_search_op(StartNode, Key1, Key2, Limit) ->
+    gen_server:call(StartNode, {range_search_op, Key1, Key2, Limit}).
+
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
     %% If Level is not specified, The start node checks his max level and use it.
@@ -144,29 +147,31 @@ handle_call(get_op, _From, State) ->
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     buddy_op_call(State, MembershipVector, Direction, Level);
 
+handle_call({range_search_op, Key1, Key2, Limit}, _From, State) ->
+    range_search_op_call(State, Key1, Key2, Limit);
 
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
-
-    SearchLevel = case Level of
-                      [] ->
-                          length(State#state.right) - 1; %% Level is 0 origin
-                      _ -> Level
-                  end,
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    ?LOGF("search_call: MyKey=~p searchKey=~p SearchLevel=~p~n", [MyKey, Key, SearchLevel]),
-    if
-        %% This is myKey, found!
-        MyKey =:= Key ->
-            ?L(),
-            {reply, {ok, self(), MyKey, MyValue}, State};
-        MyKey < Key ->
-            ?L(),
-            {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
-        true ->
-            ?L(),
-            {reply, search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key), State}
-    end;
+    {reply, search_op_call(State, ReturnToMe, Level, Key), State};
+%%     SearchLevel = case Level of
+%%                       [] ->
+%%                           length(State#state.right) - 1; %% Level is 0 origin
+%%                       _ -> Level
+%%                   end,
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     ?LOGF("search_call: MyKey=~p searchKey=~p SearchLevel=~p~n", [MyKey, Key, SearchLevel]),
+%%     if
+%%         %% This is myKey, found!
+%%         MyKey =:= Key ->
+%%             ?L(),
+%%             {reply, {ok, self(), MyKey, MyValue}, State};
+%%         MyKey < Key ->
+%%             ?L(),
+%%             {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
+%%         true ->
+%%             ?L(),
+%%             {reply, search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key), State}
+%%     end;
 
 handle_call({insert, Key, Value}, _From, State) ->
     ?L(),
@@ -412,6 +417,37 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
                     end
             end
     end.
+
+%%--------------------------------------------------------------------
+%%  Search operation
+%%    Search operation never change the State
+%%--------------------------------------------------------------------
+search_op_call(State, ReturnToMe, Level, Key) ->
+    SearchLevel = case Level of
+                      [] ->
+                          length(State#state.right) - 1; %% Level is 0 origin
+                      _ -> Level
+                  end,
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    if
+        %% This is myKey, found!
+        MyKey =:= Key ->
+            ?L(),
+            {ok, self(), MyKey, MyValue};
+        MyKey < Key ->
+            search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key);
+        true ->
+            search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key)
+    end.
+
+%%--------------------------------------------------------------------
+%%  Range Search operation
+%%--------------------------------------------------------------------
+range_search_op_call(State, Key1, Key2, Limit) ->
+%    gen_server:call({ok, self(), MyKey, MyValue}),
+    ok.
+
 
 %%--------------------------------------------------------------------
 %%  Insert operation
