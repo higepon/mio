@@ -77,8 +77,18 @@ start_link(Args) ->
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
 
+%% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
+%% For this purpose, we do range search in this process, which is not node process.
 range_search_op(StartNode, Key1, Key2, Limit) ->
-    gen_server:call(StartNode, {range_search_op, Key1, Key2, Limit}).
+    {ok, ClosestNode, ClosestKey, ClosestValue} = search(StartNode, Key1),
+    if ClosestKey > Key2 ->
+            [];
+       ClosestKey =:= Key2 ->
+            [{ClosestNode, ClosestKey, ClosestValue}];
+       true ->
+            ReturnToMe = self(),
+            gen_server:cast(ClosestNode, {range_search_op_cast, ReturnToMe, Key1, Key2, [], Limit})
+    end.
 
 search(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search, ...) is Level.
@@ -147,31 +157,8 @@ handle_call(get_op, _From, State) ->
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     buddy_op_call(State, MembershipVector, Direction, Level);
 
-handle_call({range_search_op, Key1, Key2, Limit}, _From, State) ->
-    range_search_op_call(State, Key1, Key2, Limit);
-
 handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
     {reply, search_op_call(State, ReturnToMe, Level, Key), State};
-%%     SearchLevel = case Level of
-%%                       [] ->
-%%                           length(State#state.right) - 1; %% Level is 0 origin
-%%                       _ -> Level
-%%                   end,
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     ?LOGF("search_call: MyKey=~p searchKey=~p SearchLevel=~p~n", [MyKey, Key, SearchLevel]),
-%%     if
-%%         %% This is myKey, found!
-%%         MyKey =:= Key ->
-%%             ?L(),
-%%             {reply, {ok, self(), MyKey, MyValue}, State};
-%%         MyKey < Key ->
-%%             ?L(),
-%%             {reply, search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key), State};
-%%         true ->
-%%             ?L(),
-%%             {reply, search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key), State}
-%%     end;
 
 handle_call({insert, Key, Value}, _From, State) ->
     ?L(),
@@ -440,14 +427,6 @@ search_op_call(State, ReturnToMe, Level, Key) ->
         true ->
             search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key)
     end.
-
-%%--------------------------------------------------------------------
-%%  Range Search operation
-%%--------------------------------------------------------------------
-range_search_op_call(State, Key1, Key2, Limit) ->
-%    gen_server:call({ok, self(), MyKey, MyValue}),
-    ok.
-
 
 %%--------------------------------------------------------------------
 %%  Insert operation
