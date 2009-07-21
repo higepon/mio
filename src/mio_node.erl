@@ -84,7 +84,7 @@ range_search_op(StartNode, Key1, Key2, Limit) ->
     ?LOG(ClosestKey),
     if ClosestKey > Key2 ->
             [];
-       ClosestKey =:= Key2 ->
+       Key1 =< ClosestKey andalso ClosestKey =:= Key2 ->
             [{ClosestNode, ClosestKey, ClosestValue}];
        true ->
             ?L(),
@@ -281,7 +281,6 @@ handle_cast({range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State)
     ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    MyMVector = State#state.membership_vector,
     if Limit =:= 0 ->
             ?L(),
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
@@ -290,15 +289,15 @@ handle_cast({range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State)
             case right(State, 0) of
                 [] ->
                     ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
                 RightNode ->
                     ?L(),
                     gen_server:cast(RightNode,
-                                    {range_search_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyMVector} | Accum], Limit - 1})
+                                    {range_search_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
             end;
        Key1 =< MyKey andalso MyKey =:= Key2 ->
             ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+            ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
        MyKey < Key1 ->
             ?L(),
             case right(State, 0) of
