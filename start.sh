@@ -1,2 +1,2 @@
 #!/bin/bash
-erl -noshell -noinput -pa ebin mio -s mio start &
+erl -mio -noshell -noinput -pa ebin mio -s mio start -mio debug false &

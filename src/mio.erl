@@ -37,7 +37,12 @@
 %% top supervisor of the tree.
 %%--------------------------------------------------------------------
 start(_Type, StartArgs) ->
-    error_logger:tty(false),
+    %%application:get_env(App, Par)
+    {ok, IsDebugMode} = application:get_env(mio, debug),
+    if IsDebugMode =:= true -> [];
+       true ->
+            error_logger:tty(false)
+    end,
     error_logger:info_msg("mio application start\n"),
     mio_sup:start_link(),
     Pid = spawn(?MODULE, mio, [11121]),
