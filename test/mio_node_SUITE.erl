@@ -16,7 +16,7 @@
 
 
 init_per_suite(Config) ->
-%    error_logger:tty(false),
+    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),

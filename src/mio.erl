@@ -8,11 +8,15 @@
 -module(mio).
 
 -behaviour(application).
--export([start/0, mio/1, process_command/1]).
+-export([start/0, mio/1, process_command/2]).
 -import(mio).
 %% Application callbacks
 -export([start/2, stop/1]).
 %% Utility
+-define(SERVER, ?MODULE).
+-define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
+-define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
+-define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
 
 
 %% -export([start_link/1]).
@@ -33,13 +37,14 @@
 %% top supervisor of the tree.
 %%--------------------------------------------------------------------
 start(_Type, StartArgs) ->
+    error_logger:tty(false),
     error_logger:info_msg("mio application start\n"),
     mio_sup:start_link(),
     Pid = spawn(?MODULE, mio, [11121]),
     register(mio, Pid),
     {ok , Pid}.
 %%     {ok, register(mio, Pid)}.
-    
+
 
 %%    supervisor:start_child(mio_sup, []).
 %%     Pid = spawn(fun() -> process() end),
@@ -84,28 +89,29 @@ mio(Port) ->
         gen_tcp:listen(
           Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
     io:fwrite("< server listening ~p\n", [Port]),
-    mio_accept(Listen).
+    {ok, BootPid} = mio_sup:start_node(dummy, dummy, [1, 0]), %% todo mvector
+    mio_accept(Listen, BootPid).
 
-mio_accept(Listen) ->
+mio_accept(Listen, StartNode) ->
     {ok, Sock} = gen_tcp:accept(Listen),
     io:fwrite("<~p new client connection\n", [Sock]),
-    spawn(?MODULE, process_command, [Sock]),
-    mio_accept(Listen).
+    spawn(?MODULE, process_command, [Sock, StartNode]),
+    mio_accept(Listen, StartNode).
 
-process_command(Sock) ->
+process_command(Sock, StartNode) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             io:fwrite(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
             case Token of
                 ["get", Key] ->
-                    process_get(Sock, Key);
+                    process_get(Sock, StartNode, Key);
 %%                 ["get/s", Key1, Key2, Index, Limit] ->
 %%                     process_get_s(Sock, Key1, Key2, Index, Limit);
-%%                 ["set", Key, Flags, Expire, Bytes] ->
-%%                     inet:setopts(Sock,[{packet, raw}]),
-%%                     process_set(Sock, Key, Flags, Expire, Bytes),
-%%                     inet:setopts(Sock,[{packet, line}]);
+                ["set", Key, Flags, Expire, Bytes] ->
+                    inet:setopts(Sock,[{packet, raw}]),
+                    process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
+                    inet:setopts(Sock,[{packet, line}]);
 %%                 ["set/s", Key, Index, Flags, Expire, Bytes] ->
 %%                     inet:setopts(Sock,[{packet, raw}]),
 %%                     process_set_s(Sock, Key, list_to_atom(Index), Flags, Expire, Bytes),
@@ -115,18 +121,35 @@ process_command(Sock) ->
                 ["quit"] -> gen_tcp:close(Sock);
                 _ -> gen_tcp:send(Sock, "ERROR\r\n")
             end,
-            process_command(Sock);
+            process_command(Sock, StartNode);
         {error, closed} ->
             io:fwrite("<~p connection closed.\n", [Sock]);
         Error ->
             io:fwrite("<~p error: ~p\n", [Sock, Error])
     end.
 
-process_get(Sock, Key) ->
-    Value = list_to_binary("value1"),
+process_get(Sock, StartNode, Key) ->
+    Value = case mio_node:search(StartNode, Key) of
+                ng -> "";
+                {ok, FoundValue} -> FoundValue
+              end,
     gen_tcp:send(Sock, io_lib:format(
                          "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                          [Key, size(Value), Value])).
+
+process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
+    case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
+        {ok, Value} ->
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [1, 0]),
+            mio_node:insert_op(Introducer, NodeToInsert),
+            gen_tcp:send(Sock, "STORED\r\n");
+        {error, closed} ->
+            ok;
+        Error ->
+            io:fwrite("Error: ~p\n", [Error])
+    end,
+    gen_tcp:recv(Sock, 2).
+
 
 
 
