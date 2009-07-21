@@ -1,2 +1,2 @@
 #!/bin/bash
-erl --noshell -pa ebin mio -s mio start
+erl -noshell -noinput -pa ebin mio -s mio start
