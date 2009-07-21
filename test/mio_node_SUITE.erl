@@ -405,7 +405,12 @@ range_search_op(_Config) ->
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key8, 10),
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key7, 10),
     [{_, key5, value5}] = mio_node:range_search_op(Node3, key4, key8, 1),
+    [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key2, key8, 10),
     [{_, key5, value5}] = mio_node:range_search_op(Node9, key5, key5, 1),
+    [] = mio_node:range_search_op(Node3, key3, key9, 0),
+    %% Key1 should be greater equal than Key2
+    [] = mio_node:range_search_op(Node9, key5, key4, 1),
+
     ok.
 
 
