@@ -34,6 +34,7 @@ process_command(Sock) ->
                 ["get", Key] ->
                     process_get(Sock, Key);
                 ["get/s", Key1, Key2, Index, Limit] ->
+                    ?LOG(get/s),
                     process_get_s(Sock, Key1, Key2, Index, Limit);
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),

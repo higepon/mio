@@ -350,6 +350,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     if
         Level < 0 ->
             ?L(),
+            ?LOG(MyValue),
             {ok, self(), MyKey, MyValue};
         true ->
             ?L(),
