@@ -37,15 +37,18 @@
 %% top supervisor of the tree.
 %%--------------------------------------------------------------------
 start(_Type, StartArgs) ->
-    %%application:get_env(App, Par)
     {ok, IsDebugMode} = application:get_env(mio, debug),
-    if IsDebugMode =:= true -> [];
+    ?LOG(IsDebugMode),
+    if IsDebugMode =:= true ->
+            ?L(),
+            [];
        true ->
+            ?L(),
             error_logger:tty(false)
     end,
     error_logger:info_msg("mio application start\n"),
     mio_sup:start_link(),
-    Pid = spawn(?MODULE, mio, [11121]),
+    Pid = spawn(?MODULE, mio, [11211]),
     register(mio, Pid),
     {ok , Pid}.
 %%     {ok, register(mio, Pid)}.
@@ -112,6 +115,7 @@ process_command(Sock, StartNode) ->
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key);
                 ["get", "mio:range-search", Key1, Key2, Limit] ->
+                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_get_s(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
@@ -156,7 +160,9 @@ process_get_s(Sock, StartNode, Key1, Key2, Limit) ->
     ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
     Values = mio_node:range_search_op(StartNode, Key1, Key2, Limit),
     ?LOG(Values),
-    gen_tcp:send(Sock, process_values(Values)).
+    P = process_values(Values),
+    ?LOG(P),
+    gen_tcp:send(Sock, P).
 
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of

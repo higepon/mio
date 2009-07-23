@@ -415,6 +415,21 @@ range_search_op(_Config) ->
     ok.
 
 
+overwrite_value(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
+
+    {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
+    ok = mio_node:insert_op(Node3, Node3),
+    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node9, Node5),
+    ok = mio_node:insert_op(Node7, Node9),
+    ok = mio_node:insert_op(NewNode3, Node9),
+    {ok, new_value3} = mio_node:search(Node9, key3),
+    ok.
+
 
 
 all() ->
@@ -436,7 +451,8 @@ all() ->
      insert_op_two_nodes_3,
      insert_op_three_nodes,
      insert_op_many_nodes,
-     range_search_op
+     range_search_op,
+     overwrite_value
      ].
 
 %%--------------------------------------------------------------------

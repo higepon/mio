@@ -162,6 +162,9 @@ handle_call({insert_op, Introducer}, _From, State) ->
 handle_call(get_op, _From, State) ->
     get_op_call(State);
 
+handle_call({set_op, NewValue}, _From, State) ->
+    set_op_call(State, NewValue);
+
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     buddy_op_call(State, MembershipVector, Direction, Level);
 
@@ -426,6 +429,9 @@ set_left(State, Level, Node) ->
 get_op_call(State) ->
     {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}, State}.
 
+set_op_call(State, NewValue) ->
+    {reply, ok, State#state{value=NewValue}}.
+
 buddy_op_call(State, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     ?LOG(Found),
@@ -482,6 +488,7 @@ search_op_call(State, ReturnToMe, Level, Key) ->
 %%   These issued op should not be circular.
 insert_op_call(State, Introducer) ->
     MyKey = State#state.key,
+    MyValue = State#state.value,
     if
         %% there's no buddy
         Introducer =:= self() ->
@@ -490,30 +497,35 @@ insert_op_call(State, Introducer) ->
             {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
             ?LOG(MyKey),
             ?LOG(NeighBorKey),
-            LinkedState = if
-                              NeighBorKey < MyKey ->
-                                  {_, _, _, _, NeighborRight} = gen_server:call(Neighbor, get_op),
-                                  link_right_op(Neighbor, 0, self()),
-                                  case node_on_level(NeighborRight, 0) of
-                                      [] -> [];
-                                      X -> link_left_op(X, 0, self())
+            if NeighBorKey =:= MyKey ->
+                    ok = gen_server:call(Neighbor, {set_op, MyValue}),
+                    {reply, ok, State};
+               true ->
+                    LinkedState = if
+                                      NeighBorKey < MyKey ->
+                                          {_, _, _, _, NeighborRight} = gen_server:call(Neighbor, get_op),
+                                          link_right_op(Neighbor, 0, self()),
+                                          case node_on_level(NeighborRight, 0) of
+                                              [] -> [];
+                                              X -> link_left_op(X, 0, self())
+                                          end,
+                                          set_right(set_left(State, 0, Neighbor), 0, node_on_level(NeighborRight, 0));
+                                      true ->
+                                          ?LOG(link_level_0),
+                                          {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),
+                                          link_left_op(Neighbor, 0, self()),
+                                          case node_on_level(NeighborLeft, 0) of
+                                              [] -> [];
+                                              X -> link_right_op(X, 0, self())
+                                          end,
+                                          set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
                                   end,
-                                  set_right(set_left(State, 0, Neighbor), 0, node_on_level(NeighborRight, 0));
-                              true ->
-                                  ?LOG(link_level_0),
-                                  {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),
-                                  link_left_op(Neighbor, 0, self()),
-                                  case node_on_level(NeighborLeft, 0) of
-                                      [] -> [];
-                                      X -> link_right_op(X, 0, self())
-                                  end,
-                                  set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
-                          end,
-            ?LOG(LinkedState),
-            MaxLevel = length(LinkedState#state.right) - 1,
-            %% link on level > 0
-            ReturnState = insert_loop(1, MaxLevel, LinkedState),
-            {reply, ok, ReturnState}
+                    ?LOG(LinkedState),
+                    MaxLevel = length(LinkedState#state.right) - 1,
+                    %% link on level > 0
+                    ReturnState = insert_loop(1, MaxLevel, LinkedState),
+                    {reply, ok, ReturnState}
+            end
     end.
 
 insert_loop(Level, MaxLevel, LinkedState) ->
