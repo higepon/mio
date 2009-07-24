@@ -8,7 +8,7 @@ my $m = Cache::Memcached->new( { servers => ['localhost:11211']} );
 $m->set( "hello" => "world" );
 $m->set( "hi" => "japan" );
 
-warn $m->get("hello");
+warn $m->get("helllo");
 warn $m->get("hi");
 
 ## Cache::Memcached::Fast

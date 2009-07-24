@@ -430,6 +430,13 @@ overwrite_value(_Config) ->
     {ok, new_value3} = mio_node:search(Node9, key3),
     ok.
 
+search_not_found(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    ok = mio_node:insert_op(Node3, Node3),
+    ok = mio_node:insert_op(Node5, Node3),
+    ng =  mio_node:search(Node5, key4),
+    ok.
 
 
 all() ->
@@ -438,6 +445,7 @@ all() ->
      get_call,
      dump,
      search_call,
+     search_not_found,
      search_level2_simple,
      search_level2_1,
      search_level2_2,
