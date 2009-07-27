@@ -8,13 +8,16 @@
 
 ;; we assume utf8
 (define (memcached-string-set! conn key value)
-  (memcached-set! conn key 0 0 (string->utf8 value)))
+  (let-values (([port get] (open-bytevector-output-port)))
+    (fasl-write value port)
+    (memcached-set! conn key 0 0 (get))))
 
 (define (memcached-string-get conn key)
-  (utf8->string (memcached-get conn key)))
+  (fasl-read (open-bytevector-input-port (memcached-get conn key))))
 
 (define (memcached-string-gets conn . key*)
-  (map (lambda (key-value) (cons (car key-value) (utf8->string (cdr key-value))))
+  (map (lambda (key-value) (cons (car key-value)
+                            (fasl-read (open-bytevector-input-port (cdr key-value)))))
        (apply memcached-gets conn key*)))
 
 (let ([conn (memcached-connect "localhost" "11211")])
@@ -22,9 +25,11 @@
   (memcached-string-set! conn "Hello" "World!")
   (memcached-string-set! conn "Hi" "Japan!")
   (memcached-string-set! conn  "Hige" "pon")
+  (memcached-string-set! conn  "my" '(name is higepon))
   (test-equal "World!" (memcached-string-get conn "Hello"))
   (test-equal "Japan!" (memcached-string-get conn "Hi"))
   (test-equal "pon" (memcached-string-get conn "Hige"))
+  (test-equal '(name is higepon) (memcached-string-get conn "my"))
   (test-equal '(("Hello" . "World!") ("Hi" . "Japan!")) (memcached-string-gets conn "mio:range-search" "He" "Hi" "50"))
 )
 (test-results)
