@@ -1,0 +1,321 @@
+/* Copyright 2009 FriendFeed */ body{background:url("/static/images/gradient.png?v=e460") repeat-x top;background-color:#aaa;color:black;margin:0}
+body,input,textarea,select,option,button,th,td{font-family:Arial,sans-serif;font-size:15px}
+body.fbiframe,.fbiframe input,.fbiframe textarea,.fbiframe select,.fbiframe option,.fbiframe button,.fbiframe th,.fbiframe td{font-family:"lucida grande",tahoma,verdana,arial,sans-serif;font-size:12px}
+div,table,form,th,td,img,h1,h2,h3,h4,fieldset{padding:0;margin:0;border:0}
+a{color:#0000cc;text-decoration:none}
+a:hover{text-decoration:underline}
+a.selected{color:black;font-weight:bold}
+a.selected:hover{text-decoration:none}
+table{border-collapse:collapse}
+td,th{text-align:left;vertical-align:middle}
+textarea{overflow:auto;resize:none}
+p{margin:0;margin-bottom:15px}
+img{-ms-interpolation-mode:bicubic}
+/* Common design elements */ img.picture{border:1px solid #ccc}
+img.picture.small{width:25px;height:25px}
+img.picture.medium{width:50px;height:50px}
+img.picture.large{width:75px;height:75px}
+img.picture.xlarge{width:100px;height:100px}
+div.textbox,textarea,input.textbox{border:1px solid #b4b4b4;border-top-color:#727272;border-bottom-color:#dadada;background:url("/static/images/textbox-bg.png?v=412a") repeat-x top;background-color:white;padding:3px}
+div.textbox input,div.textbox textarea{width:100%;padding:0;border:0;background:white;outline-color:-moz-use-text-color;outline-style:none;outline-width:0px}
+span.searchbold{font-weight:bold;color:black}
+table.form td{padding-bottom:8px}
+table.form td.label{padding-right:9px}
+table.form td.buttons{padding-top:4px}
+textarea.blur,input.blur{color:silver;text-decoration:none}
+#alertmessage{z-index:2}
+.infomessage,#infomessage,#errormessage{padding:8px;font-weight:bold;border:1px solid}
+.infomessage,#infomessage{background-color:#fdedc1;border-color:#fad163}
+#errormessage{border-color:#d74848;background-color:#feb8b8}
+.errortext{color:#cc0000}
+.g{color:#737373}
+/* Page/boxes */ .box .box-top,.box .box-bottom,.box .box-corner{background-image:url("/static/images/box-gray.png?v=0dab");background-repeat:no-repeat}
+.box .box-top,.box .box-bottom{margin-left:10px}
+.box .box-corner{background-position:top left;margin-left:-10px;width:10px;float:left;display:inline}
+.box .box-top .box-spacer,.box .box-top .box-corner{height:10px}
+.box .box-bottom .box-spacer,.box .box-bottom .box-corner{height:10px}
+.box .box-top{background-position:top right}
+.box .box-bottom{background-position:bottom right}
+.box .box-bottom .box-corner{background-position:bottom left;}
+.box .box-body{background:#eee;padding-top:15px;padding-left:25px;padding-right:25px}
+.box.white .box-top,.box.white .box-bottom,.box.white .box-corner{background-image:url("/static/images/box-white.png?v=fd1f")}
+.box.white .box-body{background:white}
+.box .box-bar,.box .box-bar .box-corner{background-repeat:no-repeat}
+.box .box-bar{margin-left:10px;background-position:top right}
+.box .box-bar .box-corner{background-position:top left}
+.box .box-bar .box-bar-text,.box .box-bar .box-bar-text a{color:white}
+.box .box-bar .box-bar-text{padding-left:5px;padding-right:7px;line-height:28px;height:28px}
+.box .box-bar .box-corner{height:28px}
+.box-bar-text .title{font-weight:bold}
+.box .box-bar,.box .box-bar .box-corner{background-image:url("/static/images/bar-home.png?v=05a7")}
+.box .box-bar.friends,.box .box-bar.friends .box-corner{background-image:url("/static/images/bar-friends.png?v=b42c")}
+.box .box-bar.groups,.box .box-bar.groups .box-corner{background-image:url("/static/images/bar-groups.png?v=7d74")}
+.box .box-bar.search,.box .box-bar.search .box-corner{background-image:url("/static/images/bar-search.png?v=1012")}
+/* Chrome */ #container{margin:auto;width:961px;width:auto !important;max-width:961px;padding:20px;padding-top:10px}
+#container.nosidebar{width:755px;width:auto !important;max-width:755px}
+#header{padding-bottom:10px}
+#header .logo{line-height:0;padding-left:10px;padding-right:25px}
+#header #extralinks{font-family:"Lucida Grande",Tahoma,Verdana;font-size:11px;padding-left:10px}
+#sidebar{width:185px;float:right;display:inline}
+#body{margin-right:210px}
+#container.nosidebar #body{margin-right:0}
+#body .box-bar-text .control{float:right;padding-left:15px}
+#realtimectl{line-height:0;padding-top:5px}
+#realtimectl .l_realtimepause{background:url("/static/images/nano-pause.png?v=afc6") no-repeat bottom right;width:18px;height:18px;cursor:pointer}
+#realtimectl .l_realtimepause.paused{background-image:url("/static/images/nano-play.png?v=be16")}
+#sidebar .box .box-body{padding-top:10px;padding-left:15px;padding-right:15px;padding-bottom:3px}
+#sidebar .box .footer,#sidebar .box .emptymessage{color:#737373;font-size:11px;font-family:"Lucida Grande",Tahoma,Verdana}
+#sidebar .box .footer{padding-top:10px}
+#sidebar .box .emptymessage a,#sidebar .box .footer a{color:#77c}
+#sidebar .box ul{list-style-type:none;margin:0;padding:0}
+#sidebar .box ul li{padding-bottom:3px;white-space:nowrap;overflow:hidden}
+#sidebar .box .section{border-bottom:1px solid #ccc;margin-bottom:11px;padding-bottom:8px}
+#sidebar .box .updated{font-family:"Lucida Grande",Tahoma,Verdana;font-size:11px;line-height:11px;color:#888;padding-bottom:1px}
+#sidebar .box,#sidebar #profile{margin-bottom:23px}
+#sidebar #profile td{vertical-align:top}
+#sidebar #profile td.image{line-height:0;padding-right:8px}
+#sidebar #profile .name{font-weight:bold;margin-bottom:2px}
+#sidebar #profile img.picture{border-color:#aaa}
+#sidebar .box a.unread{font-weight:bold}
+#sidebar .box .box-bar .edit{float:right;display:none}
+#sidebar .box:hover .box-bar .edit{display:inline}
+#footer{padding-left:10px;padding-top:10px}
+#footer,#footer select{color:#444}
+.l_deliveryoptions{padding-right:10px;background:url("/static/images/white-arrow.png?v=198e") no-repeat right center}
+.subbar{padding:5px;padding-left:15px;padding-right:15px}
+.subbarcontainer .subbar{margin-left:4px;margin-right:4px;-moz-border-radius-bottomleft:4px;-moz-border-radius-bottomright:4px;-webkit-border-bottom-left-radius:4px;-webkit-border-bottom-right-radius:4px}
+.subbar.home{background-color:#c0d7f3}
+.subbar.friends{background-color:#c0e49f}
+.subbar.groups{background-color:#f2ca9c}
+.subbar.search{background-color:#ffaaaa}
+#signuppromo{background-color:#eee;-moz-border-radius:10px;-webkit-border-radius:10px;padding:25px;padding-right:15px;padding-top:10px;padding-bottom:10px;margin-bottom:20px;margin-top:5px}
+#container.nosidebar #searchform .textbox{width:180px}
+#dialog{background-color:white;padding:15px;-webkit-border-radius:10px;-moz-border-radius:10px}
+#dialog .buttons{margin-top:15px}
+#dialog .buttons input.save{font-weight:bold}
+#dialog .buttons a.l_closedialog{margin-left:7px}
+.popupmenu{z-index:10000;border:1px solid gray;background-color:white;padding:3px}
+.popupmenu .item{padding:1px}
+/* Feed */ #feed{margin-top:-14px}
+.pager a{margin-right:15px}
+.entry{line-height:19px;/* necessary to prevent font-shifting with realtime */}
+.fbiframe .entry{line-height:16px;/* necessary to prevent font-shifting with realtime */}
+.entry.small{line-height:17px;/* necessary to prevent font-shifting with realtime */ font-size:13px}
+.fbiframe .entry.small{line-height:14px;/* necessary to prevent font-shifting with realtime */ font-size:11px}
+.sharebox,.entry,.pager.top{padding-bottom:14px;border-bottom:1px solid #eee}
+.entry{padding-top:14px}
+.sharebox,.pager.top{margin-bottom:14px}
+.pager.bottom{margin-top:14px}
+.entry.large{padding-bottom:0;border-bottom:0;margin-bottom:0}
+.entry.small{padding-bottom:10px;padding-top:10px}
+.entry .profile{float:left;line-height:0}
+.entry .body{margin-left:63px}
+.entry.large .body{margin-left:88px}
+.entry.small .body{margin-left:34px}
+.entry.large .title{font-size:21px;line-height:normal}
+.entry.nopicture .body{margin-left:0}
+.entry .clear{clear:left}
+.entry .fof{margin-left:1px;margin-bottom:7px;color:#737373;font-style:italic}
+.entry .fof a{color:#737373;font-weight:bold}
+.entry .title .name{margin-bottom:2px}
+.entry .title .name a.l_profile{font-weight:bold}
+.entry .info,.entry .likes,.entry .comments,.entry .info a.date,.entry .info a.service,.entry .comments a.via,.entry .commentform textarea{font-size:13px;line-height:16px;/* necessary to prevent font-shifting with realtime */ color:#666}
+.fbiframe .entry .info,.fbiframe .entry .likes,.fbiframe .entry .comments,.fbiframe .entry .info a.date,.fbiframe .entry .info a.service,.fbiframe .entry .comments a.via,.fbiframe .entry .commentform textarea{font-size:11px;line-height:15px;/* necessary to prevent font-shifting with realtime */}
+.entry.private .info,.entry.direct .info{padding-left:16px;background-position:left center;background-repeat:no-repeat}
+.entry.private .info{padding-left:14px;background-image:url("/static/images/lock.png?v=7e91")}
+.entry.direct .info{background-image:url("/static/images/direct-small.png?v=9e5a")}
+.entry input{font-size:14px}
+.fbiframe .entry input{font-size:11px}
+.entry .info a,.entry .likes a,.entry .comment a,.entry .expandcomment a{color:#7777cc}
+.entry .likes,.entry .expandcomment,.entry .comment,.entry .commentform,.entry .clusterlink{margin-top:8px}
+.entry .commentform textarea{width:95%;height:18px}
+.entry.large .commentform textarea{height:35px}
+.entry .commentform .buttons{margin-top:2px}
+.entry .commentform .l_cancelcomment{margin-left:7px}
+.entry .commentform .buttons{width:95%}
+.entry .commentform .ccount{float:right;margin-right:-5px}
+.entry .commentform .ccount span{color:black}
+.entry .info{margin-top:2px}
+#page .entry a.main{padding:0;margin:0}
+.entry .likes{background:url("/static/images/smile.png?v=4b9a") no-repeat top left}
+.entry .comment,.entry .commentform{background:url("/static/images/comment-unknown.png?v=8733") no-repeat top left}
+.entry .comment.deleted,.entry .comment.friend,.entry .comment.owner,.entry .commentform{background-image:url("/static/images/comment.png?v=d534")}
+.entry .comment.new{background-image:url("/static/images/comment-new.png?v=e406")}
+.entry .likes,.entry .expandcomment,.entry .commentform,.entry .comment.deleted{padding-left:21px}
+.entry .comment .content{margin-left:21px}
+.entry .comment .quote{display:inline;float:left;height:16px;width:16px}
+.entry .expandcomment{font-style:italic}
+.entry .media{line-height:0;margin-top:5px;margin-bottom:5px;overflow:hidden;position:relative}
+.entry.large .media{margin-top:10px}
+.entry .media .container{position:relative}
+.entry .media img{border:1px solid silver;padding:1px;margin-right:8px;vertical-align:middle}
+.entry .media div.l_play{position:absolute;z-index:50;cursor:pointer}
+.entry .media div.l_play img{border:0;padding:0}
+.entry .media a.l_audio{display:block;width:81px;height:28px;background:url("/static/images/audioplay.png?v=d731") no-repeat}
+.entry .media a.l_audio:hover{background:url("/static/images/audioplay-hover.png?v=99fe") no-repeat}
+.entry .media td.more img{border:0}
+.entry .hiddencomments{display:none}
+.entry.nopicture .comments,.entry.nopicture .likes{margin-left:16px}
+.hidetoggle{margin-top:14px;margin-bottom:14px}
+.l_togglehide{padding-left:12px;background:url("/static/images/arrow-collapsed.png?v=3328") left center no-repeat}
+.hiddenentries{display:none}
+.entry .info .l_editentry{background:url("/static/images/menut.png?v=a61a") no-repeat right center;padding-right:8px}
+.entry.hidemore,.entry.deleted{padding-left:63px}
+.entry.hidemore .title{font-style:italic}
+.entry.hidemore .list{margin:15px}
+.entry.hidemore .list label.l_checkboxhide{padding-left:30px}
+.entry.hidemore .hideexplain{margin:10px}
+.entry.hidemore .list label.disabled{color:#737373}
+.entry .editentryform .edittitle{height:36px}
+.entry .editentryform .actions{margin-top:3px}
+.entry .file,.sharebox .file{margin-top:3px;margin-bottom:3px}
+.entry .file a,.sharebox .file a{padding-left:20px;background:url("/static/images/filetypes/default.png?v=a311") no-repeat left center}
+.sharebox .file a.l_removefile{padding:0;background:none;color:#77c}
+.entry .file .filesize,.sharebox .file .filesize{font-size:11px;color:#999;padding-left:3px}
+.feedformats{margin-top:32px}
+.feedformats img{margin-left:5px;vertical-align:middle}
+/* Share box */ .sharebox div.title,.sharebox div.photo{margin-bottom:4px}
+.sharebox div.to{padding-bottom:4px}
+.sharebox .to table,.sharebox .to td.tobody{width:100%}
+.sharebox span.add{margin-left:7px}
+.sharebox .title textarea{height:30px}
+.sharebox .ops table{width:100%}
+.sharebox .button table{width:auto;margin-left:auto}
+.sharebox .to,.sharebox .ccbody{display:none}
+.sharebox.expanded .to,.sharebox.expanded .ccbody{display:block}
+.sharebox .ccbox input{margin:0;padding:0}
+.sharebox .ccbox{line-height:0}
+.sharebox .cclabel{padding-right:10px;padding-left:4px}
+.sharebox .ccmain{padding-right:6px}
+.sharebox .post{padding-left:4px}
+.sharebox .post input{font-weight:bold}
+.sharebox div.progress td{padding-bottom:8px}
+.sharebox div.thumbnails img{border:1px solid silver;padding:1px;margin-bottom:8px;margin-right:8px}
+.sharebox .progress .name{padding-right:8px}
+.sharebox .progress .pbar{width:100px;background-color:white;border:1px solid silver}
+.sharebox .progress .pbar .percentage{height:7px;background-color:#2e972e}
+.sharebox .progress .loading{padding-left:8px}
+.sharebox .progress .message{padding-left:3px;font-size:11px}
+.sharebox .progress .error .message{color:#cc0000}
+.sharebox .ccremaining{color:#777}
+.sharedialog{width:550px}
+/* Share auto-complete */ * html ul.l_tolist,*:first-child+html ul.l_tolist{padding-bottom:2px}
+ul.l_tolist{margin:0;border:1px solid white;padding:3px 3px 0;height:auto !important;height:1%;overflow:hidden;position:relative}
+ul.l_tolist.active{border:1px solid #b4b4b4;border-top-color:#727272;border-bottom-color:#dadada;background:url("/static/images/textbox-bg.png?v=412a") repeat-x top;background-color:white;cursor:text}
+li.l_tocard,.l_toinput,.ac_results li{font-size:14px}
+li.l_tocard,.l_toinput,.ac_results li{font-size:14px}
+.fbiframe li.l_tocard,.fbiframe .l_toinput,.fbiframe .ac_results li{font-size:11px}
+.fbiframe li.l_tocard,.fbiframe .l_toinput,.fbiframe .ac_results li{font-size:11px}
+ul.l_tolist li{float:left;margin:0 4px 3px 0;list-style-type:none}
+ul.l_tolist li.l_tocard{border-radius:6px;-moz-border-radius:6px;-webkit-border-radius:6px;border:1px solid #ccc;background:#eee;padding:1px 4px 2px 16px;cursor:default;background-image:url("/static/images/lock-trans.png?v=8fe8");background-repeat:no-repeat;background-position:3px center}
+ul.l_tolist li.spacer{float:right;height:14px;border-top:1px solid white;border-bottom:1px solid white;padding-top:6px}
+ul.l_tolist li.l_tocard.public{padding-left:5px;background:#eee}
+.l_toinput{border:medium none;margin:0px;outline-color:-moz-use-text-color;outline-style:none;outline-width:0px;padding:3px 0px 2px;width:150px;cursor:default}
+.l_tolist.active .l_toinput{cursor:text}
+ul.l_tolist li.l_tocard .l_toremove{width:8px;height:7px}
+.sharebox div.to li.addedit a{display:none;margin-left:4px}
+.sharebox div.to:hover li.addedit a{display:inline}
+.sharebox div.to:hover ul.l_tolist.active li.addedit a{display:none}
+ul.l_tolist li.l_tocard .l_toremove{cursor:pointer}
+.ac_results{padding:0px;border:1px solid #aaa;background-color:#eee;overflow:hidden;z-index:1000000}
+.ac_results ul{width:100%;list-style-position:outside;list-style:none;padding:0;margin:0}
+.ac_results li{margin:0px;padding:2px 5px;cursor:default;display:block;line-height:16px;overflow:hidden;white-space:nowrap}
+.ac_over{background-color:#c3d9ff}
+.ac_picture{vertical-align:middle;margin-right:4px}
+/* User/feed profile pages */ .profile .header,.subview .header{padding-bottom:16px;border-bottom:1px solid #eee;margin-bottom:16px}
+.profile.withbar .header,.subview.withbar .header{border-bottom:0;padding-bottom:0}
+.profile .header h1,.subview .header h1{font-size:24px}
+.profile .header h1 a.name{color:black}
+.profile .header h1 a{text-decoration:none}
+.profile .header h1 a.l_editprofile{margin-left:5px;font-size:15px;font-weight:normal}
+.profile .header .description,.profile .header .servicespreview,.profile .header .editprofile,.profile .header .servicespromo{margin-top:4px}
+.servicespreview img.icon{vertical-align:middle;margin-right:4px}
+.servicespromo a{padding-left:63px;background:url("/static/images/servicepromo.png?v=d8b9") no-repeat left center}
+.profile .header .stats{float:right;text-align:right;margin-left:25px;margin-right:1px;white-space:nowrap}
+.profile .header .stats div{margin-bottom:1px}
+.profile .header .profile{float:left;line-height:0}
+.profile .header .clear{clear:left}
+.profile .header .body{margin-left:90px}
+.subbarcontainer,.profile .subscribe,.subview .subscribe{margin-bottom:19px}
+.subscribebar{border:1px solid #2f72c4;background:url("/static/images/shine.png?v=6f3b") repeat-x top;background-color:#2f72c4;-moz-border-radius:4px;-webkit-border-radius:4px;padding:4px;padding-left:10px;padding-right:10px;white-space:nowrap;color:white}
+.subscribebar a,.subscribebar .g{color:white}
+.subscribebar .control{float:right}
+.profile .subscribebar .l_feedinvite{background:url("/static/images/mail-nano.png?v=1f0b") no-repeat left center;padding-left:19px}
+.topbar{margin-bottom:21px}
+button.fancy{-moz-border-radius:12px;-webkit-border-radius:12px;border:1px solid #2f72c4;background:url("/static/images/button-shine.png?v=d64f") repeat-x top;background-color:#2f72c4;color:white;padding:2px;padding-left:10px;padding-right:10px;cursor:pointer}
+#signuppromo button{font-weight:bold;border-color:#da8319;background-color:#da8319;font-size:18px;white-space:nowrap}
+.profile .subscribe .block{float:right;padding-top:3px}
+.profile .subscribe .stats,.subview .subscribe .stats{color:#737373;font-size:14px;padding-left:10px}
+/* Profile popup */ #popup{visibility:hidden;position:absolute;z-index:900;padding-top:4px}
+#popupshadow{visibility:hidden;position:absolute;background-color:black;-moz-border-radius:10px;-webkit-border-radius:10px;opacity:0.5;z-index:899;filter:alpha(opacity=50)}
+img.dimmed{opacity:0.5;filter:alpha(opacity=50)}
+#popup .profilepopup{background-color:#eee;border:1px solid #ccc;padding:10px;-moz-border-radius:10px;-webkit-border-radius:10px}
+#popup .profilepopup td{vertical-align:top}
+#popup .profilepopup td.profile{line-height:0;width:87px}
+#popup .profilepopup td.body{width:220px}
+#popup .profilepopup .name{white-space:nowrap}
+#popup .profilepopup .name a{font-weight:bold}
+#popup .profilepopup .description{margin-top:1px}
+#popup .profilepopup .servicespreview,#popup .profilepopup .servicespromo{margin-top:4px}
+#popup .profilepopup .bottom{padding-top:12px;width:282px}
+/* Delivery options */ .deliveryoptions .cb input{margin:0;padding:0}
+.deliveryoptions td{white-space:nowrap}
+.deliveryoptions td.label,.deliveryoptions td.cb{padding-right:5px}
+.deliveryoptions td.option{padding-right:10px}
+/* Subscription grids */ .usergrid td{vertical-align:top;padding-right:10px;padding-bottom:10px;font-size:11px;text-align:center}
+.usergrid td.last{padding-right:0}
+.usergrid div{width:77px;overflow:hidden}
+.usergrid a{color:#737373}
+.streampager{margin-top:1em}
+.moderategrid td{vertical-align:top}
+.moderategrid td.cell{padding-right:15px;padding-bottom:15px}
+.moderategrid td.cell.last{padding-right:0}
+.moderategrid td.picture{padding-right:7px;line-height:0}
+.moderategrid td.body{width:100px}
+.moderategrid div.action{font-size:14px;margin-top:1px}
+.moderategrid div.name{white-space:nowrap;overflow:hidden;width:100px}
+.moderategrid .action a{color:#7777cc}
+/* Friend chooser */ .streamchooser{width:690px}
+.streamchooser .title{margin-bottom:10px}
+.streamchooser h2{font-size:21px}
+.streamchooser .instructions{margin-top:3px}
+.streamchooser .filters{background:#e2e2e2;border:1px solid #ccc;border-bottom:0;padding:2px;padding-left:5px;padding-right:10px;-moz-border-radius-topleft:5px;-moz-border-radius-topright:5px;-webkit-border-top-left-radius:5px;-webkit-border-top-right-radius:5px}
+.streamchooser .searchbox{margin-left:0px;margin-bottom:10px}
+.streamchooser .choices{border:1px solid #ccc;overflow:auto;height:339px;padding:3px}
+.streamchooser .buttons{margin-left:5px;margin-top:10px;margin-right:7px}
+.streamchooser .searchbox input.textbox{width:300px}
+.streamchooser .l_streamchoice{float:left;width:160px;height:68px;overflow:hidden;cursor:pointer;-moz-user-select:none}
+.streamchooser .l_streamchoice .body{border:1px solid white;-moz-border-radius:4px;-webkit-border-radius:4px;padding:5px;margin:2px;overflow:hidden}
+.streamchooser .l_streamchoice:hover .body{border-color:#e0e0e0;background-color:#f4f4f4}
+.streamchooser .l_streamchoice.selected .body,.streamchooser .l_streamchoice.selected:hover .body{border-color:#93baeb;background-color:#c4d9f4}
+.streamchooser .l_streamchoice.selected .body img.picture{border-color:#93baeb}
+.streamchooser .l_streamchoice td{vertical-align:top}
+.streamchooser .l_streamchoice td.photo{line-height:0;padding-right:5px}
+.streamchooser .l_streamchoice .nickname{margin-top:1px;font-size:11px;color:#737373;white-space:nowrap}
+.sharedmsg{position:fixed;top:2px;right:2px;padding:4px 8px 4px 8px}
+/* Feed creation form */ table.form table.feedoptions td{padding:0}
+table.form table.feedoptions input{padding:0;margin:0}
+table.form table.feedoptions .radio{padding-right:5px}
+table.form table.feedoptions .optionname{font-weight:bold}
+table.form table.feedoptions .optionname,table.form table.feedoptions .radio{padding-top:7px}
+table.form table.feedoptions .desc{color:#737373;font-size:11px}
+/* Notification dialogs */ .notifydialog h3{font-size:18px;margin-bottom:5px}
+.notifydialog .instructions{margin-bottom:10px;width:400px}
+.notifydialog table.emails td{padding-bottom:0.5em;vertical-align:middle;white-space:nowrap}
+.notifydialog table.emails td.emailaddress{font-weight:bold}
+.notifydialog table.emails td.unverified{color:gray}
+.notifydialog table.emails td.info{padding-left:1em}
+.notifydialog table.emails span.primary{color:#428f36;font-weight:bold}
+.notifydialog table.emails span.delete{padding-right:1em}
+.notifydialog table.emails td.info img{vertical-align:middle;width:16px;height:16px}
+/* About-style tabbed pages,need prettifying */ div.tabs{margin-bottom:18px}
+div.tabs a{padding-right:10px}
+/* Copyright 2009 FriendFeed */ .box .box-bar{margin-left:0;margin-right:0;-moz-border-radius-topleft:10px;-moz-border-radius-topright:10px;-webkit-border-top-left-radius:10px;-webkit-border-top-right-radius:10px}
+#realtimectl{padding-top:4px}
+.box .box-bar .box-bar-text{padding-left:14px;padding-right:6px;line-height:26px;height:auto}
+.box .box-bar .box-corner,.box .box-bar.friends .box-corner,.box .box-bar.groups .box-corner,.box .box-bar.search .box-corner{background:none;display:none}
+.box .box-bar,.box .box-bar.friends,.box .box-bar.groups,.box .box-bar.search{background:url("/static/images/shine.png?v=6f3b") repeat-x top;border:1px solid #2f72c4;background-color:#2f72c4}
+.box .box-bar.friends{border-color:#6fac38;background-color:#6fac38}
+.box .box-bar.groups{border-color:#da8319;background-color:#da8319}
+.box .box-bar.search{border-color:#d74848;background-color:#d74848}
+
