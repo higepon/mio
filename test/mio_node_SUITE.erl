@@ -16,7 +16,7 @@
 
 
 init_per_suite(Config) ->
-    error_logger:tty(false),
+%    error_logger:tty(false),
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),
@@ -415,12 +415,15 @@ range_search_op(_Config) ->
     [] = mio_node:range_search_op(Node3, key1, key2, 10),
     %% Key1 should be greater equal than Key2
     [] = mio_node:range_search_op(Node9, key5, key4, 1),
-%    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_gt_op(Node3, key3, 10),
     ok.
 
 range_search_gt_op(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
 
+    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_gt_op(Node3, key3, 10),
+    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_gt_op(Node5, key3, 10),
+    [{_, key5, value5}] = mio_node:range_search_gt_op(Node5, key3, 1),
+    [] = mio_node:range_search_gt_op(Node5, keyA, 10),
     ok.
 
 overwrite_value(_Config) ->

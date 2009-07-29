@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump/2, node_on_level/2]).
+-export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, range_search_gt_op/3, insert_op/2, dump/2, node_on_level/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -76,6 +76,20 @@ start_link(Args) ->
 
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
+
+range_search_gt_op(StartNode, Key, Limit) ->
+    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
+    ?LOG(ClosestKey),
+    ReturnToMe = self(),
+    gen_server:cast(ClosestNode, {range_search_gt_op_cast, ReturnToMe, Key, [], Limit}),
+    receive
+        {range_search_accumed, Accumed} ->
+            ?LOG(Accumed),
+            Accumed
+    after 1000 ->
+            [timeout]
+    end.
+
 
 %% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
 %% For this purpose, we do range search in this process, which is not node process.
@@ -315,7 +329,43 @@ handle_cast({range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State)
             ?L(),
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
     end,
+    {noreply, State};
+
+handle_cast({range_search_gt_op_cast, ReturnToMe, Key, Accum, Limit}, State) ->
+    ?L(),
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    ?LOGF("Key=~p MyKey=~p", [Key, MyKey]),
+    if Limit =:= 0 ->
+            ?L(),
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+       Key < MyKey ->
+            ?L(),
+            case right(State, 0) of
+                [] ->
+                    ?L(),
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
+                RightNode ->
+                    ?L(),
+                    gen_server:cast(RightNode,
+                                    {range_search_gt_op_cast, ReturnToMe, Key, [{self(), MyKey, MyValue} | Accum], Limit - 1})
+            end;
+       MyKey =< Key ->
+            ?L(),
+            case right(State, 0) of
+                [] ->
+                    ?L(),
+                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+                RightNode ->
+                    gen_server:cast(RightNode,
+                                    {range_search_gt_op_cast, ReturnToMe, Key, Accum, Limit})
+            end;
+       true ->
+            ?L(),
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
+    end,
     {noreply, State}.
+
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
