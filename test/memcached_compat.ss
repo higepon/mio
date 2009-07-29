@@ -8,6 +8,8 @@
   (set m "hi" "japan")
   (test* 'get '((hello . "world")) (get m "hello"))
   (test* 'get '((hello . "world") (hi . "japan")) (get m "mio:range-search" "he" "hi" 10))
+  (test* 'get '((hi . "japan")) (get m "mio:range-search-gt" "hello" 10))
+  (test* 'get '((hello . "world")) (get m "mio:range-search-lt" "hello2" 10))
   (test* 'get '((hello . "world")) (get m "mio:range-search" "he" "hi" 1))
   (memcache-close m))
 

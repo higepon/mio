@@ -97,7 +97,7 @@ mio(Port) ->
         gen_tcp:listen(
           Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
     io:fwrite("< server listening ~p\n", [Port]),
-    {ok, BootPid} = mio_sup:start_node(dummy, dummy, [1, 0]), %% todo mvector
+    {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
     mio_accept(Listen, BootPid).
 
 mio_accept(Listen, StartNode) ->
@@ -117,6 +117,12 @@ process_command(Sock, StartNode) ->
                 ["get", "mio:range-search", Key1, Key2, Limit] ->
                     io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_get_s(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+                ["get", "mio:range-search-gt", Key, Limit] ->
+                    io:fwrite(">range search Key =~p Limit=~p\n", [Key, Limit]),
+                    process_get_gt(Sock, StartNode, Key, list_to_integer(Limit));
+                ["get", "mio:range-search-lt", Key, Limit] ->
+                    io:fwrite(">range search lt Key =~p Limit=~p\n", [Key, Limit]),
+                    process_get_lt(Sock, StartNode, Key, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
@@ -163,6 +169,21 @@ process_get_s(Sock, StartNode, Key1, Key2, Limit) ->
     P = process_values(Values),
     ?LOG(P),
     gen_tcp:send(Sock, P).
+
+process_get_gt(Sock, StartNode, Key, Limit) ->
+    Values = mio_node:range_search_gt_op(StartNode, Key, Limit),
+    ?LOG(Values),
+    P = process_values(Values),
+    ?LOG(P),
+    gen_tcp:send(Sock, P).
+
+process_get_lt(Sock, StartNode, Key, Limit) ->
+    Values = mio_node:range_search_lt_op(StartNode, Key, Limit),
+    ?LOG(Values),
+    P = process_values(Values),
+    ?LOG(P),
+    gen_tcp:send(Sock, P).
+
 
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
