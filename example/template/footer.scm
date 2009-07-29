@@ -1,6 +1,6 @@
 (define footer "
 <div class=\"pager bottom\">
-<a style=\"margin:0px\" href=\"/summary/1\">前の10件</a> -
+<a style=\"margin:0px\" href=\"?ano=~a\"><<前の5件</a> | <a style=\"margin:0px\" href=\"?ano=~a\">次の5件>></a>
 <a href=\"/?start=30\">&raquo;</a>
 </div>
 <div style=\"clear:both; height:12px\"></div>

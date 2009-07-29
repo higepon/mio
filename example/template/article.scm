@@ -8,7 +8,7 @@
 <div class=\"ebody\">
 <div class=\"title\">
 <div class=\"name\">
-<a href=\"/mala\" sid=\"a8f43e08005b11dd83a2003048343a40\" class=\"l_profile\">~a</a>
+<a href=\"/mala\" sid=\"a8f43e08005b11dd83a2003048343a40\" class=\"l_profile\">~a:~a</a>
 </div>
 <div class=\"text\">
 ~a

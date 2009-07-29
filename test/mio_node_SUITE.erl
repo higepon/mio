@@ -389,7 +389,7 @@ insert_op_many_nodes(_Config) ->
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node3, 1),
     ok.
 
-range_search_op(_Config) ->
+setup_nodes_for_range_search() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -398,6 +398,10 @@ range_search_op(_Config) ->
     ok = mio_node:insert_op(Node5, Node3),
     ok = mio_node:insert_op(Node9, Node5),
     ok = mio_node:insert_op(Node7, Node9),
+    [Node3, Node5, Node7, Node9].
+
+range_search_op(_Config) ->
+    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
 
     % range search!
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key8, 10),
@@ -414,6 +418,8 @@ range_search_op(_Config) ->
 
     ok.
 
+range_search_gt_op(_Config) ->
+    ok.
 
 overwrite_value(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
@@ -460,6 +466,7 @@ all() ->
      insert_op_three_nodes,
      insert_op_many_nodes,
      range_search_op,
+     range_search_gt_op,
      overwrite_value
      ].
 
