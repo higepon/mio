@@ -458,28 +458,28 @@ search_not_found(_Config) ->
 
 all() ->
     [
-%%      test_set_nth,
-%%      get_call,
-%%      dump,
-%%      search_call,
-%%      search_not_found,
-%%      search_level2_simple,
-%%      search_level2_1,
-%%      search_level2_2,
-%%      search_level2_3,
-%%      link_op,
-%%      link_op_propagation,
-%%      buddy_op,
-%%      insert_op_self,
-%%      insert_op_two_nodes,
-%%      insert_op_two_nodes_2,
-%%      insert_op_two_nodes_3,
-%%      insert_op_three_nodes,
-%%      insert_op_many_nodes,
-%%      range_search_op,
-%%     range_search_gt_op
-     range_search_lt_op
-%%     overwrite_value
+     test_set_nth,
+     get_call,
+     dump,
+     search_call,
+     search_not_found,
+     search_level2_simple,
+     search_level2_1,
+     search_level2_2,
+     search_level2_3,
+     link_op,
+     link_op_propagation,
+     buddy_op,
+     insert_op_self,
+     insert_op_two_nodes,
+     insert_op_two_nodes_2,
+     insert_op_two_nodes_3,
+     insert_op_three_nodes,
+     insert_op_many_nodes,
+     range_search_op,
+     range_search_gt_op,
+     range_search_lt_op,
+     overwrite_value
      ].
 
 %%--------------------------------------------------------------------
