@@ -415,10 +415,12 @@ range_search_op(_Config) ->
     [] = mio_node:range_search_op(Node3, key1, key2, 10),
     %% Key1 should be greater equal than Key2
     [] = mio_node:range_search_op(Node9, key5, key4, 1),
-
+%    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_gt_op(Node3, key3, 10),
     ok.
 
 range_search_gt_op(_Config) ->
+    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+
     ok.
 
 overwrite_value(_Config) ->
