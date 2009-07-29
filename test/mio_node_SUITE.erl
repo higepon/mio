@@ -426,6 +426,12 @@ range_search_gt_op(_Config) ->
     [] = mio_node:range_search_gt_op(Node5, keyA, 10),
     ok.
 
+range_search_lt_op(_Config) ->
+    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+
+    [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_lt_op(Node3, key8, 10),
+    ok.
+
 overwrite_value(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -452,27 +458,28 @@ search_not_found(_Config) ->
 
 all() ->
     [
-     test_set_nth,
-     get_call,
-     dump,
-     search_call,
-     search_not_found,
-     search_level2_simple,
-     search_level2_1,
-     search_level2_2,
-     search_level2_3,
-     link_op,
-     link_op_propagation,
-     buddy_op,
-     insert_op_self,
-     insert_op_two_nodes,
-     insert_op_two_nodes_2,
-     insert_op_two_nodes_3,
-     insert_op_three_nodes,
-     insert_op_many_nodes,
-     range_search_op,
-     range_search_gt_op,
-     overwrite_value
+%%      test_set_nth,
+%%      get_call,
+%%      dump,
+%%      search_call,
+%%      search_not_found,
+%%      search_level2_simple,
+%%      search_level2_1,
+%%      search_level2_2,
+%%      search_level2_3,
+%%      link_op,
+%%      link_op_propagation,
+%%      buddy_op,
+%%      insert_op_self,
+%%      insert_op_two_nodes,
+%%      insert_op_two_nodes_2,
+%%      insert_op_two_nodes_3,
+%%      insert_op_three_nodes,
+%%      insert_op_many_nodes,
+%%      range_search_op,
+%%     range_search_gt_op
+     range_search_lt_op
+%%     overwrite_value
      ].
 
 %%--------------------------------------------------------------------
