@@ -38,10 +38,9 @@
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
 
-    (let* ([start-article-no (or (get-parameter "to-ano") "article-000000")]
-           [end-article-no (or (get-parameter "from-ano") "article999999")]
-           [order (if (get-parameter "ano") "desc" "asc")]
-           [article* (memcached-gets conn "mio:range-search" start-article-no end-article-no "5" "desc")]
+    (let* ([from-article-no (or (get-parameter "from-ano") "article-000000")]
+           [to-article-no (or (get-parameter "to-ano") "article999999")]
+           [article* (memcached-gets conn "mio:range-search" from-article-no to-article-no "5" "desc")]
            [first-article (if (null? article*) #f (car article*))]
            [last-article (if (null? article*) #f (last article*))])
       (for-each
