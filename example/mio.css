@@ -1,4 +1,4 @@
-/* Copyright 2009 FriendFeed */ body{background:url("/static/images/gradient.png?v=e460") repeat-x top;background-color:#aaa;color:black;margin:0}
+/* Copyright 2009 FriendFeed */ body{background:url("bg.jpg") repeat top;background-color:#aaa;color:black;margin:0}
 body,input,textarea,select,option,button,th,td{font-family:Arial,sans-serif;font-size:15px}
 body.fbiframe,.fbiframe input,.fbiframe textarea,.fbiframe select,.fbiframe option,.fbiframe button,.fbiframe th,.fbiframe td{font-family:"lucida grande",tahoma,verdana,arial,sans-serif;font-size:12px}
 div,table,form,th,td,img,h1,h2,h3,h4,fieldset{padding:0;margin:0;border:0}

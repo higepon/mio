@@ -11,7 +11,7 @@
 <div id=\"header\">
 <table>
   <tr>
-    <td class=\"logo\"><a href=\"/\"><img src=\"logo.png\" alt=\"Logo\" style=\"\"/></a></td>
+    <td class=\"logo\"><a href=\"/\"></a></td>
     <td><table>
       <tr>
         <td>
@@ -27,17 +27,6 @@
 </div>
 <div id=\"sidebar\">
 <div id=\"profile\">
-<table>
-  <tr>
-    <td class=\"image\"><a href=\"/higepon\" sid=\"31fe497505b0411dbcf9578b8204ccdf\" class=\"l_profile\"><img src=\"http://i.friendfeed.com/p-31fe497505b0411dbcf9578b8204ccdf-medium-1\" alt=\"higepon\" class=\"picture medium\"/></a></td>
-    <td class=\"body\">
-      <div class=\"name\"><a href=\"/higepon\" sid=\"31fe497505b0411dbcf9578b8204ccdf\" class=\"l_profile\">higepon</a></div>
-      <div>
-
-      </div>
-    </td>
-  </tr>
-</table>
 </div>
 </div>
 <div id=\"body\">
@@ -47,7 +36,7 @@
 <div class=\"box-bar-text\">
 <div id=\"realtimectl\" class=\"control\"><div class=\"l_realtimepause\" title=\"更新を一時停止\"></div></div>
 <div id=\"realtimestatus\" class=\"control\"></div>
-<span class=\"title\"><a href=\"/\">ホーム</a></span>
+<span class=\"title\"><a href=\"/\">Mio サンプル掲示板</a></span>
 </div>
 </div>
 <div class=\"subbar home\" style=\"display:none\"></div>
@@ -55,21 +44,6 @@
 <div class=\"sharebox\">
 <form action=\"/\" method=\"post\">
 <div class=\"to\">
-<table>
-  <tr>
-    <td>To:&nbsp;</td>
-    <td class=\"tobody\">
-      <ul class=\"l_tolist\">
-        <li class=\"spacer\"></li>
-
-        <li class=\"l_tocard public\" sid=\"higepon+friends\">自分 <img src=\"/static/images/to-delete.png?v=f1c8\" class=\"l_toremove\" title=\"削除\"/></li>
-
-        <li class=\"addedit\"><a href=\"#\">追加/編集</a></li>
-        <input type=\"text\" class=\"l_toinput\" maxlength=\"50\"/>
-      </ul>
-    </td>
-  </tr>
-</table>
 </div>
 <div class=\"title\"><div class=\"textbox\"><textarea name=\"body\" class=\"title\" rows=\"2\" cols=\"40\"></textarea></div></div>
 <div class=\"progress\"><table></table></div>
