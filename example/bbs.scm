@@ -6,6 +6,7 @@
         (only (srfi :13) string-pad)
         (srfi :2)
         (only (srfi :1) last)
+        (only (srfi :19) current-date date->string)
         (memcached))
 
 (include "template/header.scm")
@@ -33,7 +34,8 @@
       (memcached-set! conn (make-article-no next-article-no)
                       0 0 `((article-no . ,next-article-no)
                             (name . ,(cgi:decode name))
-                            (body . ,(cgi:decode body))))
+                            (body . ,(cgi:decode body))
+                            (date . ,(date->string (current-date)))))
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
     ;; Show articles
@@ -47,8 +49,8 @@
        (lambda (article)
          (format #t  t-article
                  (cgi:escape (assoc-ref (cdr article) 'name))
-                 (car article)
-                 (cgi:escape (assoc-ref (cdr article) 'body))))
+                 (cgi:escape (assoc-ref (cdr article) 'body))
+                 (assoc-ref (cdr article) 'date)))
        article*)
       (format #t footer (if prev-required?
                             (format "<a style=\"margin:0px\" href=\"?from-ano=~a\">&laquo前の~d件</a> | <a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件&raquo;</a>"
