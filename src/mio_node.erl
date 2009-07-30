@@ -77,12 +77,15 @@ start_link(Args) ->
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
 
-%% Key1 and Key2 are not in the search result.
-range_search_asc_op(StartNode, Key1, Key2, Limit) ->
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key1}),
+range_search_order_op(StartNode, Key1, Key2, Limit, Order) ->
+    {StartKey, CastOp} = case Order of
+                               asc -> {Key1, range_search_asc_op_cast};
+                               _ -> {Key2, range_search_desc_op_cast}
+                           end,
+    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], StartKey}),
     ?LOG(ClosestKey),
     ReturnToMe = self(),
-    gen_server:cast(ClosestNode, {range_search_asc_op_cast, ReturnToMe, Key1, Key2, [], Limit}),
+    gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
         {range_search_accumed, Accumed} ->
             ?LOG(Accumed),
@@ -91,19 +94,14 @@ range_search_asc_op(StartNode, Key1, Key2, Limit) ->
             [timeout]
     end.
 
+
 %% Key1 and Key2 are not in the search result.
+range_search_asc_op(StartNode, Key1, Key2, Limit) ->
+    range_search_order_op(StartNode, Key1, Key2, Limit, asc).
+
 range_search_desc_op(StartNode, Key1, Key2, Limit) ->
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key2}),
-    ?LOG(ClosestKey),
-    ReturnToMe = self(),
-    gen_server:cast(ClosestNode, {range_search_desc_op_cast, ReturnToMe, Key1, Key2, [], Limit}),
-    receive
-        {range_search_accumed, Accumed} ->
-            ?LOG(Accumed),
-            Accumed
-    after 1000 ->
-            [timeout]
-    end.
+    range_search_order_op(StartNode, Key1, Key2, Limit, desc).
+
 
 
 
