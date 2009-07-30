@@ -24,29 +24,25 @@
   (cgi:header)
   (let* ([conn (memcached-connect "localhost" "11211")]
          [next-article-no (or (memcached-get conn "next-article-no") 1)])
-
-;;         (memcached-set! conn "bbs1" 0 0 '((name . "higepon")
-;;                                           (body . "例が載っているが、z は mpz_init(z) と初期化しておく必要がある。ML でも指摘されているのだけどマニュアルが不親切なので注意。")))
-;;         (memcached-set! conn "bbs2" 0 0 '((name . "higepon")
-;;                                           (body . "hello2")))
-
+    ;; Header
     (display header)
-
     ;; Post
     (and-let* ([(eq? 'POST (get-request-method))]
                [name (get-parameter "name")]
                [body (get-parameter "body")])
       (memcached-set! conn (make-article-no next-article-no)
-                      0 0 `((name . ,(cgi:decode name))
+                      0 0 `((article-no . ,next-article-no)
+                            (name . ,(cgi:decode name))
                             (body . ,(cgi:decode body))))
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
-
+    ;; Show articles
     (let* ([from-article-no (or (get-parameter "from-ano") min-article-no)]
            [to-article-no (or (get-parameter "to-ano") max-article-no)]
            [article* (memcached-gets conn "mio:range-search" from-article-no to-article-no article-num-page "desc")]
            [first-article (if (null? article*) #f (car article*))]
-           [last-article (if (null? article*) #f (last article*))])
+           [last-article (if (null? article*) #f (last article*))]
+           [prev-required? (> (- (memcached-get conn "next-article-no") 1) (assoc-ref (cdr first-article) 'article-no))])
       (for-each
        (lambda (article)
          (format #t  t-article
@@ -54,11 +50,16 @@
                  (car article)
                  (cgi:escape (assoc-ref (cdr article) 'body))))
        article*)
-      (format #t footer
-              (string-append (car first-article))
-              article-num-page
-              (string-append (car last-article))
-              article-num-page))))
+      (format #t footer (if prev-required?
+                            (format "<a style=\"margin:0px\" href=\"?from-ano=~a\"><<前の~d件</a> | <a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件>></a>"
+                                    (car first-article)
+                                    article-num-page
+                                    (car last-article)
+                                    article-num-page)
+                            (format "<a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件>></a>"
+                                    (car last-article)
+                                    article-num-page))))))
+
 ;; #| apache
 ;; Listen 8003
 ;; <VirtualHost *:8003>
