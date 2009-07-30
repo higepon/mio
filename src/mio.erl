@@ -116,13 +116,10 @@ process_command(Sock, StartNode) ->
                     process_get(Sock, StartNode, Key);
                 ["get", "mio:range-search", Key1, Key2, Limit] ->
                     io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
-                    process_get_s(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
-                ["get", "mio:range-search-gt", Key, Limit] ->
-                    io:fwrite(">range search Key =~p Limit=~p\n", [Key, Limit]),
-                    process_get_gt(Sock, StartNode, Key, list_to_integer(Limit));
-                ["get", "mio:range-search-lt", Key, Limit] ->
-                    io:fwrite(">range search lt Key =~p Limit=~p\n", [Key, Limit]),
-                    process_get_lt(Sock, StartNode, Key, list_to_integer(Limit));
+                    process_gets(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+                ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
+                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+                    process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
@@ -162,13 +159,22 @@ process_values([]) ->
     "END\r\n".
 
 
-process_get_s(Sock, StartNode, Key1, Key2, Limit) ->
+process_gets(Sock, StartNode, Key1, Key2, Limit) ->
     ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
     Values = mio_node:range_search_op(StartNode, Key1, Key2, Limit),
     ?LOG(Values),
     P = process_values(Values),
     ?LOG(P),
     gen_tcp:send(Sock, P).
+
+process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
+    ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
+    Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
+    ?LOG(Values),
+    P = process_values(Values),
+    ?LOG(P),
+    gen_tcp:send(Sock, P).
+
 
 process_get_gt(Sock, StartNode, Key, Limit) ->
     Values = mio_node:range_search_gt_op(StartNode, Key, Limit),
