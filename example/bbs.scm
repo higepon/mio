@@ -18,6 +18,7 @@
 
 (define max-article-no (make-article-no 999999))
 (define min-article-no (make-article-no 0))
+(define article-num-page (number->string 3))
 
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
@@ -43,7 +44,7 @@
 
     (let* ([from-article-no (or (get-parameter "from-ano") min-article-no)]
            [to-article-no (or (get-parameter "to-ano") max-article-no)]
-           [article* (memcached-gets conn "mio:range-search" from-article-no to-article-no "5" "desc")]
+           [article* (memcached-gets conn "mio:range-search" from-article-no to-article-no article-num-page "desc")]
            [first-article (if (null? article*) #f (car article*))]
            [last-article (if (null? article*) #f (last article*))])
       (for-each
@@ -55,7 +56,9 @@
        article*)
       (format #t footer
               (string-append (car first-article))
-              (string-append (car last-article))))))
+              article-num-page
+              (string-append (car last-article))
+              article-num-page))))
 ;; #| apache
 ;; Listen 8003
 ;; <VirtualHost *:8003>
