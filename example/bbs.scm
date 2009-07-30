@@ -16,7 +16,6 @@
   (define max-digit 6)
   (string-append "article-" (string-pad (number->string num) max-digit #\0)))
 
-
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect "localhost" "11211")]
@@ -26,7 +25,6 @@
 ;;                                           (body . "例が載っているが、z は mpz_init(z) と初期化しておく必要がある。ML でも指摘されているのだけどマニュアルが不親切なので注意。")))
 ;;         (memcached-set! conn "bbs2" 0 0 '((name . "higepon")
 ;;                                           (body . "hello2")))
-
 
     (display header)
 
