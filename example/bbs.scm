@@ -16,6 +16,9 @@
   (define max-digit 6)
   (string-append "article-" (string-pad (number->string num) max-digit #\0)))
 
+(define max-article-no (make-article-no 999999))
+(define min-article-no (make-article-no 0))
+
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect "localhost" "11211")]
@@ -38,8 +41,8 @@
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
 
-    (let* ([from-article-no (or (get-parameter "from-ano") "article-000000")]
-           [to-article-no (or (get-parameter "to-ano") "article999999")]
+    (let* ([from-article-no (or (get-parameter "from-ano") min-article-no)]
+           [to-article-no (or (get-parameter "to-ano") max-article-no)]
            [article* (memcached-gets conn "mio:range-search" from-article-no to-article-no "5" "desc")]
            [first-article (if (null? article*) #f (car article*))]
            [last-article (if (null? article*) #f (last article*))])
