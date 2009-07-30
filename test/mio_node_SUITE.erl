@@ -417,21 +417,6 @@ range_search_op(_Config) ->
     [] = mio_node:range_search_op(Node9, key5, key4, 1),
     ok.
 
-range_search_gt_op(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
-
-    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_gt_op(Node3, key3, 10),
-    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_gt_op(Node5, key3, 10),
-    [{_, key5, value5}] = mio_node:range_search_gt_op(Node5, key3, 1),
-    [] = mio_node:range_search_gt_op(Node5, keyA, 10),
-    ok.
-
-range_search_lt_op(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
-
-    [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_lt_op(Node3, key8, 10),
-    ok.
-
 range_search_asc_op(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
 
@@ -498,8 +483,6 @@ all() ->
      insert_op_three_nodes,
      insert_op_many_nodes,
      range_search_op,
-     range_search_gt_op,
-     range_search_lt_op,
      range_search_asc_op,
      range_search_desc_op,
      overwrite_value
