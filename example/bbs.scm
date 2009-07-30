@@ -51,12 +51,12 @@
                  (cgi:escape (assoc-ref (cdr article) 'body))))
        article*)
       (format #t footer (if prev-required?
-                            (format "<a style=\"margin:0px\" href=\"?from-ano=~a\"><<前の~d件</a> | <a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件>></a>"
+                            (format "<a style=\"margin:0px\" href=\"?from-ano=~a\">&laquo前の~d件</a> | <a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件&raquo;</a>"
                                     (car first-article)
                                     article-num-page
                                     (car last-article)
                                     article-num-page)
-                            (format "<a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件>></a>"
+                            (format "<a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件&raquo;</a>"
                                     (car last-article)
                                     article-num-page))))))
 

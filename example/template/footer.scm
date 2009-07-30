@@ -1,7 +1,6 @@
 (define footer "
 <div class=\"pager bottom\">
 ~a
-<a href=\"/?start=30\">&raquo;</a>
 </div>
 <div style=\"clear:both; height:12px\"></div>
 </div>
