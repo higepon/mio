@@ -19,7 +19,7 @@
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect "localhost" "11211")]
-         [next-article-no (or (memcached-get conn "next-article-no") 99999)])
+         [next-article-no (or (memcached-get conn "next-article-no") 1)])
 
 ;;         (memcached-set! conn "bbs1" 0 0 '((name . "higepon")
 ;;                                           (body . "例が載っているが、z は mpz_init(z) と初期化しておく必要がある。ML でも指摘されているのだけどマニュアルが不親切なので注意。")))
@@ -35,13 +35,13 @@
       (memcached-set! conn (make-article-no next-article-no)
                       0 0 `((name . ,(cgi:decode name))
                             (body . ,(cgi:decode body))))
-      (memcached-set! conn "next-article-no" 0 0 (- next-article-no 1)))
+      ;; ToDo: incr protocol
+      (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
 
-    (let* ([start-article-no (or (get-parameter "ano") "article-000000")]
-           [end-article-no (or (get-parameter "end-ano") "article999999")]
-           [order (if (get-parameter "end-ano") "desc" "asc")]
-           [article* (memcached-gets conn "mio:range-search" start-article-no end-article-no "5" order)]
-           [article* (if (equal? order "desc") (reverse article*) article*)]
+    (let* ([start-article-no (or (get-parameter "to-ano") "article-000000")]
+           [end-article-no (or (get-parameter "from-ano") "article999999")]
+           [order (if (get-parameter "ano") "desc" "asc")]
+           [article* (memcached-gets conn "mio:range-search" start-article-no end-article-no "5" "desc")]
            [first-article (if (null? article*) #f (car article*))]
            [last-article (if (null? article*) #f (last article*))])
       (for-each
