@@ -120,6 +120,9 @@ process_command(Sock, StartNode) ->
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+                ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
+                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+                    process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
@@ -170,6 +173,14 @@ process_gets(Sock, StartNode, Key1, Key2, Limit) ->
 process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
     ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
+    ?LOG(Values),
+    P = process_values(Values),
+    ?LOG(P),
+    gen_tcp:send(Sock, P).
+
+process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+    ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
+    Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
     ?LOG(Values),
     P = process_values(Values),
     ?LOG(P),
