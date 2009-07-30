@@ -437,6 +437,16 @@ range_search_desc_op(_Config) ->
     [] = mio_node:range_search_desc_op(Node3, key3, key5, 2),
     ok.
 
+search_closest(_Config) ->
+    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+
+    %% search always returns left closest key
+    {ok, _, key7, value7} = gen_server:call(Node3, {search, Node3, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node5, {search, Node5, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node7, {search, Node7, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search, Node9, [], key8}),
+    ok.
+
 
 overwrite_value(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
@@ -485,6 +495,7 @@ all() ->
      range_search_op,
      range_search_asc_op,
      range_search_desc_op,
+%%    search_closest
      overwrite_value
      ].
 
