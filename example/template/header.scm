@@ -59,8 +59,9 @@
           <td class=\"cc\">
           </td>
           <td class=\"post\">
+            名前:<input type=\"text\" name=\"name\" value=\"higepon\"/>
             <input type=\"submit\" value=\"投稿\"/>
-            <input type=\"hidden\" name=\"name\" value=\"higepon\"/>
+
           </td>
         </tr>
       </table>

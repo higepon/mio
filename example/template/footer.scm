@@ -11,7 +11,7 @@
 </div>
 </div>
 <div id=\"footer\">
-&copy;2009 Cybozu labs.
+&copy;2009 Cybozu Labs, Inc.
 </div>
 </div>
 </div><div id=\"extradiv\"></div><div id=\"extradivtoo\"></div>

@@ -14,9 +14,15 @@
 -define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
 -define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
 
-
 init_per_suite(Config) ->
-%    error_logger:tty(false),
+    %% config file is specified on runtest's command line option
+    IsVerbose = ct:get_config(isVerbose),
+    ?LOG(IsVerbose),
+    if IsVerbose ->
+            error_logger:tty(true);
+       true ->
+            error_logger:tty(false)
+    end,
     ok = error_logger:logfile({open, "./error.log"}),
     {ok, Pid} = mio_sup:start_link(),
     unlink(Pid),

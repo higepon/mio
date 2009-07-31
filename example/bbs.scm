@@ -13,6 +13,16 @@
 (include "template/article.scm")
 (include "template/footer.scm")
 
+(define (profile-image name)
+  (define image-alist '(
+                        ("higepon"  . "http://friendfeed-media.com/p-31fe497505b0411dbcf9578b8204ccdf-medium-1000")
+                        ("akky"     . "http://i.friendfeed.com/p-519a7846f34c11dcb99a003048343a40-medium-1")
+                        ("amachang" . "http://i.friendfeed.com/p-a6e5aaeefaf111dca899003048343a40-medium-1")
+                        ("kazuho"   . "http://s3.amazonaws.com/twitter_production/profile_images/51501974/close99_bigger.jpg")))
+  (cond
+   [(assoc name image-alist) => cdr]
+   [else "http://friendfeed.com/static/images/nomugshot-medium.png?v=0fa9"]))
+
 (define (make-article-no num)
   (define max-digit 6)
   (string-append "article-" (string-pad (number->string num) max-digit #\0)))
@@ -35,7 +45,8 @@
                       0 0 `((article-no . ,next-article-no)
                             (name . ,(cgi:decode name))
                             (body . ,(cgi:decode body))
-                            (date . ,(date->string (current-date)))))
+                            (date . ,(date->string (current-date)))
+                            (image . ,(profile-image (cgi:decode name)))))
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
     ;; Show articles
@@ -48,6 +59,7 @@
       (for-each
        (lambda (article)
          (format #t  t-article
+                 (assoc-ref (cdr article) 'image)
                  (cgi:escape (assoc-ref (cdr article) 'name))
                  (cgi:escape (assoc-ref (cdr article) 'body))
                  (assoc-ref (cdr article) 'date)))
