@@ -37,20 +37,24 @@
 %% top supervisor of the tree.
 %%--------------------------------------------------------------------
 start(_Type, StartArgs) ->
-    {ok, IsDebugMode} = application:get_env(mio, debug),
-    ?LOG(IsDebugMode),
-    if IsDebugMode =:= true ->
-            ?L(),
-            [];
-       true ->
-            ?L(),
-            error_logger:tty(false)
-    end,
-    error_logger:info_msg("mio application start\n"),
+%%    {ok, IsDebugMode} = application:get_env(mio, debug),
+%%     ?LOG(IsDebugMode),
+%%     if IsDebugMode =:= true ->
+%%             ?L(),
+%%             [];
+%%        true ->
+%%             ?L(),
+%%             error_logger:tty(false)
+%%     end,
+     error_logger:info_msg("mio application start\n"),
     mio_sup:start_link(),
     Pid = spawn(?MODULE, mio, [11211]),
     register(mio, Pid),
     {ok , Pid}.
+
+start() ->
+    application:start(mio).
+
 %%     {ok, register(mio, Pid)}.
 
 
@@ -72,6 +76,7 @@ start(_Type, StartArgs) ->
 %%--------------------------------------------------------------------
 stop(_State) ->
     error_logger:info_msg("mio application stop\n"),
+    application:stop(mio),
     ok.
 
 %% start_link() ->
@@ -87,10 +92,6 @@ stop(_State) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-start() ->
-    application:load(mio),
-    application:start(mio),
-    ok.
 
 mio(Port) ->
     {ok, Listen} =
@@ -111,6 +112,7 @@ process_command(Sock, StartNode) ->
         {ok, Line} ->
             io:fwrite(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
+            io:fwrite("<Token:~p>", [Token]),
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key);
@@ -134,7 +136,9 @@ process_command(Sock, StartNode) ->
 %%                 ["delete", Key] ->
 %%                     process_delete(Sock, Key);
                 ["quit"] -> gen_tcp:close(Sock);
-                _ -> gen_tcp:send(Sock, "ERROR\r\n")
+                _ ->
+%                    io:fwrite("<Error:~p>", [x]),
+                    gen_tcp:send(Sock, "ERROR\r\n")
             end,
             process_command(Sock, StartNode);
         {error, closed} ->
