@@ -16,7 +16,7 @@
 
 init_per_suite(Config) ->
     %% config file is specified on runtest's command line option
-    ok = mio:start(),
+    ok = application:start(mio),
     IsVerbose = ct:get_config(isVerbose),
     ?LOG(IsVerbose),
     if IsVerbose ->
@@ -28,6 +28,7 @@ init_per_suite(Config) ->
     Config.
 
 end_per_suite(Config) ->
+    application:stop(mio),
     ok.
 
 set_and_get(_Config) ->

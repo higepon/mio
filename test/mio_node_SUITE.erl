@@ -24,13 +24,15 @@ init_per_suite(Config) ->
             error_logger:tty(false)
     end,
     ok = error_logger:logfile({open, "./error.log"}),
-    {ok, Pid} = mio_sup:start_link(),
-    unlink(Pid),
+%%     {ok, Pid} = mio_sup:start_link(),
+%%     unlink(Pid),
+    application:start(mio),
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     register(mio_node, NodePid),
     Config.
 
 end_per_suite(Config) ->
+    application:stop(mio),
     ok.
 
 get_call(_Config) ->

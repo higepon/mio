@@ -4,6 +4,6 @@
   {modules, [mio]},
   {registered, [mio]},
   {applications, [kernel, stdlib]},
-  {mod, {mio,[]}},
+  {mod, {mio_app,[]}},
   {debug, false}
  ]}.

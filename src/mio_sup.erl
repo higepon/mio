@@ -1,16 +1,11 @@
 -module(mio_sup).
 -behaviour(supervisor).
+-export([init/1, start_node/3]).
 
--export([start_link/0, start_node/3]).
--export([init/1]).
-
--define(SERVER, ?MODULE).
-
-start_link() ->
-    error_logger:info_msg("~p start_link\n", [?MODULE]),
-    crypto:start(), % getRandomId uses crypto server
-    %% register local as ?SERVER.
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+%% supervisor:
+%%   On start up, supervisor starts mio_memcached.
+%%   mio_memcached starts a dummy node using mio_sup:start_node.
+%%   Whenever new node is to create, mio_sup:start_nodes is used.
 
 %% start normal mio_node
 start_node(Key, Value, MembershipVector) ->
@@ -20,12 +15,13 @@ start_node(Key, Value, MembershipVector) ->
 
 init(_Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
+    crypto:start(), % getRandomId uses crypto server
     %% todo
     %% Make this simple_one_for_one
     {ok, {{one_for_one, 10, 20},
-          [{mio_node, %% this is just id of specification, will not be registered by register/2.
-            {mio_node, start_link, [[myKey, myValue, [1, 0]]]},
-            permanent, brutal_kill, worker, [mio_node]}]}}.
+          [{mio_memcached, %% this is just id of specification, will not be registered by register/2.
+            {mio_memcached, start_link, []},
+            permanent, brutal_kill, worker, [mio_memcached]}]}}.
 
 getRandomId() ->
     integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
