@@ -17,7 +17,6 @@
 init_per_suite(Config) ->
     %% config file is specified on runtest's command line option
     IsVerbose = ct:get_config(isVerbose),
-    ?LOG(IsVerbose),
     if IsVerbose ->
             error_logger:tty(true);
        true ->
