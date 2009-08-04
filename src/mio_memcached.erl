@@ -9,10 +9,7 @@
 -export([start_link/0]). %% supervisor needs this.
 -export([memcached/1, process_command/2]). %% spawn needs these.
 
--define(SERVER, ?MODULE).
--define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
--define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
--define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+-include("mio.hrl").
 
 %% supervisor calls this to create new memcached.
 start_link() ->
