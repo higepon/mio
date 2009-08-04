@@ -29,33 +29,33 @@ memcached(Port) ->
     {ok, Listen} =
         gen_tcp:listen(
           Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
-    io:fwrite("< server listening ~p\n", [Port]),
+    ?LOGF("< server listening ~p\n", [Port]),
     {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
     mio_accept(Listen, BootPid).
 
 mio_accept(Listen, StartNode) ->
     {ok, Sock} = gen_tcp:accept(Listen),
-    io:fwrite("<~p new client connection\n", [Sock]),
+    ?LOGF("<~p new client connection\n", [Sock]),
     spawn(?MODULE, process_command, [Sock, StartNode]),
     mio_accept(Listen, StartNode).
 
 process_command(Sock, StartNode) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
-            io:fwrite(">~p ~s", [Sock, Line]),
+            ?LOGF(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
-            io:fwrite("<Token:~p>", [Token]),
+            ?LOGF("<Token:~p>", [Token]),
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key);
                 ["get", "mio:range-search", Key1, Key2, Limit] ->
-                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_gets(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    io:fwrite(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
@@ -69,14 +69,14 @@ process_command(Sock, StartNode) ->
 %%                     process_delete(Sock, Key);
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
-                    io:fwrite("<Error:~p>", [X]),
+                    ?LOGF("<Error:~p>", [X]),
                     gen_tcp:send(Sock, "ERROR\r\n")
             end,
             process_command(Sock, StartNode);
         {error, closed} ->
-            io:fwrite("<~p connection closed.\n", [Sock]);
+            ?LOGF("<~p connection closed.\n", [Sock]);
         Error ->
-            io:fwrite("<~p error: ~p\n", [Sock, Error])
+            ?LOGF("<~p error: ~p\n", [Sock, Error])
     end.
 
 process_get(Sock, StartNode, Key) ->
@@ -149,7 +149,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
         {error, closed} ->
             ok;
         Error ->
-            io:fwrite("Error: ~p\n", [Error])
+            ?LOGF("Error: ~p\n", [Error])
     end,
     gen_tcp:recv(Sock, 2).
 
