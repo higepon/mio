@@ -241,40 +241,40 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({search, ReturnToMe, Level, Key}, State) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
-    if
-        %% This is myKey, found!
-        MyKey =:= Key ->
-            ?L(),
-            ReturnToMe ! {ok, self(), MyKey, MyValue},
-            ?L();
-        MyKey < Key ->
-            ?L(),
-            case right(State, Level) of
-                [] ->
-                    ?L(),
-                    ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
-                    ReturnToMe ! {ok, self(), MyKey, MyValue},
-                    ?L();
-                RightNode ->
-                    ?L(),
-                    gen_server:cast(RightNode, {search, ReturnToMe, Key})
-            end;
-        true ->
-            ?L(),
-            case left(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {ok, self(), MyKey, MyValue}; %% todo
-                LeftNode ->
-                    ?L(),
-                    gen_server:cast(LeftNode, {search, ReturnToMe, Key})
-            end
-    end,
-    {noreply, State};
+%% handle_cast({search, ReturnToMe, Level, Key}, State) ->
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
+%%     if
+%%         %% This is myKey, found!
+%%         MyKey =:= Key ->
+%%             ?L(),
+%%             ReturnToMe ! {ok, self(), MyKey, MyValue},
+%%             ?L();
+%%         MyKey < Key ->
+%%             ?L(),
+%%             case right(State, Level) of
+%%                 [] ->
+%%                     ?L(),
+%%                     ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
+%%                     ReturnToMe ! {ok, self(), MyKey, MyValue},
+%%                     ?L();
+%%                 RightNode ->
+%%                     ?L(),
+%%                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
+%%             end;
+%%         true ->
+%%             ?L(),
+%%             case left(State, 0) of
+%%                 [] ->
+%%                     ?L(),
+%%                     ReturnToMe ! {ok, self(), MyKey, MyValue}; %% todo
+%%                 LeftNode ->
+%%                     ?L(),
+%%                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
+%%             end
+%%     end,
+%%     {noreply, State};
 
 handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
     ?L(),

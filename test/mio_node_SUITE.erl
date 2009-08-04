@@ -411,6 +411,8 @@ range_search_op(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
 
     % range search!
+    [] = mio_node:range_search_op(Node3, key99, key99, 10),
+    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_op(Node3, key4, key99, 10),
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key8, 10),
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key7, 10),
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key8, 10),
