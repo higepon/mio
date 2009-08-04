@@ -68,8 +68,8 @@ process_command(Sock, StartNode) ->
 %%                 ["delete", Key] ->
 %%                     process_delete(Sock, Key);
                 ["quit"] -> gen_tcp:close(Sock);
-                _ ->
-%                    io:fwrite("<Error:~p>", [x]),
+                X ->
+                    io:fwrite("<Error:~p>", [X]),
                     gen_tcp:send(Sock, "ERROR\r\n")
             end,
             process_command(Sock, StartNode);

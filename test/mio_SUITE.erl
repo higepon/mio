@@ -32,21 +32,21 @@ end_per_suite(Config) ->
     ok.
 
 set_and_get(_Config) ->
-    {ok, MerlePid} = merle:connect("localhost", 11211),
-    ok = merle:set("hello", "0", "0", "world"),
-    "world" = merle:getkey("hello"),
-    ok = merle:set("hi", "0", "0", "japan"),
-    "japan" = merle:getkey("hi"),
-    ok = merle:set("ipod", "0", "0", "mp3"),
-    "mp3" = merle:getkey("ipod"),
+    {ok, MerlePid} = merle2:connect("localhost", 11211),
+    ok = merle2:set("hello", "0", "0", "world"),
+    "world" = merle2:getkey("hello"),
+    ok = merle2:set("hi", "0", "0", "japan"),
+    "japan" = merle2:getkey("hi"),
+    ok = merle2:set("ipod", "0", "0", "mp3"),
+    "mp3" = merle2:getkey("ipod"),
     ok.
 
 range_search(_Config) ->
-%%     {ok, MerlePid} = merle:connect("localhost", 11211),
-%%     ok = merle:set("hello", "0", "0", "world"),
-%%     ok = merle:set("hi", "0", "0", "japan"),
-%%     ok = merle:set("ipod", "0", "0", "mp3"),
-%%     merle:getkey("ipod hi"),
+    {ok, MerlePid} = merle2:connect("localhost", 11211),
+    ok = merle2:set("hello", "0", "0", "world"),
+    ok = merle2:set("hi", "0", "0", "japan"),
+    ok = merle2:set("ipod", "0", "0", "mp3"),
+    merle2:getkey("mio:range-search he ipod 10 desc"),
 %    merle:getkey("mio:range-search he ipod 10 desc"),
 %%   (test* 'get '((hi . "japan") (hello . "world")) (get m "mio:range-search" "he" "ipod" "10" "desc"))
 %%   (test* 'get '((hi . "japan")) (get m "mio:range-search" "he" "ipod" "1" "desc"))
