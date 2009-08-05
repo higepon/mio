@@ -406,13 +406,10 @@ delete_op_call(State) ->
     DeletedState = delete_loop_(State, MaxLevel),
     {reply, ok, DeletedState}.
 
+delete_loop_(State, 0) ->
+    State;
 delete_loop_(State, MaxLevel) ->
-    if 0 < MaxLevel ->
-            State;
-       true ->
-            delete_loop_(State, MaxLevel - 1)
-    end.
-
+    delete_loop_(State, MaxLevel - 1).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
