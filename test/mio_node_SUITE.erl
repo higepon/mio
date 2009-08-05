@@ -39,13 +39,13 @@ get_call(_Config) ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     ok.
 
-dump(_Config) ->
+dump_op(_Config) ->
     %% insert to right
     {ok, Pid} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
 
     %% insert to left
     {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-    [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump(mio_node, 0), %% dump on Level 0
+    [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump_op(mio_node, 0), %% dump on Level 0
 
     ok.
 
@@ -71,8 +71,8 @@ search_level2_simple(_Config) ->
     {ok, _, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
-    [{_, myKey, myValue, [1, 0]}] = mio_node:dump(Node, 0),
-    [[{_, myKey, myValue, [1, 0]}]] = mio_node:dump(Node, 1),
+    [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
+    [[{_, myKey, myValue, [1, 0]}]] = mio_node:dump_op(Node, 1),
     ok.
 
 search_level2_1(_Config) ->
@@ -86,8 +86,8 @@ search_level2_1(_Config) ->
     ok = link_nodes(0, [Node3, Node5]),
 
     %% dump nodes on Level 0 and 1
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:dump(Node3, 0),
-    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:dump_op(Node3, 0),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
@@ -109,11 +109,11 @@ search_level2_2(_Config) ->
     ok = link_nodes(1, [Node3, Node9]),
 
     %% dump nodes on Level 0 and 1
-    [{_, key3, value3, [1, 0]}, {_, key5, value5, [0, 1]}, {_, key9, value9, [1, 1]}] = mio_node:dump(Node3, 0),
+    [{_, key3, value3, [1, 0]}, {_, key5, value5, [0, 1]}, {_, key9, value9, [1, 1]}] = mio_node:dump_op(Node3, 0),
 
-    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump(Node3, 1),
-    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump(Node5, 1),
-    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump(Node9, 1),
+    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump_op(Node5, 1),
+    [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump_op(Node9, 1),
 
     %% search!
     {ok, value3} = mio_node:search(Node3, key3),
@@ -151,11 +151,11 @@ search_level2_3(_Config) ->
     ok = link_nodes(1, [Node5, Node8]),
 
     %% dump nodes on Level 0 and 1
-    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump(Node5, 1),
-    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump(Node7, 1),
-    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump(Node8, 1),
-    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump(Node9, 1),
+    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node5, 1),
+    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node7, 1),
+    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node8, 1),
+    [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node9, 1),
 
     %% search!
     %%  level1: 3->7 level0: 7->8
@@ -234,7 +234,7 @@ link_op(_Config) ->
     ok = link_node(Level, Node2, Node3),
 
     %% check
-    [{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
+    [{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
     ok.
 
 link_op_propagation(_Config) ->
@@ -298,12 +298,12 @@ insert_op_two_nodes(_Config) ->
     ok = mio_node:insert_op(Node5, Node3),
 
     %% check on level 0
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node5, 0),
 
     %% check on level 1
-    [[{_, key3,value3,[0,0]}], [{_, key5,value5,[1,1]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3,value3,[0,0]}], [{_, key5,value5,[1,1]}]] = mio_node:dump(Node5, 1),
+    [[{_, key3,value3,[0,0]}], [{_, key5,value5,[1,1]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3,value3,[0,0]}], [{_, key5,value5,[1,1]}]] = mio_node:dump_op(Node5, 1),
     ok.
 
 insert_op_two_nodes_2(_Config) ->
@@ -312,8 +312,8 @@ insert_op_two_nodes_2(_Config) ->
     ok = mio_node:insert_op(Node7, Node7),
     ok = mio_node:insert_op(Node5, Node7),
 
-    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node5, 0),
-    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node5, 1),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node5, 0),
+    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump_op(Node5, 1),
     ok.
 
 insert_op_two_nodes_3(_Config) ->
@@ -323,11 +323,11 @@ insert_op_two_nodes_3(_Config) ->
 
     % insert and check on level 1
     ok = mio_node:insert_op(Node5, Node5),
-    [[{_, key5, value5, [1, 1]}]] = mio_node:dump(Node5, 1),
+    [[{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
     % insert and check on level 1
     ok = mio_node:insert_op(Node7, Node5),
-    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump(Node5, 1),
+    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
     ok = mio_node:insert_op(Node6, Node5),
     ok.
@@ -339,15 +339,15 @@ insert_op_three_nodes(_Config) ->
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node5, Node3),
 
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
-    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     ok = mio_node:insert_op(Node7, Node3),
 
     %% check on level 0
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node5, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump(Node7, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node7, 0),
 
     %% check next node is correct?
     {_, _, _, LeftNodes7, RightNode7} = gen_server:call(Node7, get_op),
@@ -359,8 +359,8 @@ insert_op_three_nodes(_Config) ->
     Node3 = mio_node:node_on_level(LeftNodes, 0),
 
     %% check on level 1
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump_op(Node5, 1),
     ok.
 
 %% for buddy-op coverage
@@ -371,15 +371,15 @@ insert_op_three_nodes_2(_Config) ->
     ok = mio_node:insert_op(Node5, Node5),
     ok = mio_node:insert_op(Node7, Node5),
 
-    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
-    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump(Node7, 1),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
+    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node7, 1),
 
     ok = mio_node:insert_op(Node3, Node5),
 
     %% check on level 0
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node7, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node7, 0),
 
     %% check next node is correct?
     {_, _, _, LeftNodes7, RightNode7} = gen_server:call(Node7, get_op),
@@ -391,8 +391,8 @@ insert_op_three_nodes_2(_Config) ->
     Node3 = mio_node:node_on_level(LeftNodes, 0),
 
     %% check on level 1
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node5, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump_op(Node5, 1),
     ok.
 
 insert_op_three_nodes_3(_Config) ->
@@ -402,15 +402,15 @@ insert_op_three_nodes_3(_Config) ->
     ok = mio_node:insert_op(Node5, Node5),
     ok = mio_node:insert_op(Node7, Node5),
 
-    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
-    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump(Node7, 1),
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
+    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node7, 1),
 
     ok = mio_node:insert_op(Node3, Node5),
 
     %% check on level 0
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node7, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node7, 0),
 
     %% check next node is correct?
     {_, _, _, LeftNodes7, RightNode7} = gen_server:call(Node7, get_op),
@@ -422,8 +422,8 @@ insert_op_three_nodes_3(_Config) ->
     Node3 = mio_node:node_on_level(LeftNodes, 0),
 
     %% check on level 1
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node5, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump_op(Node5, 1),
     ok.
 
 
@@ -435,25 +435,25 @@ insert_op_many_nodes(_Config) ->
 
     %% insert and check
     ok = mio_node:insert_op(Node3, Node3),
-    [{_, key3, value3, [0, 0]}] = mio_node:dump(Node3, 0),
-    [[{_, key3, value3, [0, 0]}]] = mio_node:dump(Node3, 1),
+    [{_, key3, value3, [0, 0]}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, value3, [0, 0]}]] = mio_node:dump_op(Node3, 1),
 
     %% insert and check
     ok = mio_node:insert_op(Node5, Node3),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node3, 0),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump(Node5, 0),
-    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
-    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node5, 1),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node5, 0),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
+    [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
     %% insert and check
     ok = mio_node:insert_op(Node9, Node5),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node3, 0),
-    [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump(Node3, 1),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key9, value9, [0, 1]}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     %% insert and check
     ok = mio_node:insert_op(Node7, Node9),
-    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump(Node5, 0),
-    [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump(Node3, 1),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump_op(Node5, 0),
+    [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump_op(Node3, 1),
     ok.
 
 setup_nodes_for_range_search() ->
@@ -554,7 +554,7 @@ all() ->
     [
      test_set_nth,
      get_call,
-     dump,
+     dump_op,
      search_call,
      search_not_found,
      search_level2_simple,

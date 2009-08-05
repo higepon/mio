@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -45,7 +45,7 @@ enum_nodes_(StartNode, Level) ->
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side_(RightNode, right, Level)]).
 
-dump(StartNode, Level) ->
+dump_op(StartNode, Level) ->
     Level0Nodes = enum_nodes_(StartNode, 0),
     case Level of
         0 ->
