@@ -9,9 +9,9 @@
 
 %% start normal mio_node
 start_node(Key, Value, MembershipVector) ->
-    {ok, Pid} = supervisor:start_child(mio_sup, {getRandomId(),
-                                                 {mio_node, start_link, [[Key, Value, MembershipVector]]},
-                                                 permanent, brutal_kill, worker, [mio_node]}).
+    {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
+                                               {mio_node, start_link, [[Key, Value, MembershipVector]]},
+                                               permanent, brutal_kill, worker, [mio_node]}).
 
 init(_Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),

@@ -547,6 +547,17 @@ handle_info(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     Node3 ! "hello".
 
+terminate_node(_Config) ->
+    [Node3, _, _, _] = setup_nodes_for_range_search_op(),
+    %% this causes error, mio_node:terminate will be called
+    try gen_server:call(Node3, {buddy_op, xxx, xxxx, xxx}) of
+        _ -> []
+    catch
+        throw:_ -> [];
+        exit:_ -> [];
+        error:_ -> []
+    end.
+
 node_on_level(_Config) ->
     mio_node:node_on_level([], 0).
 
@@ -578,6 +589,7 @@ all() ->
 %%    search_closest
      overwrite_value,
      handle_info,
+     terminate_node,
      node_on_level
      ].
 
