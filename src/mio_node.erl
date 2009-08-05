@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search_op/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1, search_op/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -72,7 +72,17 @@ insert_op(NodeToInsert, Introducer) ->
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
-range_search_order_op(StartNode, Key1, Key2, Limit, Order) ->
+
+%% Key1 and Key2 are not in the search result.
+range_search_asc_op(StartNode, Key1, Key2, Limit) ->
+    range_search_order_op_(StartNode, Key1, Key2, Limit, asc).
+
+range_search_desc_op(StartNode, Key1, Key2, Limit) ->
+    range_search_order_op_(StartNode, Key1, Key2, Limit, desc).
+
+%% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
+%% For this purpose, we do range search in this process, which is not node process.
+range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
     {StartKey, CastOp} = case Order of
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
@@ -85,32 +95,6 @@ range_search_order_op(StartNode, Key1, Key2, Limit, Order) ->
             Accumed
     after 1000 ->
             [timeout]
-    end.
-
-%% Key1 and Key2 are not in the search result.
-range_search_asc_op(StartNode, Key1, Key2, Limit) ->
-    range_search_order_op(StartNode, Key1, Key2, Limit, asc).
-
-range_search_desc_op(StartNode, Key1, Key2, Limit) ->
-    range_search_order_op(StartNode, Key1, Key2, Limit, desc).
-
-%% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
-%% For this purpose, we do range search in this process, which is not node process.
-range_search_op(StartNode, Key1, Key2, Limit) ->
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search_op, StartNode, [], Key1}),
-    if ClosestKey > Key2 ->
-            [];
-       Key1 =< ClosestKey andalso ClosestKey =:= Key2 ->
-            [{ClosestNode, ClosestKey, ClosestValue}];
-       true ->
-            ReturnToMe = self(),
-            gen_server:cast(ClosestNode, {range_search_op_cast, ReturnToMe, Key1, Key2, [], Limit}),
-            receive
-                {range_search_accumed, Accumed} ->
-                    Accumed
-            after 1000 ->
-                    [timeout]
-            end
     end.
 
 %%--------------------------------------------------------------------
@@ -194,44 +178,9 @@ handle_call({insert_op, Introducer}, _From, State) ->
 handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
 
-
-
-handle_call({insert, Key, Value}, _From, State) ->
-    {ok, Pid} = mio_sup:start_node(Key, Value, [1, 0]),
-    MyKey = State#state.key,
-    if
-        Key > MyKey ->
-            {reply, {ok, Pid}, State#state{right=[Pid, Pid]}};
-        true ->
-            {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
-    end;
-
-
-%%     (let-values (([neighbor path] (search-op introducer n (node-key n) 0 '())))
-%%       (link-op neighbor n (if (< (node-key introducer) (node-key n)) 'RIGHT 'LEFT) 0)
-%%       (let loop ([level 1])
-%%         (cond
-%%          [(> level (max-level)) '()]
-%%          [else
-%%           (aif (and (node-left (- level 1) n)
-%%                     (buddy-op (node-left (- level 1) n) introducer n level (membership-level level (node-membership n)) 'LEFT))
-%%                (begin (link-op it n 'RIGHT level)
-%%                       (loop (+ level 1)))
-%%                (aif (and (node-right (- level 1) n)
-%%                          (buddy-op (node-right (- level 1) n) introducer n level (membership-level level (node-membership n)) 'RIGHT))
-%%                     (begin (link-op it n 'LEFT level)
-%%                            (loop (+ level 1)))
-%%                     '()))])))]))
-
-%%    end;
-
-
-%% link_op
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
-    ?LOGF("link_right_op Level=~p RightNode=~p", [Level, RightNode]),
     {reply, ok, set_right(State, Level, RightNode)};
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
-    ?L(),
     {reply, ok, set_left(State, Level, LeftNode)}.
 
 
@@ -241,104 +190,35 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-%% handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
-%%     if
-%%         %% This is myKey, found!
-%%         MyKey =:= Key ->
-%%             ?L(),
-%%             ReturnToMe ! {ok, self(), MyKey, MyValue},
-%%             ?L();
-%%         MyKey < Key ->
-%%             ?L(),
-%%             case right(State, Level) of
-%%                 [] ->
-%%                     ?L(),
-%%                     ?LOGF("ReturnToMe=~p", [whereis(ReturnToMe)]),
-%%                     ReturnToMe ! {ok, self(), MyKey, MyValue},
-%%                     ?L();
-%%                 RightNode ->
-%%                     ?L(),
-%%                     gen_server:cast(RightNode, {search_op, ReturnToMe, Key})
-%%             end;
-%%         true ->
-%%             ?L(),
-%%             case left(State, 0) of
-%%                 [] ->
-%%                     ?L(),
-%%                     ReturnToMe ! {ok, self(), MyKey, MyValue}; %% todo
-%%                 LeftNode ->
-%%                     ?L(),
-%%                     gen_server:cast(LeftNode, {search_op, ReturnToMe, Key})
-%%             end
-%%     end,
-%%     {noreply, State};
 
+%%--------------------------------------------------------------------
+%%  dump operation
+%%--------------------------------------------------------------------
 handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
-    ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyMVector = State#state.membership_vector,
     case right(State, Level) of
         [] ->
-            ?L(),
-            ?LOG([{self(), MyKey, MyValue, MyMVector} | Accum]),
             ReturnToMe ! {dump_side_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
         RightPid ->
-            ?L(),
             gen_server:cast(RightPid, {dump_side_cast, right, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State};
 handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
-    ?L(),
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyMVector = State#state.membership_vector,
     case left(State, Level) of
-        [] -> ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
+        [] ->
+            ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State};
 
-handle_cast({range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
-    ?L(),
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    if Limit =:= 0 ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-       Key1 =< MyKey andalso MyKey < Key2 ->
-            ?L(),
-            case right(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
-                RightNode ->
-                    ?L(),
-                    gen_server:cast(RightNode,
-                                    {range_search_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
-            end;
-       Key1 =< MyKey andalso MyKey =:= Key2 ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
-       MyKey < Key1 ->
-            ?L(),
-            case right(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-                RightNode ->
-                    gen_server:cast(RightNode,
-                                    {range_search_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
-            end;
-       true ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
-    end,
-    {noreply, State};
-
+%%--------------------------------------------------------------------
+%%  range search operation
+%%--------------------------------------------------------------------
 handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,

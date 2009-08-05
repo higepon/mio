@@ -39,15 +39,15 @@ get_call(_Config) ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     ok.
 
-dump_op(_Config) ->
-    %% insert to right
-    {ok, _} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
+%% dump_op(_Config) ->
+%%     %% insert to right
+%%     {ok, _} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
 
-    %% insert to left
-    {ok, _} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-    [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump_op(mio_node, 0), %% dump on Level 0
+%%     %% insert to left
+%%     {ok, _} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
+%%     [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump_op(mio_node, 0), %% dump on Level 0
 
-    ok.
+%%     ok.
 
 search_call(_Config) ->
 %%     %% I have the value
@@ -467,24 +467,24 @@ setup_nodes_for_range_search_op() ->
     ok = mio_node:insert_op(Node7, Node9),
     [Node3, Node5, Node7, Node9].
 
-range_search_op(_Config) ->
-    [Node3, _, _, Node9] = setup_nodes_for_range_search_op(),
+%% range_search_op(_Config) ->
+%%     [Node3, _, _, Node9] = setup_nodes_for_range_search_op(),
 
-    % range search!
-    [] = mio_node:range_search_op(Node3, key99, key99, 10),
-    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_op(Node3, key4, key99, 10),
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key8, 10),
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key7, 10),
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key8, 10),
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key7, 10),
-    [{_, key5, value5}] = mio_node:range_search_op(Node3, key4, key8, 1),
-    [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key2, key8, 10),
-    [{_, key5, value5}] = mio_node:range_search_op(Node9, key5, key5, 1),
-    [] = mio_node:range_search_op(Node3, key3, key9, 0),
-    [] = mio_node:range_search_op(Node3, key1, key2, 10),
-    %% Key1 should be greater equal than Key2
-    [] = mio_node:range_search_op(Node9, key5, key4, 1),
-    ok.
+%%     % range search!
+%%     [] = mio_node:range_search_op(Node3, key99, key99, 10),
+%%     [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_op(Node3, key4, key99, 10),
+%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key8, 10),
+%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key7, 10),
+%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key8, 10),
+%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key7, 10),
+%%     [{_, key5, value5}] = mio_node:range_search_op(Node3, key4, key8, 1),
+%%     [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key2, key8, 10),
+%%     [{_, key5, value5}] = mio_node:range_search_op(Node9, key5, key5, 1),
+%%     [] = mio_node:range_search_op(Node3, key3, key9, 0),
+%%     [] = mio_node:range_search_op(Node3, key1, key2, 10),
+%%     %% Key1 should be greater equal than Key2
+%%     [] = mio_node:range_search_op(Node9, key5, key4, 1),
+%%     ok.
 
 range_search_asc_op(_Config) ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
@@ -554,7 +554,7 @@ all() ->
     [
      test_set_nth,
      get_call,
-     dump_op,
+%%     dump_op,
      search_call,
      search_not_found,
      search_level2_simple,
@@ -572,7 +572,7 @@ all() ->
      insert_op_three_nodes_2,
      insert_op_three_nodes_3,
      insert_op_many_nodes,
-     range_search_op,
+%%     range_search_op,
      range_search_asc_op,
      range_search_desc_op,
 %%    search_closest

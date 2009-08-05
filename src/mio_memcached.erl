@@ -45,9 +45,9 @@ process_command(Sock, StartNode) ->
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key);
-                ["get", "mio:range-search", Key1, Key2, Limit] ->
-                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
-                    process_gets(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+%%                 ["get", "mio:range-search", Key1, Key2, Limit] ->
+%%                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+%%                     process_gets(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
