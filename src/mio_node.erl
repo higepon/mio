@@ -89,7 +89,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ok, ClosestNode, _, _} = gen_server:call(StartNode, {search_op, StartNode, [], StartKey}),
+    {ok, ClosestNode, _, _} = gen_server:call(StartNode, {search_op, [], StartKey}),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -105,7 +105,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 search_op(StartNode, Key) ->
     %% 2nd parameter [] of gen_server:call(search_op, ...) is Level.
     %% If Level is not specified, The start node checks his max level and use it.
-    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search_op, StartNode, [], Key}),
+    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search_op, [], Key}),
     if
         FoundKey =:= Key ->
             {ok, FoundValue};
@@ -163,8 +163,8 @@ init(Args) ->
 handle_call(get_op, _From, State) ->
     {reply, get_op_call(State), State};
 
-handle_call({search_op, ReturnToMe, Level, Key}, _From, State) ->
-    {reply, search_op_call(State, ReturnToMe, Level, Key), State};
+handle_call({search_op, Level, Key}, _From, State) ->
+    {reply, search_op_call(State, Level, Key), State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     {reply, buddy_op_call(State, MembershipVector, Direction, Level), State};
@@ -287,31 +287,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
-    search_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey,
+search_right_(MyKey, MyValue, RightNodes, Level, SearchKey) ->
+    search_(MyKey, MyValue, RightNodes, Level, SearchKey,
             fun(Key, SKey) -> Key =< SKey end).
 
-search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
-    search_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey,
+search_left_(MyKey, MyValue, LeftNodes, Level, SearchKey) ->
+    search_(MyKey, MyValue, LeftNodes, Level, SearchKey,
             fun(Key, SKey) -> Key >= SKey end).
 
-search_(MyKey, MyValue, NextNodes, ReturnToMe, Level, SearchKey, CompareFun) ->
+search_(MyKey, MyValue, NextNodes, Level, SearchKey, CompareFun) ->
     if
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
         true ->
             case node_on_level(NextNodes, Level) of
                 [] ->
-                    search_(MyKey, MyValue, NextNodes, ReturnToMe, Level - 1, SearchKey, CompareFun);
+                    search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun);
                 NextNode ->
                     {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
                     %% we can make short cut. when equal case todo
                     Compare = CompareFun(NextKey, SearchKey),
                     if
                         Compare ->
-                            gen_server:call(NextNode, {search_op, ReturnToMe, Level, SearchKey});
+                            gen_server:call(NextNode, {search_op, Level, SearchKey});
                         true ->
-                            search_(MyKey, MyValue, NextNodes, ReturnToMe, Level - 1, SearchKey, CompareFun)
+                            search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun)
                     end
             end
     end.
@@ -366,7 +366,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
 %%  Search operation
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
-search_op_call(State, ReturnToMe, Level, Key) ->
+search_op_call(State, Level, Key) ->
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -379,9 +379,9 @@ search_op_call(State, ReturnToMe, Level, Key) ->
         MyKey =:= Key ->
             {ok, self(), MyKey, MyValue};
         MyKey < Key ->
-            search_right_(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key);
+            search_right_(MyKey, MyValue, State#state.right, SearchLevel, Key);
         true ->
-            search_left_(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key)
+            search_left_(MyKey, MyValue, State#state.left, SearchLevel, Key)
     end.
 
 %%--------------------------------------------------------------------
@@ -398,7 +398,7 @@ insert_op_call(State, Introducer) ->
         Introducer =:= self() ->
             {reply, ok, State};
         true ->
-            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search_op, Introducer, [], MyKey}),
+            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search_op, [], MyKey}),
             if NeighBorKey =:= MyKey ->
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
                     {reply, ok, State};

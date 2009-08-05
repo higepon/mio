@@ -68,7 +68,7 @@ search_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {ok, _, myKey, myValue} = gen_server:call(Node, {search_op, Node, [], myKey}),
+    {ok, _, myKey, myValue} = gen_server:call(Node, {search_op, [], myKey}),
 
     %% dump nodes on Level 0 and 1
     [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
@@ -129,7 +129,7 @@ search_level2_2(_Config) ->
 
     ng = mio_node:search_op(Node5, key10),
     %% closest node should be returned
-    {ok, _, key5, value5} = gen_server:call(Node5, {search_op, Node5, [], key8}),
+    {ok, _, key5, value5} = gen_server:call(Node5, {search_op, [], key8}),
     ok.
 
 search_level2_3(_Config) ->
@@ -195,8 +195,8 @@ search_level2_3(_Config) ->
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {ok, _, key9, value9} = gen_server:call(Node5, {search_op, Node5, [], key9_9}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, Node9, [], key6}),
+    {ok, _, key9, value9} = gen_server:call(Node5, {search_op, [], key9_9}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, [], key6}),
     ok.
 
 test_set_nth(_Config) ->
@@ -513,10 +513,10 @@ search_closest(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
-    {ok, _, key7, value7} = gen_server:call(Node3, {search_op, Node3, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node5, {search_op, Node5, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node7, {search_op, Node7, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, Node9, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node3, {search_op, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node5, {search_op, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node7, {search_op, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, [], key8}),
     ok.
 
 
@@ -565,7 +565,6 @@ all() ->
     [
      test_set_nth,
      get_call,
-%%     dump_op,
      search_call,
      search_not_found,
      search_level2_simple,
@@ -583,10 +582,8 @@ all() ->
      insert_op_three_nodes_2,
      insert_op_three_nodes_3,
      insert_op_many_nodes,
-%%     range_search_op,
      range_search_asc_op,
      range_search_desc_op,
-%%    search_closest
      overwrite_value,
      handle_info,
      terminate_node,
