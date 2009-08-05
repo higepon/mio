@@ -314,7 +314,7 @@ search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
         true ->
-            LeftNode = lists:nth(Level + 1, LeftNodes),
+            LeftNode = node_on_level(LeftNodes, Level),
             case LeftNode of
                 [] ->
                     search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
