@@ -367,6 +367,39 @@ insert_op_three_nodes(_Config) ->
     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 0]}]] = mio_node:dump(Node5, 1),
     ok.
 
+%% for buddy-op coverage
+insert_op_three_nodes_2(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
+    ok = mio_node:insert_op(Node5, Node5),
+    ok = mio_node:insert_op(Node7, Node5),
+
+    [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
+    [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump(Node7, 1),
+
+    ok = mio_node:insert_op(Node3, Node5),
+
+    %% check on level 0
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node3, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node5, 0),
+    [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump(Node7, 0),
+
+    %% check next node is correct?
+    {_, _, _, LeftNodes7, RightNode7} = gen_server:call(Node7, get_op),
+    [] = mio_node:node_on_level(RightNode7, 0),
+    Node5 = mio_node:node_on_level(LeftNodes7, 0),
+
+    {_, _, _, LeftNodes, RightNode} = gen_server:call(Node5, get_op),
+    Node7 = mio_node:node_on_level(RightNode, 0),
+    Node3 = mio_node:node_on_level(LeftNodes, 0),
+
+    %% check on level 1
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node3, 1),
+    [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_node:dump(Node5, 1),
+    ok.
+
+
 insert_op_many_nodes(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -506,6 +539,7 @@ all() ->
      insert_op_two_nodes_2,
      insert_op_two_nodes_3,
      insert_op_three_nodes,
+     insert_op_three_nodes_2,
      insert_op_many_nodes,
      range_search_op,
      range_search_asc_op,
