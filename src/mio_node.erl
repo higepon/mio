@@ -75,7 +75,12 @@ insert_op(Introducer, NodeToInsert) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
-    gen_server:call(Introducer, {delete_op, Key}).
+    {ok, FoundNode, FoundKey, _} = gen_server:call(Introducer, {search_op, [], Key}),
+    if FoundKey =:= Key ->
+            %% ToDo terminate child
+            gen_server:call(FoundNode, delete_op);
+       true -> ng
+    end.
 
 %%--------------------------------------------------------------------
 %%  range search operation
@@ -180,8 +185,8 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
 handle_call({insert_op, Introducer}, _From, State) ->
     insert_op_call(State, Introducer);
 
-handle_call({delete_op, Key}, _From, State) ->
-    delete_op_call(State, Key);
+handle_call(delete_op, _From, State) ->
+    delete_op_call(State);
 
 handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
@@ -396,8 +401,17 @@ search_op_call(State, Level, Key) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-delete_op_call(State, Key) ->
-    {reply, ok, State}.
+delete_op_call(State) ->
+    MaxLevel = length(State#state.right) - 1,
+    DeletedState = delete_loop_(State, MaxLevel),
+    {reply, ok, DeletedState}.
+
+delete_loop_(State, MaxLevel) ->
+    if 0 < MaxLevel ->
+            State;
+       true ->
+            delete_loop_(State, MaxLevel - 1)
+    end.
 
 
 %%--------------------------------------------------------------------
