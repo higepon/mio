@@ -21,10 +21,28 @@
 %%====================================================================
 %% API
 %%====================================================================
+start_link(Args) ->
+    gen_server:start_link(?MODULE, Args, []).
+
 %%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
+%%  dump operation
 %%--------------------------------------------------------------------
+dump_op(StartNode, Level) ->
+    Level0Nodes = enum_nodes_(StartNode, 0),
+    case Level of
+        0 ->
+            Level0Nodes;
+        _ ->
+            StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+                                                                                    Level0Nodes))),
+            lists:map(fun(Node) ->
+                              lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
+                                        enum_nodes_(Node, Level))
+                      end,
+                      StartNodes)
+    end.
+
 dump_side_(StartNode, Side, Level) ->
     case StartNode of
         [] ->
@@ -45,52 +63,29 @@ enum_nodes_(StartNode, Level) ->
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side_(RightNode, right, Level)]).
 
-dump_op(StartNode, Level) ->
-    Level0Nodes = enum_nodes_(StartNode, 0),
-    case Level of
-        0 ->
-            Level0Nodes;
-        _ ->
-            StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-                                                                                    Level0Nodes))),
-            ?LOG(Level0Nodes),
-            ?LOG(lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-                                                                                    Level0Nodes))),
-            ?LOG(StartNodes),
-            lists:map(fun(Node) ->
-                              lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
-                                        enum_nodes_(Node, Level))
-                      end,
-                      StartNodes)
-    end.
-
-start_link(Args) ->
-    error_logger:info_msg("~p start_link\n", [?MODULE]),
-    error_logger:info_msg("args = ~p start_link\n", [Args]),
-    gen_server:start_link(?MODULE, Args, []).
-
+%%--------------------------------------------------------------------
+%%  insert operation
+%%--------------------------------------------------------------------
 insert_op(NodeToInsert, Introducer) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
 
+%%--------------------------------------------------------------------
+%%  range search operation
+%%--------------------------------------------------------------------
 range_search_order_op(StartNode, Key1, Key2, Limit, Order) ->
     {StartKey, CastOp} = case Order of
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
     {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], StartKey}),
-    ?LOG(ClosestKey),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
         {range_search_accumed, Accumed} ->
-            ?LOG(Accumed),
             Accumed
     after 1000 ->
             [timeout]
     end.
-
 
 %% Key1 and Key2 are not in the search result.
 range_search_asc_op(StartNode, Key1, Key2, Limit) ->
@@ -103,13 +98,11 @@ range_search_desc_op(StartNode, Key1, Key2, Limit) ->
 %% For this purpose, we do range search in this process, which is not node process.
 range_search_op(StartNode, Key1, Key2, Limit) ->
     {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key1}),
-    ?LOG(ClosestKey),
     if ClosestKey > Key2 ->
             [];
        Key1 =< ClosestKey andalso ClosestKey =:= Key2 ->
             [{ClosestNode, ClosestKey, ClosestValue}];
        true ->
-            ?L(),
             ReturnToMe = self(),
             gen_server:cast(ClosestNode, {range_search_op_cast, ReturnToMe, Key1, Key2, [], Limit}),
             receive
