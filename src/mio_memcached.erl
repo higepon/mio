@@ -96,7 +96,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [1, 0]),
-            mio_node:insert_op(NodeToInsert, Introducer),
+            mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->
             ok;

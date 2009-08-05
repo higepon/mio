@@ -9,7 +9,7 @@
 %% API
 -export([start_link/1,
          search_op/2, link_right_op/3, link_left_op/3, set_nth/3,
-         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
+         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
          range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
@@ -68,8 +68,14 @@ enum_nodes_(StartNode, Level) ->
 %%--------------------------------------------------------------------
 %%  insert operation
 %%--------------------------------------------------------------------
-insert_op(NodeToInsert, Introducer) ->
+insert_op(Introducer, NodeToInsert) ->
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
+
+%%--------------------------------------------------------------------
+%%  delete operation
+%%--------------------------------------------------------------------
+delete_op(Introducer, Key) ->
+    gen_server:call(Introducer, {delete_op, Key}).
 
 %%--------------------------------------------------------------------
 %%  range search operation
@@ -173,6 +179,9 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
 
 handle_call({insert_op, Introducer}, _From, State) ->
     insert_op_call(State, Introducer);
+
+handle_call({delete_op, Key}, _From, State) ->
+    delete_op_call(State, Key);
 
 handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
@@ -383,6 +392,13 @@ search_op_call(State, Level, Key) ->
         true ->
             search_left_(MyKey, MyValue, State#state.left, SearchLevel, Key)
     end.
+
+%%--------------------------------------------------------------------
+%%  delete operation
+%%--------------------------------------------------------------------
+delete_op_call(State, Key) ->
+    {reply, ok, State}.
+
 
 %%--------------------------------------------------------------------
 %%  Insert operation

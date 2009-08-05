@@ -224,8 +224,17 @@ buddy_op(_Config) ->
 
     {ok, Buddy3} = mio_node:buddy_op(Node8, [0, 1], left, 0),
     {key7, value7, _, _, _} = gen_server:call(Buddy3, get_op),
+    ok.
 
+delete_op(_Config) ->
+    [Node3, _, _, _] = setup_nodes_for_range_search_op(),
+    [{_, key3, _, _}, {_, key5, _, _}, {_, key7, _, _}, {_, key9, _, _}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, _, _}, {_, key9, _, _}], [{_, key5, _, _}, {_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
 
+    %% delete key5!
+    mio_node:delete_op(Node3, key5),
+    [{_, key3, _, _}, {_, key7, _, _}, {_, key9, _, _}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, _, _}, {_, key9, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
     ok.
 
 insert_op_self(_Config) ->
@@ -236,7 +245,7 @@ insert_op_two_nodes(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
-    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node3, Node5),
 
     %% check on level 0
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
@@ -251,7 +260,7 @@ insert_op_two_nodes_2(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     ok = mio_node:insert_op(Node7, Node7),
-    ok = mio_node:insert_op(Node5, Node7),
+    ok = mio_node:insert_op(Node7, Node5),
 
     [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node5, 0),
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump_op(Node5, 1),
@@ -267,10 +276,10 @@ insert_op_two_nodes_3(_Config) ->
     [[{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
     % insert and check on level 1
-    ok = mio_node:insert_op(Node7, Node5),
+    ok = mio_node:insert_op(Node5, Node7),
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
-    ok = mio_node:insert_op(Node6, Node5),
+    ok = mio_node:insert_op(Node5, Node6),
     ok.
 
 insert_op_three_nodes(_Config) ->
@@ -278,12 +287,12 @@ insert_op_three_nodes(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     ok = mio_node:insert_op(Node3, Node3),
-    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node3, Node5),
 
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
-    ok = mio_node:insert_op(Node7, Node3),
+    ok = mio_node:insert_op(Node3, Node7),
 
     %% check on level 0
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}] = mio_node:dump_op(Node3, 0),
@@ -310,12 +319,12 @@ insert_op_three_nodes_2(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node5, Node5),
-    ok = mio_node:insert_op(Node7, Node5),
+    ok = mio_node:insert_op(Node5, Node7),
 
     [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node7, 1),
 
-    ok = mio_node:insert_op(Node3, Node5),
+    ok = mio_node:insert_op(Node5, Node3),
 
     %% check on level 0
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node3, 0),
@@ -341,12 +350,12 @@ insert_op_three_nodes_3(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node5, Node5),
-    ok = mio_node:insert_op(Node7, Node5),
+    ok = mio_node:insert_op(Node5, Node7),
 
     [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node5, 0),
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}]] = mio_node:dump_op(Node7, 1),
 
-    ok = mio_node:insert_op(Node3, Node5),
+    ok = mio_node:insert_op(Node5, Node3),
 
     %% check on level 0
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 1]}] = mio_node:dump_op(Node3, 0),
@@ -380,19 +389,19 @@ insert_op_many_nodes(_Config) ->
     [[{_, key3, value3, [0, 0]}]] = mio_node:dump_op(Node3, 1),
 
     %% insert and check
-    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node3, Node5),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node5, 0),
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node5, 1),
 
     %% insert and check
-    ok = mio_node:insert_op(Node9, Node5),
+    ok = mio_node:insert_op(Node5, Node9),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key9, value9, [0, 1]}] = mio_node:dump_op(Node3, 0),
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     %% insert and check
-    ok = mio_node:insert_op(Node7, Node9),
+    ok = mio_node:insert_op(Node9, Node7),
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}, {_, key9, value9, [0, 1]}] = mio_node:dump_op(Node5, 0),
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump_op(Node3, 1),
     ok.
@@ -403,9 +412,9 @@ setup_nodes_for_range_search_op() ->
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
     ok = mio_node:insert_op(Node3, Node3),
-    ok = mio_node:insert_op(Node5, Node3),
-    ok = mio_node:insert_op(Node9, Node5),
-    ok = mio_node:insert_op(Node7, Node9),
+    ok = mio_node:insert_op(Node3, Node5),
+    ok = mio_node:insert_op(Node5, Node9),
+    ok = mio_node:insert_op(Node9, Node7),
     [Node3, Node5, Node7, Node9].
 
 range_search_asc_op(_Config) ->
@@ -449,10 +458,10 @@ overwrite_value(_Config) ->
 
     {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
     ok = mio_node:insert_op(Node3, Node3),
-    ok = mio_node:insert_op(Node5, Node3),
-    ok = mio_node:insert_op(Node9, Node5),
-    ok = mio_node:insert_op(Node7, Node9),
-    ok = mio_node:insert_op(NewNode3, Node9),
+    ok = mio_node:insert_op(Node3, Node5),
+    ok = mio_node:insert_op(Node5, Node9),
+    ok = mio_node:insert_op(Node9, Node7),
+    ok = mio_node:insert_op(Node9, NewNode3),
     {ok, new_value3} = mio_node:search_op(Node9, key3),
     ok.
 
@@ -460,7 +469,7 @@ search_not_found(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
-    ok = mio_node:insert_op(Node5, Node3),
+    ok = mio_node:insert_op(Node3, Node5),
     ng =  mio_node:search_op(Node5, key4),
     ok.
 
@@ -493,6 +502,7 @@ all() ->
      search_level2_3,
      link_op,
      buddy_op,
+     delete_op,
      insert_op_self,
      insert_op_two_nodes,
      insert_op_two_nodes_2,
