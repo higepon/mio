@@ -30,7 +30,7 @@ init_per_suite(Config) ->
     register(mio_node, NodePid),
     Config.
 
-end_per_suite(Config) ->
+end_per_suite(_Config) ->
     application:stop(mio),
     ok.
 
@@ -41,10 +41,10 @@ get_call(_Config) ->
 
 dump_op(_Config) ->
     %% insert to right
-    {ok, Pid} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
+    {ok, _} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
 
     %% insert to left
-    {ok, Pid2} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
+    {ok, _} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
     [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump_op(mio_node, 0), %% dump on Level 0
 
     ok.
@@ -468,7 +468,7 @@ setup_nodes_for_range_search() ->
     [Node3, Node5, Node7, Node9].
 
 range_search_op(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+    [Node3, _, _, Node9] = setup_nodes_for_range_search(),
 
     % range search!
     [] = mio_node:range_search_op(Node3, key99, key99, 10),
@@ -487,10 +487,10 @@ range_search_op(_Config) ->
     ok.
 
 range_search_asc_op(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+    [Node3, _, _, _] = setup_nodes_for_range_search(),
 
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_asc_op(Node3, key3, key9, 10),
-    [{_, key5, value5}, {_, key7, value7}, {_, Key9, value9}] = mio_node:range_search_asc_op(Node3, key3, key999, 10),
+    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_asc_op(Node3, key3, key999, 10),
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_asc_op(Node3, key3, key999, 2),
     [{_, key5, value5}] = mio_node:range_search_asc_op(Node3, key3, key999, 1),
     [] = mio_node:range_search_asc_op(Node3, key3, key999, 0),
@@ -499,7 +499,7 @@ range_search_asc_op(_Config) ->
     ok.
 
 range_search_desc_op(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+    [Node3, _, _, _] = setup_nodes_for_range_search(),
 
     [{_, key7, value7}] = mio_node:range_search_desc_op(Node3, key3, key9, 1),
     [{_, key9, value9}, {_, key7, value7}, {_, key5, value5}] = mio_node:range_search_desc_op(Node3, key3, key99, 10),
@@ -593,5 +593,5 @@ link_node(Level, NodeA, NodeB) ->
 link_nodes(Level, [NodeA | [NodeB | More]]) ->
     link_node(Level, NodeA, NodeB),
     link_nodes(Level, [NodeB | More]);
-link_nodes(Level, []) -> ok;
-link_nodes(Level, [Node | []]) -> ok.
+link_nodes(_Level, []) -> ok;
+link_nodes(_Level, [_Node | []]) -> ok.
