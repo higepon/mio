@@ -619,6 +619,7 @@ insert_op_call(State, Introducer) ->
             end
     end.
 
+%% link on Level > 0
 insert_loop(Level, MaxLevel, LinkedState) ->
     %% Find buddy node and link it.
     %% buddy node has same membership_vector on this level.
@@ -628,9 +629,10 @@ insert_loop(Level, MaxLevel, LinkedState) ->
             case left(LinkedState, 0) of
                 [] ->
                     case right(LinkedState, 0) of
-                        [] ->
-                            %% we have no buddy on this level.
-                            insert_loop(Level + 1, MaxLevel, LinkedState);
+                        %% This should never happen, insert to self is returned immediately on insert_op.
+                        %%[] ->
+                        %%    %% we have no buddy on this level.
+                        %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                         RightNodeOnLevel0 ->
                             ?L(),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
@@ -642,10 +644,11 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                 _ ->
                                     {_, _, _, BuddyLeft, _} = gen_server:call(Buddy, get_op),
                                     link_left_op(Buddy, Level, self()),
-                                    case node_on_level(BuddyLeft, Level) of
-                                        [] -> [];
-                                        X -> link_right_op(X, Level, self())
-                                    end,
+                                    %% Since left(Level:0) is empty, this should never happen.
+                                    %% case node_on_level(BuddyLeft, Level) of
+                                    %%    [] -> [];
+                                    %%    X -> link_right_op(X, Level, self())
+                                    %% end,
                                     NewLinkedState = set_left(set_right(LinkedState, Level, Buddy), Level, node_on_level(BuddyLeft, Level)),
                                     insert_loop(Level + 1, MaxLevel, NewLinkedState)
                             end
