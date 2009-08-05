@@ -406,7 +406,7 @@ delete_op_call(State) ->
     DeletedState = delete_loop_(State, MaxLevel),
     {reply, ok, DeletedState}.
 
-delete_loop_(State, 0) ->
+delete_loop_(State, MaxLevel) when MaxLevel < 0 ->
     State;
 delete_loop_(State, MaxLevel) ->
     delete_loop_(State, MaxLevel - 1).
