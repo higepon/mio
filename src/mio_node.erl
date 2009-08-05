@@ -289,46 +289,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
+    search_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey,
+            fun(Key, SKey) -> Key =< SKey end).
+
+search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
+    search_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey,
+            fun(Key, SKey) -> Key >= SKey end).
+
+search_(MyKey, MyValue, NextNodes, ReturnToMe, Level, SearchKey, CompareFun) ->
     if
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
         true ->
-            RightNode = node_on_level(RightNodes, Level),
-            case RightNode of
+            case node_on_level(NextNodes, Level) of
                 [] ->
-                    search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
-                RightNode ->
-                    {RightKey, _, _, _, _} = gen_server:call(RightNode, get_op),
+                    search_(MyKey, MyValue, NextNodes, ReturnToMe, Level - 1, SearchKey, CompareFun);
+                NextNode ->
+                    {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
+                    %% we can make short cut. when equal case todo
+                    Compare = CompareFun(NextKey, SearchKey),
                     if
-                        %% we can make short cut. when equal case todo
-                        RightKey =< SearchKey ->
-                            gen_server:call(RightNode, {search_op, ReturnToMe, Level, SearchKey});
+                        Compare ->
+                            gen_server:call(NextNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
-                            search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
+                            search_(MyKey, MyValue, NextNodes, ReturnToMe, Level - 1, SearchKey, CompareFun)
                     end
             end
     end.
 
-search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
-    if
-        Level < 0 ->
-            {ok, self(), MyKey, MyValue};
-        true ->
-            LeftNode = node_on_level(LeftNodes, Level),
-            case LeftNode of
-                [] ->
-                    search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
-                LeftNode ->
-                    {LeftKey, _, _, _, _} = gen_server:call(LeftNode, get_op),
-                    if
-                        %% we can make short cut. todo
-                        LeftKey >= SearchKey ->
-                            gen_server:call(LeftNode, {search_op, ReturnToMe, Level, SearchKey});
-                        true ->
-                            search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
-                    end
-            end
-    end.
+
 
 node_on_level(Nodes, Level) ->
     case Nodes of
