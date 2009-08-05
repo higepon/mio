@@ -77,7 +77,7 @@ process_command(Sock, StartNode) ->
     end.
 
 process_get(Sock, StartNode, Key) ->
-    Value = case mio_node:search(StartNode, Key) of
+    Value = case mio_node:search_op(StartNode, Key) of
                 ng -> list_to_binary([]);
                 {ok, FoundValue} -> FoundValue
               end,

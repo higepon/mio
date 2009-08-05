@@ -51,24 +51,24 @@ dump_op(_Config) ->
 
 search_call(_Config) ->
 %%     %% I have the value
-%%     {ok, myValue2} = mio_node:search(mio_node, myKey),
+%%     {ok, myValue2} = mio_node:search_op(mio_node, myKey),
 %%     %% search to right
-%%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
-%%     {ok, myValue1} = mio_node:search(mio_node, myKey1),
+%%     {ok, myValue1} = mio_node:search_op(mio_node, myKey1),
+%%     {ok, myValue1} = mio_node:search_op(mio_node, myKey1),
 %%     %% search to left
-%%     {ok, myKexValue} = mio_node:search(mio_node, myKex),
+%%     {ok, myKexValue} = mio_node:search_op(mio_node, myKex),
 
 %%     %% not found
 %%     %% returns closest node
-%%     {ok, myKey1, myValue1} = gen_server:call(mio_node, {search, mio_node, [], myKey2}),
+%%     {ok, myKey1, myValue1} = gen_server:call(mio_node, {search_op, mio_node, [], myKey2}),
 %%     %% returns ng
-%%     ng = mio_node:search(mio_node, myKey2),
+%%     ng = mio_node:search_op(mio_node, myKey2),
     ok.
 
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {ok, _, myKey, myValue} = gen_server:call(Node, {search, Node, [], myKey}),
+    {ok, _, myKey, myValue} = gen_server:call(Node, {search_op, Node, [], myKey}),
 
     %% dump nodes on Level 0 and 1
     [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
@@ -90,10 +90,10 @@ search_level2_1(_Config) ->
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     %% search!
-    {ok, value3} = mio_node:search(Node3, key3),
-    {ok, value3} = mio_node:search(Node5, key3),
-    {ok, value5} = mio_node:search(Node3, key5),
-    {ok, value5} = mio_node:search(Node5, key5),
+    {ok, value3} = mio_node:search_op(Node3, key3),
+    {ok, value3} = mio_node:search_op(Node5, key3),
+    {ok, value5} = mio_node:search_op(Node3, key5),
+    {ok, value5} = mio_node:search_op(Node5, key5),
     ok.
 
 search_level2_2(_Config) ->
@@ -116,20 +116,20 @@ search_level2_2(_Config) ->
     [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump_op(Node9, 1),
 
     %% search!
-    {ok, value3} = mio_node:search(Node3, key3),
-    {ok, value3} = mio_node:search(Node5, key3),
-    {ok, value3} = mio_node:search(Node9, key3),
+    {ok, value3} = mio_node:search_op(Node3, key3),
+    {ok, value3} = mio_node:search_op(Node5, key3),
+    {ok, value3} = mio_node:search_op(Node9, key3),
 
-    {ok, value5} = mio_node:search(Node3, key5),
-    {ok, value5} = mio_node:search(Node5, key5),
-    {ok, value5} = mio_node:search(Node9, key5),
+    {ok, value5} = mio_node:search_op(Node3, key5),
+    {ok, value5} = mio_node:search_op(Node5, key5),
+    {ok, value5} = mio_node:search_op(Node9, key5),
 
-    {ok, value9} = mio_node:search(Node3, key9),
-    {ok, value9} = mio_node:search(Node5, key9),
+    {ok, value9} = mio_node:search_op(Node3, key9),
+    {ok, value9} = mio_node:search_op(Node5, key9),
 
-    ng = mio_node:search(Node5, key10),
+    ng = mio_node:search_op(Node5, key10),
     %% closest node should be returned
-    {ok, _, key5, value5} = gen_server:call(Node5, {search, Node5, [], key8}),
+    {ok, _, key5, value5} = gen_server:call(Node5, {search_op, Node5, [], key8}),
     ok.
 
 search_level2_3(_Config) ->
@@ -159,44 +159,44 @@ search_level2_3(_Config) ->
 
     %% search!
     %%  level1: 3->7 level0: 7->8
-    {ok, value8} = mio_node:search(Node3, key8),
-    {ok, value3} = mio_node:search(Node3, key3),
-    {ok, value5} = mio_node:search(Node3, key5),
-    {ok, value7} = mio_node:search(Node3, key7),
-    {ok, value9} = mio_node:search(Node3, key9),
+    {ok, value8} = mio_node:search_op(Node3, key8),
+    {ok, value3} = mio_node:search_op(Node3, key3),
+    {ok, value5} = mio_node:search_op(Node3, key5),
+    {ok, value7} = mio_node:search_op(Node3, key7),
+    {ok, value9} = mio_node:search_op(Node3, key9),
 
-    {ok, value8} = mio_node:search(Node5, key8),
-    {ok, value3} = mio_node:search(Node5, key3),
-    {ok, value5} = mio_node:search(Node5, key5),
-    {ok, value7} = mio_node:search(Node5, key7),
-    {ok, value9} = mio_node:search(Node5, key9),
+    {ok, value8} = mio_node:search_op(Node5, key8),
+    {ok, value3} = mio_node:search_op(Node5, key3),
+    {ok, value5} = mio_node:search_op(Node5, key5),
+    {ok, value7} = mio_node:search_op(Node5, key7),
+    {ok, value9} = mio_node:search_op(Node5, key9),
 
-    {ok, value8} = mio_node:search(Node7, key8),
-    {ok, value3} = mio_node:search(Node7, key3),
-    {ok, value5} = mio_node:search(Node7, key5),
-    {ok, value7} = mio_node:search(Node7, key7),
-    {ok, value9} = mio_node:search(Node7, key9),
+    {ok, value8} = mio_node:search_op(Node7, key8),
+    {ok, value3} = mio_node:search_op(Node7, key3),
+    {ok, value5} = mio_node:search_op(Node7, key5),
+    {ok, value7} = mio_node:search_op(Node7, key7),
+    {ok, value9} = mio_node:search_op(Node7, key9),
 
-    {ok, value8} = mio_node:search(Node8, key8),
-    {ok, value3} = mio_node:search(Node8, key3),
-    {ok, value5} = mio_node:search(Node8, key5),
-    {ok, value7} = mio_node:search(Node8, key7),
-    {ok, value9} = mio_node:search(Node8, key9),
+    {ok, value8} = mio_node:search_op(Node8, key8),
+    {ok, value3} = mio_node:search_op(Node8, key3),
+    {ok, value5} = mio_node:search_op(Node8, key5),
+    {ok, value7} = mio_node:search_op(Node8, key7),
+    {ok, value9} = mio_node:search_op(Node8, key9),
 
-    {ok, value8} = mio_node:search(Node9, key8),
-    {ok, value3} = mio_node:search(Node9, key3),
-    {ok, value5} = mio_node:search(Node9, key5),
-    {ok, value7} = mio_node:search(Node9, key7),
-    {ok, value9} = mio_node:search(Node9, key9),
+    {ok, value8} = mio_node:search_op(Node9, key8),
+    {ok, value3} = mio_node:search_op(Node9, key3),
+    {ok, value5} = mio_node:search_op(Node9, key5),
+    {ok, value7} = mio_node:search_op(Node9, key7),
+    {ok, value9} = mio_node:search_op(Node9, key9),
 
 
-    ng = mio_node:search(Node5, key10),
-    ng = mio_node:search(Node5, key6),
+    ng = mio_node:search_op(Node5, key10),
+    ng = mio_node:search_op(Node5, key6),
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {ok, _, key9, value9} = gen_server:call(Node5, {search, Node5, [], key9_9}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search, Node9, [], key6}),
+    {ok, _, key9, value9} = gen_server:call(Node5, {search_op, Node5, [], key9_9}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, Node9, [], key6}),
     ok.
 
 test_set_nth(_Config) ->
@@ -456,7 +456,7 @@ insert_op_many_nodes(_Config) ->
     [[{_, key3, value3, [0, 0]}, {_, key9, value9, [0, 1]}], [{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_node:dump_op(Node3, 1),
     ok.
 
-setup_nodes_for_range_search() ->
+setup_nodes_for_range_search_op() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -468,7 +468,7 @@ setup_nodes_for_range_search() ->
     [Node3, Node5, Node7, Node9].
 
 range_search_op(_Config) ->
-    [Node3, _, _, Node9] = setup_nodes_for_range_search(),
+    [Node3, _, _, Node9] = setup_nodes_for_range_search_op(),
 
     % range search!
     [] = mio_node:range_search_op(Node3, key99, key99, 10),
@@ -487,7 +487,7 @@ range_search_op(_Config) ->
     ok.
 
 range_search_asc_op(_Config) ->
-    [Node3, _, _, _] = setup_nodes_for_range_search(),
+    [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_asc_op(Node3, key3, key9, 10),
     [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_asc_op(Node3, key3, key999, 10),
@@ -499,7 +499,7 @@ range_search_asc_op(_Config) ->
     ok.
 
 range_search_desc_op(_Config) ->
-    [Node3, _, _, _] = setup_nodes_for_range_search(),
+    [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
     [{_, key7, value7}] = mio_node:range_search_desc_op(Node3, key3, key9, 1),
     [{_, key9, value9}, {_, key7, value7}, {_, key5, value5}] = mio_node:range_search_desc_op(Node3, key3, key99, 10),
@@ -510,13 +510,13 @@ range_search_desc_op(_Config) ->
     ok.
 
 search_closest(_Config) ->
-    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search(),
+    [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
-    {ok, _, key7, value7} = gen_server:call(Node3, {search, Node3, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node5, {search, Node5, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node7, {search, Node7, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search, Node9, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node3, {search_op, Node3, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node5, {search_op, Node5, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node7, {search_op, Node7, [], key8}),
+    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, Node9, [], key8}),
     ok.
 
 
@@ -532,7 +532,7 @@ overwrite_value(_Config) ->
     ok = mio_node:insert_op(Node9, Node5),
     ok = mio_node:insert_op(Node7, Node9),
     ok = mio_node:insert_op(NewNode3, Node9),
-    {ok, new_value3} = mio_node:search(Node9, key3),
+    {ok, new_value3} = mio_node:search_op(Node9, key3),
     ok.
 
 search_not_found(_Config) ->
@@ -540,7 +540,7 @@ search_not_found(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node5, Node3),
-    ng =  mio_node:search(Node5, key4),
+    ng =  mio_node:search_op(Node5, key4),
     ok.
 
 handle_info(_Config) ->

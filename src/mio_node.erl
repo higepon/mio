@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1, search_op/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, range_search_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -77,7 +77,7 @@ range_search_order_op(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], StartKey}),
+    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search_op, StartNode, [], StartKey}),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -97,7 +97,7 @@ range_search_desc_op(StartNode, Key1, Key2, Limit) ->
 %% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
 %% For this purpose, we do range search in this process, which is not node process.
 range_search_op(StartNode, Key1, Key2, Limit) ->
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search, StartNode, [], Key1}),
+    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search_op, StartNode, [], Key1}),
     if ClosestKey > Key2 ->
             [];
        Key1 =< ClosestKey andalso ClosestKey =:= Key2 ->
@@ -113,11 +113,13 @@ range_search_op(StartNode, Key1, Key2, Limit) ->
             end
     end.
 
-search(StartNode, Key) ->
-    %% 2nd parameter [] of gen_server:call(search, ...) is Level.
+%%--------------------------------------------------------------------
+%%  search operation
+%%--------------------------------------------------------------------
+search_op(StartNode, Key) ->
+    %% 2nd parameter [] of gen_server:call(search_op, ...) is Level.
     %% If Level is not specified, The start node checks his max level and use it.
-    ?L(),
-    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search, StartNode, [], Key}),
+    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search_op, StartNode, [], Key}),
     if
         FoundKey =:= Key ->
             {ok, FoundValue};
@@ -183,7 +185,7 @@ handle_call({set_op, NewValue}, _From, State) ->
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     buddy_op_call(State, MembershipVector, Direction, Level);
 
-handle_call({search, ReturnToMe, Level, Key}, _From, State) ->
+handle_call({search_op, ReturnToMe, Level, Key}, _From, State) ->
     {reply, search_op_call(State, ReturnToMe, Level, Key), State};
 
 handle_call({insert, Key, Value}, _From, State) ->
@@ -234,7 +236,7 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-%% handle_cast({search, ReturnToMe, Level, Key}, State) ->
+%% handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
 %%     MyKey = State#state.key,
 %%     MyValue = State#state.value,
 %%     ?LOGF("search_cast: MyKey=~p searchKey=~p~n", [MyKey, Key]),
@@ -254,7 +256,7 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                     ?L();
 %%                 RightNode ->
 %%                     ?L(),
-%%                     gen_server:cast(RightNode, {search, ReturnToMe, Key})
+%%                     gen_server:cast(RightNode, {search_op, ReturnToMe, Key})
 %%             end;
 %%         true ->
 %%             ?L(),
@@ -264,7 +266,7 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                     ReturnToMe ! {ok, self(), MyKey, MyValue}; %% todo
 %%                 LeftNode ->
 %%                     ?L(),
-%%                     gen_server:cast(LeftNode, {search, ReturnToMe, Key})
+%%                     gen_server:cast(LeftNode, {search_op, ReturnToMe, Key})
 %%             end
 %%     end,
 %%     {noreply, State};
@@ -454,7 +456,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                         %% we can make short cut. when equal case todo
                         RightKey =< SearchKey ->
                             ?L(),
-                            gen_server:call(RightNode, {search, ReturnToMe, Level, SearchKey});
+                            gen_server:call(RightNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
                             ?L(),
                             search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
@@ -483,7 +485,7 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
                         %% we can make short cut. todo
                         LeftKey >= SearchKey ->
                             ?L(),
-                            gen_server:call(LeftNode, {search, ReturnToMe, Level, SearchKey});
+                            gen_server:call(LeftNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
                             ?L(),
                             search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
@@ -578,7 +580,7 @@ insert_op_call(State, Introducer) ->
         Introducer =:= self() ->
             {reply, ok, State};
         true ->
-            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search, Introducer, [], MyKey}),
+            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search_op, Introducer, [], MyKey}),
             ?LOG(MyKey),
             ?LOG(NeighBorKey),
             if NeighBorKey =:= MyKey ->
