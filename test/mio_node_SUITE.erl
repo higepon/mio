@@ -435,6 +435,7 @@ range_search_asc_op(_Config) ->
     [{_, key5, value5}] = mio_node:range_search_asc_op(Node3, key3, key999, 1),
     [] = mio_node:range_search_asc_op(Node3, key3, key999, 0),
     [{_, key3, value3}] = mio_node:range_search_asc_op(Node3, key1, key4, 1),
+    [] = mio_node:range_search_asc_op(Node3, key99, key999, 1),
     ok.
 
 range_search_desc_op(_Config) ->
@@ -444,6 +445,8 @@ range_search_desc_op(_Config) ->
     [{_, key9, value9}, {_, key7, value7}, {_, key5, value5}] = mio_node:range_search_desc_op(Node3, key3, key99, 10),
     [{_, key9, value9}, {_, key7, value7}] = mio_node:range_search_desc_op(Node3, key3, key99, 2),
     [] = mio_node:range_search_desc_op(Node3, key3, key5, 2),
+    [{_, key3, value3}] = mio_node:range_search_desc_op(Node3, key2, key5, 1),
+    [] = mio_node:range_search_desc_op(Node3, key1, key2, 1),
     ok.
 
 search_closest(_Config) ->
@@ -480,6 +483,9 @@ search_not_found(_Config) ->
     ng =  mio_node:search(Node5, key4),
     ok.
 
+handle_info(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    Node3 ! "hello".
 
 all() ->
     [
@@ -505,7 +511,8 @@ all() ->
      range_search_asc_op,
      range_search_desc_op,
 %%    search_closest
-     overwrite_value
+     overwrite_value,
+     handle_info
      ].
 
 %%--------------------------------------------------------------------
