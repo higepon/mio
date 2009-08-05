@@ -45,9 +45,6 @@ process_command(Sock, StartNode) ->
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key);
-%%                 ["get", "mio:range-search", Key1, Key2, Limit] ->
-%%                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
-%%                     process_gets(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
@@ -58,12 +55,6 @@ process_command(Sock, StartNode) ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
                     inet:setopts(Sock,[{packet, line}]);
-%%                 ["set/s", Key, Index, Flags, Expire, Bytes] ->
-%%                     inet:setopts(Sock,[{packet, raw}]),
-%%                     process_set_s(Sock, Key, list_to_atom(Index), Flags, Expire, Bytes),
-%%                     inet:setopts(Sock,[{packet, line}]);
-%%                 ["delete", Key] ->
-%%                     process_delete(Sock, Key);
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
                     ?LOGF("<Error:~p>", [X]),
@@ -81,65 +72,29 @@ process_get(Sock, StartNode, Key) ->
                 ng -> list_to_binary([]);
                 {ok, FoundValue} -> FoundValue
               end,
-    ?LOG(Value),
     gen_tcp:send(Sock, io_lib:format(
                          "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                          [Key, size(Value), Value])).
 
 process_values([{_, Key, Value} | More]) ->
-    ?LOG(Key),
-    ?LOG(Value),
     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
                   [Key, size(Value), Value, process_values(More)]);
 process_values([]) ->
     "END\r\n".
 
-
-process_gets(Sock, StartNode, Key1, Key2, Limit) ->
-    ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
-    Values = mio_node:range_search_op(StartNode, Key1, Key2, Limit),
-    ?LOG(Values),
-    P = process_values(Values),
-    ?LOG(P),
-    gen_tcp:send(Sock, P).
-
 process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-    ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    ?LOG(Values),
     P = process_values(Values),
-    ?LOG(P),
     gen_tcp:send(Sock, P).
 
 process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
-    ?LOGF("Key1=~p, Key2=~p\n", [Key1, Key2]),
     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    ?LOG(Values),
     P = process_values(Values),
-    ?LOG(P),
     gen_tcp:send(Sock, P).
-
-
-process_get_gt(Sock, StartNode, Key, Limit) ->
-    Values = mio_node:range_search_gt_op(StartNode, Key, Limit),
-    ?LOG(Values),
-    P = process_values(Values),
-    ?LOG(P),
-    gen_tcp:send(Sock, P).
-
-process_get_lt(Sock, StartNode, Key, Limit) ->
-    Values = mio_node:range_search_lt_op(StartNode, Key, Limit),
-    ?LOG(Values),
-    P = process_values(Values),
-    ?LOG(P),
-    gen_tcp:send(Sock, P).
-
 
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            ?LOG(Key),
-            ?LOG(Value),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [1, 0]),
             mio_node:insert_op(NodeToInsert, Introducer),
             gen_tcp:send(Sock, "STORED\r\n");
@@ -149,13 +104,3 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
             ?LOGF("Error: ~p\n", [Error])
     end,
     gen_tcp:recv(Sock, 2).
-
-
-
-
-%% process() ->
-%%     receive
-%%         _ ->
-%%             io:format("hige"),
-%%             process()
-%%     end.
