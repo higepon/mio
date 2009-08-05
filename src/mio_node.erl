@@ -288,7 +288,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
+search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
     if
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
@@ -296,7 +296,7 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
             RightNode = lists:nth(Level + 1, RightNodes),
             case RightNode of
                 [] ->
-                    search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
+                    search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
                 RightNode ->
                     {RightKey, _, _, _, _} = gen_server:call(RightNode, get_op),
                     if
@@ -304,12 +304,12 @@ search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
                         RightKey =< SearchKey ->
                             gen_server:call(RightNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
-                            search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
+                            search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
                     end
             end
     end.
 
-search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
+search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
     if
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
@@ -317,7 +317,7 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
             LeftNode = lists:nth(Level + 1, LeftNodes),
             case LeftNode of
                 [] ->
-                    search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
+                    search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
                 LeftNode ->
                     {LeftKey, _, _, _, _} = gen_server:call(LeftNode, get_op),
                     if
@@ -325,7 +325,7 @@ search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
                         LeftKey >= SearchKey ->
                             gen_server:call(LeftNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
-                            search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
+                            search_left_(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
                     end
             end
     end.
@@ -395,9 +395,9 @@ search_op_call(State, ReturnToMe, Level, Key) ->
             ?L(),
             {ok, self(), MyKey, MyValue};
         MyKey < Key ->
-            search_right(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key);
+            search_right_(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key);
         true ->
-            search_left(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key)
+            search_left_(MyKey, MyValue, State#state.left, ReturnToMe, SearchLevel, Key)
     end.
 
 %%--------------------------------------------------------------------
