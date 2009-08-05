@@ -127,9 +127,15 @@ search_op(StartNode, Key) ->
             ng
     end.
 
+%%--------------------------------------------------------------------
+%%  buddy operation
+%%--------------------------------------------------------------------
 buddy_op(Node, MembershipVector, Direction, Level) ->
     gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
+%%--------------------------------------------------------------------
+%%  link operation
+%%--------------------------------------------------------------------
 link_right_op(Node, Level, Right) ->
     gen_server:call(Node, {link_right_op, Level, Right}).
 
@@ -140,8 +146,6 @@ set_nth(Index, Value, List) ->
     lists:append([lists:sublist(List, 1, Index - 1),
                  [Value],
                  lists:sublist(List, Index + 1, length(List))]).
-
-
 
 %%====================================================================
 %% gen_server callbacks
@@ -155,14 +159,11 @@ set_nth(Index, Value, List) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(Args) ->
-    error_logger:info_msg("~p init\n", [?MODULE]),
-    error_logger:info_msg("~p init\n", [Args]),
     [MyKey, MyValue, MyMembershipVector] = Args,
     {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=[[], []], right=[[], []]}}.
 
 getRandomId() ->
     integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
-
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -173,31 +174,35 @@ getRandomId() ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({insert_op, Introducer}, _From, State) ->
-    insert_op_call(State, Introducer);
+
+%% Read Only Operations start
 
 handle_call(get_op, _From, State) ->
-    get_op_call(State);
-
-handle_call({set_op, NewValue}, _From, State) ->
-    set_op_call(State, NewValue);
-
-handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
-    buddy_op_call(State, MembershipVector, Direction, Level);
+    {reply, get_op_call(State), State};
 
 handle_call({search_op, ReturnToMe, Level, Key}, _From, State) ->
     {reply, search_op_call(State, ReturnToMe, Level, Key), State};
 
+handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
+    {reply, buddy_op_call(State, MembershipVector, Direction, Level), State};
+
+%% Read Only Operations end
+
+handle_call({insert_op, Introducer}, _From, State) ->
+    insert_op_call(State, Introducer);
+
+handle_call({set_op, NewValue}, _From, State) ->
+    set_op_call(State, NewValue);
+
+
+
 handle_call({insert, Key, Value}, _From, State) ->
-    ?L(),
     {ok, Pid} = mio_sup:start_node(Key, Value, [1, 0]),
     MyKey = State#state.key,
     if
         Key > MyKey ->
-            error_logger:info_msg("~p insert to right\n", [?MODULE]),
             {reply, {ok, Pid}, State#state{right=[Pid, Pid]}};
         true ->
-            error_logger:info_msg("~p insert to left\n", [?MODULE]),
             {reply, {ok, Pid}, State#state{left=[Pid, Pid]}}
     end;
 
@@ -513,32 +518,29 @@ set_left(State, Level, Node) ->
 
 
 get_op_call(State) ->
-    {reply, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}, State}.
+    {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}.
 
 set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
 
 buddy_op_call(State, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
-    ?LOG(Found),
     if
         Found ->
-            {reply, {ok, self()}, State};
+            {ok, self()};
         true ->
             case Direction of
                 right ->
                     case right(State, 0) of %% N.B. should be on Level 0
-                        [] -> {reply, {ok, []}, State};
+                        [] -> {ok, []};
                         RightNode ->
-                            {reply, buddy_op(RightNode, MembershipVector, Direction, Level), State}
+                            buddy_op(RightNode, MembershipVector, Direction, Level)
                     end;
                 _ ->
-                    ?LOG(State),
                     case left(State, 0) of
-                        [] -> {reply, {ok, []}, State};
+                        [] -> {ok, []};
                         LeftNode ->
-                            ?L(),
-                            {reply, buddy_op(LeftNode, MembershipVector, Direction, Level), State}
+                            buddy_op(LeftNode, MembershipVector, Direction, Level)
                     end
             end
     end.
