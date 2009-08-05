@@ -7,14 +7,16 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search_op/2, link_right_op/3, link_left_op/3, set_nth/3, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1,
+         search_op/2, link_right_op/3, link_left_op/3, set_nth/3,
+         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
+         range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -include("mio.hrl").
-
 
 -record(state, {key, value, membership_vector, left, right}).
 
@@ -87,7 +89,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ok, ClosestNode, ClosestKey, ClosestValue} = gen_server:call(StartNode, {search_op, StartNode, [], StartKey}),
+    {ok, ClosestNode, _, _} = gen_server:call(StartNode, {search_op, StartNode, [], StartKey}),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -145,9 +147,6 @@ set_nth(Index, Value, List) ->
 init(Args) ->
     [MyKey, MyValue, MyMembershipVector] = Args,
     {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=[[], []], right=[[], []]}}.
-
-getRandomId() ->
-    integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -317,8 +316,6 @@ search_(MyKey, MyValue, NextNodes, ReturnToMe, Level, SearchKey, CompareFun) ->
             end
     end.
 
-
-
 node_on_level(Nodes, Level) ->
     case Nodes of
         [] -> [];
@@ -336,7 +333,6 @@ set_right(State, Level, Node) ->
 
 set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
-
 
 get_op_call(State) ->
     {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}.
@@ -381,7 +377,6 @@ search_op_call(State, ReturnToMe, Level, Key) ->
     if
         %% This is myKey, found!
         MyKey =:= Key ->
-            ?L(),
             {ok, self(), MyKey, MyValue};
         MyKey < Key ->
             search_right_(MyKey, MyValue, State#state.right, ReturnToMe, SearchLevel, Key);
@@ -404,8 +399,6 @@ insert_op_call(State, Introducer) ->
             {reply, ok, State};
         true ->
             {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search_op, Introducer, [], MyKey}),
-            ?LOG(MyKey),
-            ?LOG(NeighBorKey),
             if NeighBorKey =:= MyKey ->
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
                     {reply, ok, State};
@@ -420,7 +413,6 @@ insert_op_call(State, Introducer) ->
                                           end,
                                           set_right(set_left(State, 0, Neighbor), 0, node_on_level(NeighborRight, 0));
                                       true ->
-                                          ?LOG(link_level_0),
                                           {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),
                                           link_left_op(Neighbor, 0, self()),
                                           case node_on_level(NeighborLeft, 0) of
@@ -429,7 +421,6 @@ insert_op_call(State, Introducer) ->
                                           end,
                                           set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
                                   end,
-                    ?LOG(LinkedState),
                     MaxLevel = length(LinkedState#state.right) - 1,
                     %% link on level > 0
                     ReturnState = insert_loop(1, MaxLevel, LinkedState),
@@ -452,9 +443,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                         %%    %% we have no buddy on this level.
                         %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                         RightNodeOnLevel0 ->
-                            ?L(),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
-                            ?LOG(Buddy),
                             case Buddy of
                                 [] ->
                                     %% we have no buddy on this level.
@@ -472,10 +461,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             end
                     end;
                 LeftNodeOnLevel0 ->
-                    ?LOG(before_buddy_op),
-                    ?LOG(gen_server:call(LeftNodeOnLevel0, get_op)),
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
-                    ?LOGF("I'm ~p buddy=~p mv=~p\n", [LinkedState#state.key, Buddy, mio_mvector:get(LinkedState#state.membership_vector, Level)]),
                     case Buddy of
                         [] ->
                             insert_loop(Level + 1, MaxLevel, LinkedState);
