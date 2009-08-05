@@ -409,10 +409,18 @@ delete_op_call(State) ->
 delete_loop_(State, Level) when Level < 0 ->
     State;
 delete_loop_(State, Level) ->
-    Right = right(State, Level),
-    Left = left(State, Level),
-    ok = link_left_op(Right, Level, Left),
-    ok = link_right_op(Left, Level, Right),
+    RightNode = right(State, Level),
+    LeftNode = left(State, Level),
+    case RightNode of
+        [] -> [];
+        _ ->
+            ok = link_left_op(RightNode, Level, LeftNode)
+    end,
+    case LeftNode of
+        [] -> [];
+        _ ->
+            ok = link_right_op(LeftNode, Level, RightNode)
+    end,
     delete_loop_(set_left(set_right(State, Level, []), Level, []), Level - 1).
 
 %%--------------------------------------------------------------------
