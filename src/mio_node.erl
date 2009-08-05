@@ -293,7 +293,7 @@ search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
         Level < 0 ->
             {ok, self(), MyKey, MyValue};
         true ->
-            RightNode = lists:nth(Level + 1, RightNodes),
+            RightNode = node_on_level(RightNodes, Level),
             case RightNode of
                 [] ->
                     search_right_(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
