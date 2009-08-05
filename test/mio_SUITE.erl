@@ -8,11 +8,7 @@
 -module(mio_SUITE).
 
 -compile(export_all).
-
--define(SERVER, ?MODULE).
--define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
--define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
--define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+-include("mio.hrl").
 
 init_per_suite(Config) ->
     %% config file is specified on runtest's command line option

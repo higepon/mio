@@ -8,11 +8,7 @@
 -module(mio_node_SUITE).
 
 -compile(export_all).
-
--define(SERVER, ?MODULE).
--define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
--define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
--define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+-include("mio.hrl").
 
 init_per_suite(Config) ->
     %% config file is specified on runtest's command line option
@@ -37,32 +33,6 @@ end_per_suite(_Config) ->
 get_call(_Config) ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
-    ok.
-
-%% dump_op(_Config) ->
-%%     %% insert to right
-%%     {ok, _} = gen_server:call(mio_node, {insert, myKey1, myValue1}),
-
-%%     %% insert to left
-%%     {ok, _} = gen_server:call(mio_node, {insert, myKex, myKexValue}),
-%%     [{_, myKex, myKexValue, [1, 0]}, {_, myKey, myValue, [1, 0]}, {_, myKey1, myValue1, [1, 0]}] =  mio_node:dump_op(mio_node, 0), %% dump on Level 0
-
-%%     ok.
-
-search_call(_Config) ->
-%%     %% I have the value
-%%     {ok, myValue2} = mio_node:search_op(mio_node, myKey),
-%%     %% search to right
-%%     {ok, myValue1} = mio_node:search_op(mio_node, myKey1),
-%%     {ok, myValue1} = mio_node:search_op(mio_node, myKey1),
-%%     %% search to left
-%%     {ok, myKexValue} = mio_node:search_op(mio_node, myKex),
-
-%%     %% not found
-%%     %% returns closest node
-%%     {ok, myKey1, myValue1} = gen_server:call(mio_node, {search_op, mio_node, [], myKey2}),
-%%     %% returns ng
-%%     ng = mio_node:search_op(mio_node, myKey2),
     ok.
 
 %% very simple case: there is only one node.
@@ -235,35 +205,6 @@ link_op(_Config) ->
 
     %% check
     [{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
-    ok.
-
-link_op_propagation(_Config) ->
-%% TODO
-%%     {ok, Node1} = mio_sup:start_node(key1, value1, mio_mvector:make([0, 0])),
-%%     {ok, Node2} = mio_sup:start_node(key2, value2, mio_mvector:make([0, 0])),
-%%     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
-%%     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
-%%     {ok, Node6} = mio_sup:start_node(key6, value6, mio_mvector:make([1, 1])),
-
-%%     %% link on level 0
-%%     %% 2 <-> 3
-%%     Level = 0,
-%%     ok = mio_node:link_op(Node2, Node3, right, Level),
-
-%%     %% propagation case to right
-%%     %% 2 <-> 3 <-> 5
-%%     ok = mio_node:link_op(Node2, Node5, right, Level),
-
-%%     %% propagation case to left
-%%     %% 1 <-> 2 <-> 3 <-> 5
-%%     ok = mio_node:link_op(Node3, Node1, left, Level),
-
-%%     %% propagation case to right
-%%     %% 2 <-> 3 <-> 5 <-> 6
-%%     ok = mio_node:link_op(Node3, Node6, right, Level),
-
-%%     %% check
-%%     [{key1, value1, [0, 0]}, {key2, value2, [0, 0]}, {key3, value3, [0, 0]}, {key5, value5, [1, 1]}, {key6, value6, [1, 1]}] = mio_node:dump_nodes(Node3, 0),
     ok.
 
 buddy_op(_Config) ->
@@ -467,25 +408,6 @@ setup_nodes_for_range_search_op() ->
     ok = mio_node:insert_op(Node7, Node9),
     [Node3, Node5, Node7, Node9].
 
-%% range_search_op(_Config) ->
-%%     [Node3, _, _, Node9] = setup_nodes_for_range_search_op(),
-
-%%     % range search!
-%%     [] = mio_node:range_search_op(Node3, key99, key99, 10),
-%%     [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_op(Node3, key4, key99, 10),
-%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key8, 10),
-%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key4, key7, 10),
-%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key8, 10),
-%%     [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key5, key7, 10),
-%%     [{_, key5, value5}] = mio_node:range_search_op(Node3, key4, key8, 1),
-%%     [{_, key3, value3}, {_, key5, value5}, {_, key7, value7}] = mio_node:range_search_op(Node3, key2, key8, 10),
-%%     [{_, key5, value5}] = mio_node:range_search_op(Node9, key5, key5, 1),
-%%     [] = mio_node:range_search_op(Node3, key3, key9, 0),
-%%     [] = mio_node:range_search_op(Node3, key1, key2, 10),
-%%     %% Key1 should be greater equal than Key2
-%%     [] = mio_node:range_search_op(Node9, key5, key4, 1),
-%%     ok.
-
 range_search_asc_op(_Config) ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
@@ -518,7 +440,6 @@ search_closest(_Config) ->
     {ok, _, key7, value7} = gen_server:call(Node7, {search_op, [], key8}),
     {ok, _, key7, value7} = gen_server:call(Node9, {search_op, [], key8}),
     ok.
-
 
 overwrite_value(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
@@ -565,14 +486,12 @@ all() ->
     [
      test_set_nth,
      get_call,
-     search_call,
      search_not_found,
      search_level2_simple,
      search_level2_1,
      search_level2_2,
      search_level2_3,
      link_op,
-     link_op_propagation,
      buddy_op,
      insert_op_self,
      insert_op_two_nodes,
@@ -596,8 +515,6 @@ all() ->
 link_node(Level, NodeA, NodeB) ->
     mio_node:link_right_op(NodeA, Level, NodeB),
     mio_node:link_left_op(NodeB, Level, NodeA).
-
-%%    ok = mio_node:link_op(NodeA, NodeB, right, Level).
 
 link_nodes(Level, [NodeA | [NodeB | More]]) ->
     link_node(Level, NodeA, NodeB),
