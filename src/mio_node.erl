@@ -183,7 +183,6 @@ handle_call({link_right_op, Level, RightNode}, _From, State) ->
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)}.
 
-
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
 %%                                      {noreply, State, Timeout} |
@@ -219,74 +218,92 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
+
 handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    ?LOG(MyKey),
-    if Limit =:= 0 ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-       Key1 < MyKey andalso MyKey < Key2 ->
-            ?L(),
-            case right(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
-                RightNode ->
-                    ?L(),
-                    gen_server:cast(RightNode,
-                                    {range_search_asc_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
-            end;
-       MyKey =< Key1 ->
-            ?L(),
-            case right(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-                RightNode ->
-                    gen_server:cast(RightNode,
-                                    {range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
-            end;
-       true ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
-    end,
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     if Limit =:= 0 ->
+%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+%%        Key1 < MyKey andalso MyKey < Key2 ->
+%%             case right(State, 0) of
+%%                 [] ->
+%%                     ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
+%%                 RightNode ->
+%%                     gen_server:cast(RightNode,
+%%                                     {range_search_asc_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
+%%             end;
+%%        MyKey =< Key1 ->
+%%             case right(State, 0) of
+%%                 [] ->
+%%                     ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+%%                 RightNode ->
+%%                     gen_server:cast(RightNode,
+%%                                     {range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
+%%             end;
+%%        true ->
+%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
+%%     end,
+    range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
+                  range_search_asc_op_cast,
+                  fun(State, Level) -> right(State, Level) end,
+                  State#state.key =< Key1),
     {noreply, State};
 
 handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    ?LOG(MyKey),
-    if Limit =:= 0 ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-       Key1 < MyKey andalso MyKey < Key2 ->
-            ?L(),
-            case left(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
-                LeftNode ->
-                    ?L(),
-                    gen_server:cast(LeftNode,
-                                    {range_search_desc_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
-            end;
-       MyKey >= Key2 ->
-            ?L(),
-            case left(State, 0) of
-                [] ->
-                    ?L(),
-                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-                LeftNode ->
-                    gen_server:cast(LeftNode,
-                                    {range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
-            end;
-       true ->
-            ?L(),
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
-    end,
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     if Limit =:= 0 ->
+%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+%%        Key1 < MyKey andalso MyKey < Key2 ->
+%%             case left(State, 0) of
+%%                 [] ->
+%%                     ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
+%%                 LeftNode ->
+%%                     gen_server:cast(LeftNode,
+%%                                     {range_search_desc_op_cast, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
+%%             end;
+%%        MyKey >= Key2 ->
+%%             case left(State, 0) of
+%%                 [] ->
+%%                     ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+%%                 LeftNode ->
+%%                     gen_server:cast(LeftNode,
+%%                                     {range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit})
+%%             end;
+%%        true ->
+%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
+%%     end,
+    range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
+                  range_search_desc_op_cast,
+                  fun(State, Level) -> left(State, Level) end,
+                  State#state.key >= Key2),
+
     {noreply, State}.
 
+range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+    if Limit =:= 0 ->
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+       IsOutOfRange ->
+            case NextNodeFunc(State, 0) of
+                [] ->
+                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+                RightNode ->
+                    gen_server:cast(RightNode,
+                                    {Op, ReturnToMe, Key1, Key2, Accum, Limit})
+            end;
+       Key1 < MyKey andalso MyKey < Key2 ->
+            case NextNodeFunc(State, 0) of
+                [] ->
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
+                RightNode ->
+                    gen_server:cast(RightNode,
+                                    {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
+            end;
+       true ->
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
