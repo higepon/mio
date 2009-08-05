@@ -406,10 +406,14 @@ delete_op_call(State) ->
     DeletedState = delete_loop_(State, MaxLevel),
     {reply, ok, DeletedState}.
 
-delete_loop_(State, MaxLevel) when MaxLevel < 0 ->
+delete_loop_(State, Level) when Level < 0 ->
     State;
-delete_loop_(State, MaxLevel) ->
-    delete_loop_(State, MaxLevel - 1).
+delete_loop_(State, Level) ->
+    Right = right(State, Level),
+    Left = left(State, Level),
+    ok = link_left_op(Right, Level, Left),
+    ok = link_right_op(Left, Level, Right),
+    delete_loop_(set_left(set_right(State, Level, []), Level, []), Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
