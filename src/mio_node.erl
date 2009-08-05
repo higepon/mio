@@ -222,14 +222,14 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
                   range_search_asc_op_cast,
-                  fun(State, Level) -> right(State, Level) end,
+                  fun(MyState, Level) -> right(MyState, Level) end,
                   State#state.key =< Key1),
     {noreply, State};
 
 handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
                   range_search_desc_op_cast,
-                  fun(State, Level) -> left(State, Level) end,
+                  fun(MyState, Level) -> left(MyState, Level) end,
                   State#state.key >= Key2),
     {noreply, State}.
 
@@ -242,16 +242,16 @@ range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsO
             case NextNodeFunc(State, 0) of
                 [] ->
                     ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-                RightNode ->
-                    gen_server:cast(RightNode,
+                NextNode ->
+                    gen_server:cast(NextNode,
                                     {Op, ReturnToMe, Key1, Key2, Accum, Limit})
             end;
        Key1 < MyKey andalso MyKey < Key2 ->
             case NextNodeFunc(State, 0) of
                 [] ->
                     ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
-                RightNode ->
-                    gen_server:cast(RightNode,
+                NextNode ->
+                    gen_server:cast(NextNode,
                                     {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
             end;
        true ->
@@ -288,61 +288,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-
 search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level, SearchKey) ->
-    ?LOGF("search_right: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p RightNodes=~p~n", [MyKey, MyValue, SearchKey, Level, RightNodes]),
     if
         Level < 0 ->
-            ?L(),
-            ?LOG(MyValue),
             {ok, self(), MyKey, MyValue};
         true ->
-            ?L(),
             RightNode = lists:nth(Level + 1, RightNodes),
-            ?LOG(RightNode),
             case RightNode of
                 [] ->
-                    ?L(),
                     search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey);
                 RightNode ->
-                    ?L(),
                     {RightKey, _, _, _, _} = gen_server:call(RightNode, get_op),
                     if
                         %% we can make short cut. when equal case todo
                         RightKey =< SearchKey ->
-                            ?L(),
                             gen_server:call(RightNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
-                            ?L(),
                             search_right(MyKey, MyValue, RightNodes, ReturnToMe, Level - 1, SearchKey)
                     end
             end
     end.
 
 search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level, SearchKey) ->
-    ?LOGF("search_left: MyKey=~p MyValue=~p searchKey=~p SearchLevel=~p LeftNodes=~p~n", [MyKey, MyValue, SearchKey, Level, LeftNodes]),
     if
         Level < 0 ->
-            ?L(),
             {ok, self(), MyKey, MyValue};
         true ->
-            ?L(),
             LeftNode = lists:nth(Level + 1, LeftNodes),
-            ?LOG(LeftNode),
             case LeftNode of
                 [] ->
-                    ?L(),
                     search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey);
                 LeftNode ->
-                    ?L(),
                     {LeftKey, _, _, _, _} = gen_server:call(LeftNode, get_op),
                     if
                         %% we can make short cut. todo
                         LeftKey >= SearchKey ->
-                            ?L(),
                             gen_server:call(LeftNode, {search_op, ReturnToMe, Level, SearchKey});
                         true ->
-                            ?L(),
                             search_left(MyKey, MyValue, LeftNodes, ReturnToMe, Level - 1, SearchKey)
                     end
             end
