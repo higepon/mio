@@ -25,7 +25,7 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-dump_side(StartNode, Side, Level) ->
+dump_side_(StartNode, Side, Level) ->
     case StartNode of
         [] ->
             [];
@@ -41,9 +41,9 @@ enum_nodes_(StartNode, Level) ->
     {Key, Value, MembershipVector, LeftNodes, RightNodes} = gen_server:call(StartNode, get_op),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
-    lists:append([dump_side(LeftNode, left, Level),
+    lists:append([dump_side_(LeftNode, left, Level),
                   [{StartNode, Key, Value, MembershipVector}],
-                  dump_side(RightNode, right, Level)]).
+                  dump_side_(RightNode, right, Level)]).
 
 dump(StartNode, Level) ->
     Level0Nodes = enum_nodes_(StartNode, 0),
