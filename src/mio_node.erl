@@ -78,7 +78,9 @@ delete_op(Introducer, Key) ->
     {ok, FoundNode, FoundKey, _} = gen_server:call(Introducer, {search_op, [], Key}),
     if FoundKey =:= Key ->
             %% ToDo terminate child
-            gen_server:call(FoundNode, delete_op);
+            gen_server:call(FoundNode, delete_op),
+            mio_sup:terminate_node(FoundNode),
+            ok;
        true -> ng
     end.
 

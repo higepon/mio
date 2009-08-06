@@ -227,7 +227,7 @@ buddy_op(_Config) ->
     ok.
 
 delete_op(_Config) ->
-    [Node3, _, _, _] = setup_nodes_for_range_search_op(),
+    [Node3, _, Node7, _] = setup_nodes_for_range_search_op(),
     [{_, key3, _, _}, {_, key5, _, _}, {_, key7, _, _}, {_, key9, _, _}] = mio_node:dump_op(Node3, 0),
     [[{_, key3, _, _}, {_, key9, _, _}], [{_, key5, _, _}, {_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
 
@@ -245,6 +245,23 @@ delete_op(_Config) ->
     ok = mio_node:delete_op(Node3, key9),
     [{_, key3, _, _}, {_, key7, _, _}] = mio_node:dump_op(Node3, 0),
     [[{_, key3, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
+
+    %% delete key3!, introducer == self
+    Ref = erlang:monitor(process, Node3),
+    ok = mio_node:delete_op(Node3, key3),
+    [{_, key7, _, _}] = mio_node:dump_op(Node7, 0),
+    [[{_, key7, _, _}]] = mio_node:dump_op(Node7, 1),
+
+    %% Node3 should be teminated
+    receive
+        {'DOWN', Ref, process, Node3, Reason} ->
+            io:format("process is down, reason: ~p.~n",
+                      [Reason]);
+        Any ->
+            throw("ANY")
+    after 1000 ->
+            throw("timeout.~n")
+    end,
     ok.
 
 insert_op_self(_Config) ->

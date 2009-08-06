@@ -1,6 +1,6 @@
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3]).
+-export([init/1, start_node/3, terminate_node/1]).
 
 %% supervisor:
 %%   On start up, supervisor starts mio_memcached.
@@ -11,7 +11,16 @@
 start_node(Key, Value, MembershipVector) ->
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
                                                {mio_node, start_link, [[Key, Value, MembershipVector]]},
-                                               permanent, brutal_kill, worker, [mio_node]}).
+                                               temporary, brutal_kill, worker, [mio_node]}).
+
+terminate_node(TargetPid) ->
+    lists:any(fun({Id, Pid, _, _}) ->
+                      if Pid =:= TargetPid ->
+                              supervisor:terminate_child(mio_sup, Id),
+                              true;
+                         true -> false
+                      end end, supervisor:which_children(mio_sup)).
+
 
 init(_Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
