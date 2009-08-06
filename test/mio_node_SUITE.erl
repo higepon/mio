@@ -232,9 +232,19 @@ delete_op(_Config) ->
     [[{_, key3, _, _}, {_, key9, _, _}], [{_, key5, _, _}, {_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
 
     %% delete key5!
-    mio_node:delete_op(Node3, key5),
+    ok = mio_node:delete_op(Node3, key5),
     [{_, key3, _, _}, {_, key7, _, _}, {_, key9, _, _}] = mio_node:dump_op(Node3, 0),
     [[{_, key3, _, _}, {_, key9, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
+
+    %% key11 not exist
+    ng = mio_node:delete_op(Node3, key11),
+    [{_, key3, _, _}, {_, key7, _, _}, {_, key9, _, _}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, _, _}, {_, key9, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
+
+    %% delete key9!
+    ok = mio_node:delete_op(Node3, key9),
+    [{_, key3, _, _}, {_, key7, _, _}] = mio_node:dump_op(Node3, 0),
+    [[{_, key3, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
     ok.
 
 insert_op_self(_Config) ->
