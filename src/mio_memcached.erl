@@ -7,13 +7,36 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/0]). %% supervisor needs this.
--export([memcached/1, process_command/2]). %% spawn needs these.
+-export([memcached/2, process_command/2]). %% spawn needs these.
+-export([get_boot_node/0]).
 
 -include("mio.hrl").
 
+boot_node_loop(BootNode) ->
+    receive
+        {From, get} -> From ! BootNode;
+        _ -> []
+    end,
+    boot_node_loop(BootNode).
+
+get_boot_node() ->
+    boot_node_loop ! {self(), get},
+    receive
+        BootNode -> BootNode
+    end.
+
 %% supervisor calls this to create new memcached.
 start_link() ->
-    Pid = spawn_link(?MODULE, memcached, [11211]),
+    StartNode = case application:get_env(mio, boot_node) of
+                    {ok, BootNode} ->
+                        rpc:call(BootNode, ?MODULE, get_boot_node, []);
+                    _ ->
+                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]),
+                        register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
+                        Node
+                end,
+    {ok, Port} = application:get_env(mio, port),
+    Pid = spawn_link(?MODULE, memcached, [StartNode, Port]),
     {ok, Pid}.
 
 %% todo: on exit, cleanup socket
@@ -22,13 +45,13 @@ start_link() ->
 %% Internal functions
 %%====================================================================
 
-memcached(Port) ->
+memcached(StartNode, Port) ->
     {ok, Listen} =
         gen_tcp:listen(
           Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
     ?LOGF("< server listening ~p\n", [Port]),
-    {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
-    mio_accept(Listen, BootPid).
+%%    {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
+    mio_accept(Listen, StartNode).
 
 mio_accept(Listen, StartNode) ->
     {ok, Sock} = gen_tcp:accept(Listen),

@@ -5,5 +5,6 @@
   {registered, [mio]},
   {applications, [kernel, stdlib]},
   {mod, {mio_app,[]}},
-  {debug, false}
+  {debug, false},
+  {boot_node, false}
  ]}.
