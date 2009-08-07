@@ -15,6 +15,9 @@
 %% For init script
 -export([start/0, stop/0]).
 
+%% Utility
+-export([get_env/1, get_env/2]).
+
 -include("mio.hrl").
 
 start() ->
@@ -38,3 +41,18 @@ start(_Type, _StartArgs) ->
 
 stop(_State) ->
     ok.
+
+get_env(Key) ->
+    case application:get_env(mio, Key) of
+        {ok, EnvValue} ->
+            {ok, EnvValue};
+        _ ->
+            ng
+    end.
+get_env(Key, DefaultValue) ->
+    case application:get_env(mio, Key) of
+        {ok, EnvValue} ->
+            {ok, EnvValue};
+        _ ->
+            {ok, DefaultValue}
+    end.

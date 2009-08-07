@@ -26,7 +26,7 @@ get_boot_node() ->
     end.
 
 init_start_node(From) ->
-    StartNode = case application:get_env(mio, boot_node) of
+    StartNode = case mio_app:get_env(boot_node) of
                     {ok, BootNode} ->
                         rpc:call(BootNode, ?MODULE, get_boot_node, []);
                     _ ->
@@ -38,10 +38,7 @@ init_start_node(From) ->
 
 %% supervisor calls this to create new memcached.
 start_link() ->
-    Port = case application:get_env(mio, port) of
-               {ok, UserPort} -> UserPort;
-               _ -> 11211
-           end,
+    {ok, Port} = mio_app:get_env(port, 11211),
     ?LOG(Port),
     Pid = spawn_link(?MODULE, memcached, [Port]),
     {ok, Pid}.
