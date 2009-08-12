@@ -28,18 +28,20 @@ get_boot_node() ->
 init_start_node(From) ->
     StartNode = case mio_app:get_env(boot_node) of
                     {ok, BootNode} ->
-                        rpc:call(BootNode, ?MODULE, get_boot_node, []);
+                        case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
+                            {badrpc, Reason} ->
+                                throw({"Can't start, introducer node not found", {badrpc, Reason}});
+                            Introducer ->
+                                {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), [1, 0]),
+                                mio_node:insert_op(Introducer, Node),
+                                Node
+                        end;
                     _ ->
                         {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]),
                         register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
                         Node
                 end,
-    case StartNode of
-        {badrpc, Reason} ->
-            throw({"Can't start, introducer node not found", {badrpc, Reason}});
-        _ ->
-            From ! {ok, StartNode}
-    end.
+    From ! {ok, StartNode}.
 
 %% supervisor calls this to create new memcached.
 start_link() ->
