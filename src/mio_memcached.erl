@@ -34,6 +34,7 @@ init_start_node(From) ->
                         register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
                         Node
                 end,
+    ?LOG(StartNode),
     From ! {ok, StartNode}.
 
 %% supervisor calls this to create new memcached.
