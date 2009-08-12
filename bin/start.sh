@@ -28,7 +28,8 @@ mio_verbose=$opt_verbose
 echo "Starting mio as name=$mio_name, port=$mio_port, introducer=$mio_introducer verbose=$mio_verbose\n"
 
 if [ -n "$mio_introducer" ]; then
-    erl -sname $mio_name \
+    erl -name $mio_name \
+        -setcookie mio \
         -mio \
         -noshell \
         -noinput \
@@ -36,7 +37,8 @@ if [ -n "$mio_introducer" ]; then
         -s mio_app start \
         -mio debug $mio_verbose port $mio_port boot_node $mio_introducer
 else
-    erl -sname $mio_name \
+    erl -name $mio_name \
+        -setcookie mio \
         -mio \
         -noshell \
         -noinput \
