@@ -36,10 +36,10 @@ init_start_node(From) ->
                 end,
     case StartNode of
         {badrpc, Reason} ->
-            throw({badrpc, Reason});
+            throw({"Can't start, introducer node not found", {badrpc, Reason}});
         _ ->
             From ! {ok, StartNode}
-    end.  
+    end.
 
 %% supervisor calls this to create new memcached.
 start_link() ->
