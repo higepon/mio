@@ -39,7 +39,7 @@ init_start_node(From) ->
             throw({badrpc, Reason});
         _ ->
             From ! {ok, StartNode}
-    end.
+    end.  
 
 %% supervisor calls this to create new memcached.
 start_link() ->
