@@ -34,8 +34,12 @@ init_start_node(From) ->
                         register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
                         Node
                 end,
-    ?LOG(StartNode),
-    From ! {ok, StartNode}.
+    case StartNode of
+        {badrpc, Reason} ->
+            throw({badrpc, Reason});
+        _ ->
+            From ! {ok, StartNode}
+    end.
 
 %% supervisor calls this to create new memcached.
 start_link() ->
