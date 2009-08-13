@@ -33,7 +33,7 @@
 
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
-  (let* ([conn (memcached-connect "localhost" "11211")]
+  (let* ([conn (memcached-connect '(("localhost" . "11211") ("10.89.107.54" . "11211")))]
          [next-article-no (or (memcached-get conn "next-article-no") 1)])
     ;; Header
     (display header)
@@ -49,6 +49,12 @@
                             (image . ,(profile-image (cgi:decode name)))))
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
+
+;;     ;; Delete
+;;     (and-let* ([(eq? 'POST (get-request-method))]
+;;                [article-no (get-parameter "article-no")])
+;;       )
+
     ;; Show articles
     (let* ([from-article-no (or (get-parameter "from-ano") min-article-no)]
            [to-article-no (or (get-parameter "to-ano") max-article-no)]

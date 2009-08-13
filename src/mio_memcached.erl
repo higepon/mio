@@ -134,7 +134,8 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [1, 0]),
+            MAX_LEVEL = 2,
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [random:uniform(2) - 1 || _ <- lists:duplicate(MAX_LEVEL, 0)]),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->
