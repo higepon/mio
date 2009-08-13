@@ -1,6 +1,7 @@
 -module(mio_sup).
 -behaviour(supervisor).
 -export([init/1, start_node/3, terminate_node/1]).
+-include("mio.hrl").
 
 %% supervisor:
 %%   On start up, supervisor starts mio_memcached.
@@ -25,11 +26,15 @@ terminate_node(TargetPid) ->
 init(_Args) ->
     error_logger:info_msg("~p init\n", [?MODULE]),
     crypto:start(), % getRandomId uses crypto server
+
+    {ok, Port} = mio_app:get_env(port, 11211),
+    {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
+    {ok, BootNode} = mio_app:get_env(boot_node, []),
     %% todo
     %% Make this simple_one_for_one
     {ok, {{one_for_one, 10, 20},
           [{mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, []},
+            {mio_memcached, start_link, [Port, MaxLevel, BootNode]},
             permanent, brutal_kill, worker, [mio_memcached]}]}}.
 
 getRandomId() ->

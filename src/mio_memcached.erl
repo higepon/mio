@@ -6,8 +6,8 @@
 %%% Created : 3 Aug 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
--export([start_link/0]). %% supervisor needs this.
--export([memcached/1, process_command/2]). %% spawn needs these.
+-export([start_link/3]). %% supervisor needs this.
+-export([memcached/3, process_command/3]). %% spawn needs these.
 -export([get_boot_node/0]).
 
 -include("mio.hrl").
@@ -25,29 +25,27 @@ get_boot_node() ->
         BootNode -> BootNode
     end.
 
-init_start_node(From) ->
-    StartNode = case mio_app:get_env(boot_node) of
-                    {ok, BootNode} ->
+init_start_node(From, MaxLevel, BootNode) ->
+    StartNode = case BootNode of
+                    [] ->
+                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
+                        register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
+                        Node;
+                    _ ->
                         case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
                             {badrpc, Reason} ->
                                 throw({"Can't start, introducer node not found", {badrpc, Reason}});
                             Introducer ->
-                                {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), [1, 0]),
+                                {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
                                 mio_node:insert_op(Introducer, Node),
                                 Node
-                        end;
-                    _ ->
-                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]),
-                        register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
-                        Node
+                        end
                 end,
     From ! {ok, StartNode}.
 
 %% supervisor calls this to create new memcached.
-start_link() ->
-    {ok, Port} = mio_app:get_env(port, 11211),
-    ?LOG(Port),
-    Pid = spawn_link(?MODULE, memcached, [Port]),
+start_link(Port, MaxLevel, BootNode) ->
+    Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
 %% todo: on exit, cleanup socket
@@ -56,9 +54,9 @@ start_link() ->
 %% Internal functions
 %%====================================================================
 
-memcached(Port) ->
+memcached(Port, MaxLevel, BootNode) ->
     Self = self(),
-    spawn(fun() -> init_start_node(Self) end),
+    spawn(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
     receive
         {ok, StartNode} ->
             {ok, Listen} =
@@ -66,16 +64,16 @@ memcached(Port) ->
                   Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
             ?LOGF("< server listening ~p\n", [Port]),
             %%    {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
-            mio_accept(Listen, StartNode)
+            mio_accept(Listen, StartNode, MaxLevel)
     end.
 
-mio_accept(Listen, StartNode) ->
+mio_accept(Listen, StartNode, MaxLevel) ->
     {ok, Sock} = gen_tcp:accept(Listen),
     ?LOGF("<~p new client connection\n", [Sock]),
-    spawn(?MODULE, process_command, [Sock, StartNode]),
-    mio_accept(Listen, StartNode).
+    spawn(?MODULE, process_command, [Sock, StartNode, MaxLevel]),
+    mio_accept(Listen, StartNode, MaxLevel).
 
-process_command(Sock, StartNode) ->
+process_command(Sock, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             ?LOGF(">~p ~s", [Sock, Line]),
@@ -92,14 +90,14 @@ process_command(Sock, StartNode) ->
                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    process_set(Sock, StartNode, Key, Flags, Expire, Bytes),
+                    process_set(Sock, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]);
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
                     ?LOGF("<Error:~p>", [X]),
                     gen_tcp:send(Sock, "ERROR\r\n")
             end,
-            process_command(Sock, StartNode);
+            process_command(Sock, StartNode, MaxLevel);
         {error, closed} ->
             ?LOGF("<~p connection closed.\n", [Sock]);
         Error ->
@@ -131,11 +129,10 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
     P = process_values(Values),
     gen_tcp:send(Sock, P).
 
-process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes) ->
+process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            MAX_LEVEL = 3,
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, [random:uniform(2) - 1 || _ <- lists:duplicate(MAX_LEVEL, 0)]),
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, mio_mvector:generate(MaxLevel)),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->

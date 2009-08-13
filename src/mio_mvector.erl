@@ -1,7 +1,7 @@
 %% Membership Vectyor
 -module(mio_mvector).
 
--export([make/1, eq/2, eq/3, gt/2, gt/3, get/2]).
+-export([make/1, eq/2, eq/3, gt/2, gt/3, get/2, generate/1]).
 
 make(Args) ->
     Args.
@@ -12,6 +12,8 @@ eq(A, B) ->
 eq(Level, A, B) ->
     eq(get(A, Level), get(B, Level)).
 
+generate(MaxLevel) ->
+    [random:uniform(2) - 1 || _ <- lists:duplicate(MaxLevel, 0)].
 
 gt(A, B) ->
     A >= B.
