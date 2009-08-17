@@ -21,12 +21,12 @@ init_per_suite(Config) ->
     ok = application:start(mio),
     Config.
 
-end_per_suite(Config) ->
+end_per_suite(_Config) ->
     application:stop(mio),
     ok.
 
 set_and_get(_Config) ->
-    {ok, MerlePid} = merle2:connect("localhost", 11211),
+    {ok, _MerlePid} = merle2:connect("localhost", 11211),
     ok = merle2:set("hello", "0", "0", "world"),
     "world" = merle2:getkey("hello"),
     ok = merle2:set("hi", "0", "0", "japan"),
@@ -35,5 +35,13 @@ set_and_get(_Config) ->
     "mp3" = merle2:getkey("ipod"),
     ok.
 
+delete(_Config) ->
+    {ok, _MerlePid} = merle2:connect("localhost", 11211),
+    ok = merle2:set("hello", "0", "0", "world"),
+    "world" = merle2:getkey("hello"),
+    merle2:delete("hello"),
+    false = merle2:getkey("hello"),
+    ok.
+
 all() ->
-    [set_and_get].
+    [set_and_get, delete].
