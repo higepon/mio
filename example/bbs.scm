@@ -50,10 +50,11 @@
       ;; ToDo: incr protocol
       (memcached-set! conn "next-article-no" 0 0 (+ next-article-no 1)))
 
-;;     ;; Delete
-;;     (and-let* ([(eq? 'POST (get-request-method))]
-;;                [article-no (get-parameter "article-no")])
-;;       )
+    ;; Delete
+    (and-let* ([(eq? 'POST (get-request-method))]
+               [(get-parameter "delete")]
+               [article-no (get-parameter "article_no")])
+      (memcached-delete! conn article-no 0 #f))
 
     ;; Show articles
     (let* ([from-article-no (or (get-parameter "from-ano") min-article-no)]
@@ -68,7 +69,8 @@
                  (assoc-ref (cdr article) 'image)
                  (cgi:escape (assoc-ref (cdr article) 'name))
                  (cgi:escape (assoc-ref (cdr article) 'body))
-                 (assoc-ref (cdr article) 'date)))
+                 (assoc-ref (cdr article) 'date)
+                 (make-article-no (assoc-ref (cdr article) 'article-no))))
        article*)
       (format #t footer (if prev-required?
                             (format "<a style=\"margin:0px\" href=\"?from-ano=~a\">&laquo前の~d件</a> | <a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件&raquo;</a>"

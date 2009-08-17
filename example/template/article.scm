@@ -17,6 +17,7 @@
 </div>
 <div class=\"info\">
 ~a
+<a href='javascript:deleteArticle(~s)'>削除</a>
 </div>
 </div>
 <div class=\"clear\"></div>

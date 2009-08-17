@@ -2,10 +2,20 @@
 <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">
 <html xmlns=\"http://www.w3.org/1999/xhtml\">
 <head>
+<script>
+function deleteArticle(article_no) {
+    document.forms[0].article_no = article_no;
+    document.forms[0].submit();
+}
+</script>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>
 <title>Mio BBS</title>
 <link rel=\"stylesheet\" href=\"mio.css\" type=\"text/css\"/>
-<body >
+<body>
+<form method='post' action='/'>
+  <input type='hidden' name='delete' value='1'>
+  <input type='hidden' name='article_no' value='0'>
+</form>
 <div id=\"bodydiv\">
 <div id=\"container\">
 <div id=\"header\">
