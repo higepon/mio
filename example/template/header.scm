@@ -4,8 +4,10 @@
 <head>
 <script>
 function deleteArticle(article_no) {
-    document.forms[0].article_no = article_no;
-    document.forms[0].submit();
+    if (confirm('書き込みを削除しますか？')) {
+        document.forms[0].elements['article_no'].value = article_no;
+        document.forms[0].submit();
+    }
 }
 </script>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>
@@ -14,7 +16,7 @@ function deleteArticle(article_no) {
 <body>
 <form method='post' action='/'>
   <input type='hidden' name='delete' value='1'>
-  <input type='hidden' name='article_no' value='0'>
+  <input type='hidden' name='article_no' value='not_set'>
 </form>
 <div id=\"bodydiv\">
 <div id=\"container\">
