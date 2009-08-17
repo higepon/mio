@@ -16,6 +16,8 @@
         (test* 'get '((hello . "world") (hi . "japan")) (get m "mio:range-search" "he" "ipod" "10" "asc"))
         (test* 'get '((hi . "japan") (hello . "world")) (get m "mio:range-search" "he" "ipod" "10" "desc"))
         (test* 'get '((hi . "japan")) (get m "mio:range-search" "he" "ipod" "1" "desc"))
+        (delete m "hello")
+        (test* 'get '() (get m "hello"))
         (memcache-close m)))
     (test-end)))
 
