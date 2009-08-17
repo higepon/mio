@@ -92,6 +92,12 @@ process_command(Sock, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]);
+                ["delete", Key] ->
+                    process_delete(Sock, StartNode, Key);
+                ["delete", Key, _Time] ->
+                    process_delete(Sock, StartNode, Key);
+                ["delete", Key, _Time, _NoReply] ->
+                    process_delete(Sock, StartNode, Key);
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
                     ?LOGF("<Error:~p>", [X]),
@@ -104,14 +110,24 @@ process_command(Sock, StartNode, MaxLevel) ->
             ?LOGF("<~p error: ~p\n", [Sock, Error])
     end.
 
+process_delete(Sock, StartNode, Key) ->
+    case mio_node:delete_op(StartNode, Key) of
+        ng ->
+            gen_tcp:send(Sock, "NOT_FOUND\r\n");
+        _ ->
+            gen_tcp:send(Sock, "DELETED\r\n")
+    end.
+
 process_get(Sock, StartNode, Key) ->
-    Value = case mio_node:search_op(StartNode, Key) of
-                ng -> list_to_binary([]);
-                {ok, FoundValue} -> FoundValue
-              end,
-    gen_tcp:send(Sock, io_lib:format(
-                         "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
-                         [Key, size(Value), Value])).
+    case mio_node:search_op(StartNode, Key) of
+        ng ->
+            gen_tcp:send(Sock, "END\r\n");
+        {ok, FoundValue} -> 
+            gen_tcp:send(Sock, io_lib:format(
+                                 "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
+                                 [Key, size(FoundValue), FoundValue]))
+    end.
+
 
 process_values([{_, Key, Value} | More]) ->
     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",

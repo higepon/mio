@@ -39,8 +39,9 @@ delete(_Config) ->
     {ok, _MerlePid} = merle2:connect("localhost", 11211),
     ok = merle2:set("hello", "0", "0", "world"),
     "world" = merle2:getkey("hello"),
-    merle2:delete("hello"),
-    false = merle2:getkey("hello"),
+    ok = merle2:delete("hello"),
+    not_found = merle2:delete("hello2"),
+    undefined = merle2:getkey("hello"),
     ok.
 
 all() ->
