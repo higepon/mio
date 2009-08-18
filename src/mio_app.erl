@@ -24,8 +24,15 @@ start() ->
     application:start(mio).
 
 stop() ->
-    %% todo name should be placed mio.ihr
-    ok = rpc:call(mioserver@localhost, application, stop, [mio]).
+    ?LOG(stopped),
+    case init:get_argument(target_node) of
+        {ok,[[Node]]} ->
+    ?LOG(moge),
+            ok = rpc:call(list_to_atom(Node), application, stop, [mio]),
+            ok = rpc:call(list_to_atom(Node), init, stop, []);
+        X -> ?LOG(X)
+    end.
+
 
 start(_Type, _StartArgs) ->
     case application:get_env(mio, debug) of
@@ -40,6 +47,7 @@ start(_Type, _StartArgs) ->
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
+    ?LOG(stopped),
     ok.
 
 get_env(Key) ->
