@@ -37,7 +37,7 @@ echo "Starting mio as name=$mio_name, port=$mio_port, introducer=$mio_introducer
 echo "To start other node, use \"bin/start.sh -i $mio_name -n <other_node_name> -m $mio_maxlevel -c $mio_cookie\n"
 
 if [ -n "$mio_introducer" ]; then
-    erl -name $mio_name \
+    erl +K true -name $mio_name \
         -setcookie $mio_cookie \
         -mio \
         -noshell \
@@ -46,7 +46,7 @@ if [ -n "$mio_introducer" ]; then
         -s mio_app start \
         -mio debug $mio_verbose port $mio_port boot_node $mio_introducer maxlevel $mio_maxlevel
 else
-    erl -name $mio_name \
+    erl +K true -name $mio_name \
         -setcookie $mio_cookie \
         -mio \
         -noshell \
