@@ -1,9 +1,8 @@
 (use memcache)
 (use gauche.test)
-
 (let ([m (guard
           [c (#t (error "can't connect to mio\nTry \n % erlc mio_memcached_compat.erl\n % erl -noshell -s mio start  "))]
-          (memcache-connect "localhost" "11211"))])
+          (memcache-connect "localhost" 11211))])
   (let ([oport (open-output-string)]
         [eport (open-output-string)])
     (with-ports #f oport eport
