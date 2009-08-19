@@ -24,10 +24,8 @@ start() ->
     application:start(mio).
 
 stop() ->
-    ?LOG(stopped),
     case init:get_argument(target_node) of
         {ok,[[Node]]} ->
-    ?LOG(moge),
             ok = rpc:call(list_to_atom(Node), application, stop, [mio]),
             ok = rpc:call(list_to_atom(Node), init, stop, []);
         X -> ?LOG(X)

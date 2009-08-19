@@ -29,4 +29,3 @@ erl -name dummy \
     -setcookie $mio_cookie \
     -s mio_app stop \
     -s init stop
-#pkill -f $mio_name ## application is stopped above, but remains erl process.
