@@ -16,7 +16,7 @@ done
 shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"mio"}
 mio_name=${opt_name:-"mio1"}
-mio_name="${mio_name}@"`hostname`
+mio_name="${mio_name}@"`hostname -f`
 
 echo "Try to stop $mio_name ...\n"
 
