@@ -116,10 +116,9 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%  search operation
 %%--------------------------------------------------------------------
 search_op(StartNode, Key) ->
-    %% 2nd parameter [] of gen_server:call(search_op, ...) is Level.
-    %% If Level is not specified, The start node checks his max level and use it.
+    StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
     ?LOG(searchOP),
-    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search_op, [], Key}),
+    {ok, _, FoundKey, FoundValue} = gen_server:call(StartNode, {search_op, StartLevel, Key}),
     if
         FoundKey =:= Key ->
             {ok, FoundValue};
