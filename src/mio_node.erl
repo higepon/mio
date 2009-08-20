@@ -189,8 +189,8 @@ init(Args) ->
 handle_call(get_op, _From, State) ->
     {reply, get_op_call(State), State};
 
-handle_call({search_op, Level, Key}, _From, State) ->
-    {reply, search_op_call(State, Level, Key), State};
+%% handle_call({search_op, Level, Key}, _From, State) ->
+%%     {reply, search_op_call(State, Level, Key), State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
     {reply, buddy_op_call(State, MembershipVector, Direction, Level), State};
