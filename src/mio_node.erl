@@ -75,7 +75,7 @@ insert_op(Introducer, NodeToInsert) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
-    {ok, FoundNode, FoundKey, _} = gen_server:call(Introducer, {search_op, [], Key}),
+    {FoundNode, FoundKey, _} = search_detail_op(Introducer, Key),
     if FoundKey =:= Key ->
             %% ToDo terminate child
             gen_server:call(FoundNode, delete_op),
@@ -102,7 +102,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ok, ClosestNode, _, _} = gen_server:call(StartNode, {search_op, [], StartKey}),
+    {ClosestNode, _, _} = search_detail_op(StartNode, StartKey),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -525,7 +525,7 @@ insert_op_call(State, Introducer) ->
         Introducer =:= self() ->
             {reply, ok, State};
         true ->
-            {ok, Neighbor, NeighBorKey, _} = gen_server:call(Introducer, {search_op, [], MyKey}),
+            {Neighbor, NeighBorKey, _} = search_detail_op(Introducer, MyKey),
             if NeighBorKey =:= MyKey ->
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
                     {reply, ok, State};
