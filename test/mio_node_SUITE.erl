@@ -38,7 +38,7 @@ get_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {ok, _, myKey, myValue} = gen_server:call(Node, {search_op, [], myKey}),
+    {_, myKey, myValue} = mio_node:search_detail_op(Node, myKey),
 
     %% dump nodes on Level 0 and 1
     [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
