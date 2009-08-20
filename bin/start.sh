@@ -28,7 +28,7 @@ done
 shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"mio"}
 mio_name=${opt_name:-"mio1"}
-mio_name="${mio_name}@"`hostname`".local"
+mio_name="${mio_name}@"`hostname -s`".local"
 mio_port=${opt_port:-"11211"}
 mio_introducer=${opt_introducer:-""}
 mio_maxlevel=${opt_maxlevel:-"3"}
