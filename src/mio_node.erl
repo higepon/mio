@@ -8,7 +8,7 @@
 
 %% API
 -export([start_link/1,
-         search_op/2, link_right_op/3, link_left_op/3, set_nth/3,
+         search_op/2, search_detail_op/2, link_right_op/3, link_left_op/3, set_nth/3,
          buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
          range_search_asc_op/4, range_search_desc_op/4]).
 
@@ -115,20 +115,28 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
-search_op(StartNode, Key) ->
-    ?LOG(searchOP),
+search_detail_op(StartNode, Key) ->
+    ?LOG(search_detail_op),
     StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
     ReturnToMe = self(),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
     receive
-        {search_result, {_FoundNode, FoundKey, FoundValue}} ->
-            if FoundKey =:= Key ->
-                {ok, FoundValue};
-               true -> ng
-            end
+        {search_result, Result} -> Result
     after 1000 ->
-            [timeout]
+            timeout
+    end.
+
+search_op(StartNode, Key) ->
+    ?LOG(searchOP),
+    %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
+    case search_detail_op(StartNode, Key) of
+        {_FoundNode, FoundKey, FoundValue} ->
+            if FoundKey =:= Key ->
+                    {ok, FoundValue};
+               true -> ng
+            end;
+        timeout -> ng
     end.
 
 %%--------------------------------------------------------------------
