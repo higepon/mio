@@ -28,7 +28,8 @@ get_boot_node() ->
 init_start_node(From, MaxLevel, BootNode) ->
     StartNode = case BootNode of
                     [] ->
-                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
+                        MVector = mio_mvector:generate(MaxLevel),
+                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
                         register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node) end)),
                         Node;
                     _ ->
@@ -148,7 +149,10 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, mio_mvector:generate(MaxLevel)),
+            MVector = mio_mvector:generate(MaxLevel),
+            ?LOG(MVector),
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
+%            fprof:trace([{procs, [NodeToInsert]}]),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->

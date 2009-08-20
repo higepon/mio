@@ -13,6 +13,9 @@ eq(Level, A, B) ->
     eq(get(A, Level), get(B, Level)).
 
 generate(MaxLevel) ->
+    %% each process requires this once.
+    {A1, A2, A3} = now(),
+    random:seed(A1, A2, A3),
     [random:uniform(2) - 1 || _ <- lists:duplicate(MaxLevel, 0)].
 
 gt(A, B) ->

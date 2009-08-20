@@ -32,6 +32,7 @@ init(_Args) ->
     {ok, BootNode} = mio_app:get_env(boot_node, []),
     %% todo
     %% Make this simple_one_for_one
+    ?PROFILER_START(self()),
     {ok, {{one_for_one, 10, 20},
           [{mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode]},

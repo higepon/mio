@@ -46,6 +46,7 @@ start(_Type, _StartArgs) ->
 
 stop(_State) ->
     ?LOG(stopped),
+    ?PROFILER_STOP(),
     ok.
 
 get_env(Key) ->
