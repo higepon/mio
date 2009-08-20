@@ -45,4 +45,7 @@ delete(_Config) ->
     ok.
 
 all() ->
-    [set_and_get, delete].
+    [
+     set_and_get,
+     delete
+    ].

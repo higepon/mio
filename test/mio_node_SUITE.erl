@@ -524,7 +524,7 @@ all() ->
      get_call,
      search_not_found,
      search_level2_simple,
-     search_level2_1,
+    search_level2_1,
      search_level2_2,
      search_level2_3,
      link_op,
