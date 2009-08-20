@@ -99,7 +99,7 @@ search_level2_2(_Config) ->
 
     ng = mio_node:search_op(Node5, key10),
     %% closest node should be returned
-    {ok, _, key5, value5} = gen_server:call(Node5, {search_op, [], key8}),
+    {_, key5, value5} = mio_node:search_detail_op(Node5, key8),
     ok.
 
 search_level2_3(_Config) ->
@@ -165,8 +165,8 @@ search_level2_3(_Config) ->
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {ok, _, key9, value9} = gen_server:call(Node5, {search_op, [], key9_9}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, [], key6}),
+    {_, key9, value9} = mio_node:search_detail_op(Node5, key9_9),
+    {_, key7, value7} = mio_node:search_detail_op(Node9, key6),
     ok.
 
 test_set_nth(_Config) ->
@@ -258,7 +258,7 @@ delete_op(_Config) ->
             io:format("process is down, reason: ~p.~n",
                       [Reason]);
         Any ->
-            throw("ANY")
+            throw(Any)
     after 1000 ->
             throw("timeout.~n")
     end,
@@ -471,10 +471,10 @@ search_closest(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
-    {ok, _, key7, value7} = gen_server:call(Node3, {search_op, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node5, {search_op, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node7, {search_op, [], key8}),
-    {ok, _, key7, value7} = gen_server:call(Node9, {search_op, [], key8}),
+    {_, key7, value7} = mio_node:search_detail_op(Node3, key8),
+    {_, key7, value7} = mio_node:search_detail_op(Node5, key8),
+    {_, key7, value7} = mio_node:search_detail_op(Node7, key8),
+    {_, key7, value7} = mio_node:search_detail_op(Node9, key8),
     ok.
 
 overwrite_value(_Config) ->
