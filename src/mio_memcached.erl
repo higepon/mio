@@ -152,7 +152,6 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
             MVector = mio_mvector:generate(MaxLevel),
             ?LOG(MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
-%            fprof:trace([{procs, [NodeToInsert]}]),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n");
         {error, closed} ->
@@ -161,3 +160,4 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
             ?LOGF("Error: ~p\n", [Error])
     end,
     gen_tcp:recv(Sock, 2).
+

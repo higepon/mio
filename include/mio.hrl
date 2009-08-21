@@ -4,7 +4,7 @@
 -define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
 -define(SERVER, ?MODULE).
 
-%%-define(PROFILER_ON, true).
+-define(PROFILER_ON, true).
 
 -ifdef (PROFILER_ON).
 -define(PROFILER_STOP(), fprof:trace([stop]), fprof:profile(), fprof:analyse(), fprof:stop()).
