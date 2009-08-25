@@ -33,7 +33,11 @@
 
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
-  (let* ([conn (memcached-connect '(("localhost" . "11211") ("10.89.107.54" . "11211")))]
+  (let* ([conn (memcached-connect '(("dorami.local" . "11211")
+                                    ("ubuntu1.local" . "11211")
+                                    ;; ("10.89.107.98" . "11211")
+                                    ))
+                                    ]
          [next-article-no (or (memcached-get conn "next-article-no") 1)])
     ;; Header
     (display header)
