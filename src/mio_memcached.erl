@@ -80,31 +80,40 @@ process_command(Sock, StartNode, MaxLevel) ->
             ?LOGF(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
             ?LOGF("<Token:~p>", [Token]),
+            NewStartNode =
             case Token of
                 ["get", Key] ->
-                    process_get(Sock, StartNode, Key);
+                    process_get(Sock, StartNode, Key),
+                    StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
-                    process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+                    process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+                    StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
-                    process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit));
+                    process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+                    StartNode;
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    process_set(Sock, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
-                    inet:setopts(Sock,[{packet, line}]);
+                    InsertedNode = process_set(Sock, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
+                    inet:setopts(Sock,[{packet, line}]),
+                    InsertedNode;
                 ["delete", Key] ->
-                    process_delete(Sock, StartNode, Key);
+                    process_delete(Sock, StartNode, Key),
+                    StartNode;
                 ["delete", Key, _Time] ->
-                    process_delete(Sock, StartNode, Key);
+                    process_delete(Sock, StartNode, Key),
+                    StartNode;
                 ["delete", Key, _Time, _NoReply] ->
-                    process_delete(Sock, StartNode, Key);
+                    process_delete(Sock, StartNode, Key),
+                    StartNode;
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
                     ?LOGF("<Error:~p>", [X]),
-                    gen_tcp:send(Sock, "ERROR\r\n")
+                    gen_tcp:send(Sock, "ERROR\r\n"),
+                    StartNode
             end,
-            process_command(Sock, StartNode, MaxLevel);
+            process_command(Sock, NewStartNode, MaxLevel);
         {error, closed} ->
             ?LOGF("<~p connection closed.\n", [Sock]);
         Error ->
@@ -123,7 +132,7 @@ process_get(Sock, StartNode, Key) ->
     case mio_node:search_op(StartNode, Key) of
         ng ->
             gen_tcp:send(Sock, "END\r\n");
-        {ok, FoundValue} -> 
+        {ok, FoundValue} ->
             gen_tcp:send(Sock, io_lib:format(
                                  "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                                  [Key, size(FoundValue), FoundValue]))
@@ -153,11 +162,13 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
             ?LOG(MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
             mio_node:insert_op(Introducer, NodeToInsert),
-            gen_tcp:send(Sock, "STORED\r\n");
+            gen_tcp:send(Sock, "STORED\r\n"),
+            gen_tcp:recv(Sock, 2),
+            NodeToInsert;
         {error, closed} ->
             ok;
         Error ->
-            ?LOGF("Error: ~p\n", [Error])
-    end,
-    gen_tcp:recv(Sock, 2).
-
+            ?LOGF("Error: ~p\n", [Error]),
+            gen_tcp:recv(Sock, 2),
+            Introducer
+    end.

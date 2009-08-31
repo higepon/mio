@@ -8,7 +8,7 @@ APP_TARGET = $(EBIN)/mio.app
  ## N.B. Don't use +nowarn_shadow_vars !!!
 ERL_COMPILE_FLAGS += \
 	+warn_unused_vars +warn_unused_import +warn_shadow_vars \
-	+debug_info 
+	+debug_info +native
 	#+'{parse_transform, smart_exceptions}' ## should be commented out on release
 
 SOURCES = mio_sup mio_node mio_mvector mio_memcached_compat mio_app mio_memcached merle2 gen_server2
