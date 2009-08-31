@@ -97,7 +97,8 @@ process_command(Sock, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, raw}]),
                     InsertedNode = process_set(Sock, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
-                    InsertedNode;
+                    StartNode;
+%%                    InsertedNode;
                 ["delete", Key] ->
                     process_delete(Sock, StartNode, Key),
                     StartNode;
