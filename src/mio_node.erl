@@ -450,13 +450,13 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
         true ->
             case Direction of
                 right ->
-                    case right(State, 0) of %% N.B. should be on Level 0
+                    case right(State, Level - 1) of %% N.B. should be on Level 0
                         [] -> {ok, []};
                         RightNode ->
                             buddy_op(RightNode, MembershipVector, Direction, Level)
                     end;
                 _ ->
-                    case left(State, 0) of
+                    case left(State, Level - 1) of
                         [] -> {ok, []};
                         LeftNode ->
                             buddy_op(LeftNode, MembershipVector, Direction, Level)
@@ -562,9 +562,9 @@ insert_loop(Level, MaxLevel, LinkedState) ->
     if
         Level > MaxLevel -> LinkedState;
         true ->
-            case left(LinkedState, 0) of
+            case left(LinkedState, Level - 1) of
                 [] ->
-                    case right(LinkedState, 0) of
+                    case right(LinkedState, Level - 1) of
                         %% This should never happen, insert to self is returned immediately on insert_op.
                         %%[] ->
                         %%    %% we have no buddy on this level.
@@ -574,7 +574,9 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             case Buddy of
                                 [] ->
                                     %% we have no buddy on this level.
-                                    insert_loop(Level + 1, MaxLevel, LinkedState);
+                                    %% So we've done.
+                                    LinkedState;
+                                    %%insert_loop(Level + 1, MaxLevel, LinkedState);
                                 _ ->
                                     {_, _, _, BuddyLeft, _} = gen_server:call(Buddy, get_op),
                                     link_left_op(Buddy, Level, self()),
@@ -591,7 +593,8 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                     case Buddy of
                         [] ->
-                            insert_loop(Level + 1, MaxLevel, LinkedState);
+                            %% we've done
+                            LinkedState;
                         _ ->
                             {_, _, _, _, BuddyRight} = gen_server:call(Buddy, get_op),
                             link_right_op(Buddy, Level, self()),

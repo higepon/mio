@@ -161,6 +161,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
         {ok, Value} ->
             MVector = mio_mvector:generate(MaxLevel),
             ?LOG(MVector),
+%            {ok, NodeToInsert} = mio_sup:start_node(Key, true, MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n"),
