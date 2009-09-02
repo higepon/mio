@@ -172,7 +172,9 @@ set_nth(Index, Value, List) ->
 %%--------------------------------------------------------------------
 init(Args) ->
     [MyKey, MyValue, MyMembershipVector] = Args,
-    {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=[[], []], right=[[], []]}}.
+    Length = length(MyMembershipVector),
+    EmptyNeighbor = lists:duplicate(Length, []),
+    {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=EmptyNeighbor, right=EmptyNeighbor}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -319,6 +321,7 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
 search_op_left_cast_(ReturnToMe, State, Level, Key) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
+%%    ?LOGF("search-hige:left (~p)\n", [Level]),
     if
         Level < 0 ->
             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
@@ -342,6 +345,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 
 
 search_op_cast_(ReturnToMe, State, Level, Key) ->
+%%    ?LOGF("search-hige:start (~p, ~p)\n", [Level, length(State#state.right)]),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
