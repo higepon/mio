@@ -34,7 +34,7 @@
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect '(("dorami.local" . "11211")
-                                    ("ubuntu1.local" . "11211")
+                                    ;;("ubuntu1.local" . "11211")
                                     ;; ("10.89.107.98" . "11211")
                                     ))
                                     ]
