@@ -69,6 +69,7 @@ enum_nodes_(StartNode, Level) ->
 %%  insert operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
+%%    ?LOG(dump_op(Introducer, 3)),
     gen_server:call(NodeToInsert, {insert_op, Introducer}).
 
 %%--------------------------------------------------------------------
@@ -116,10 +117,11 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%  search operation
 %%--------------------------------------------------------------------
 search_detail_op(StartNode, Key) ->
-    ?LOG(search_detail_op),
+%%    ?LOG(search_detail_op),
     StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
     ReturnToMe = self(),
-    %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
+    %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:call
+%%    ?LOGF("search-hige:detail (~p)\n", [StartLevel]),
     gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
     receive
         {search_result, Result} -> Result
@@ -128,7 +130,7 @@ search_detail_op(StartNode, Key) ->
     end.
 
 search_op(StartNode, Key) ->
-    ?LOG(searchOP),
+%%    ?LOG(searchOP),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     case search_detail_op(StartNode, Key) of
         {_FoundNode, FoundKey, FoundValue} ->
@@ -173,7 +175,7 @@ set_nth(Index, Value, List) ->
 init(Args) ->
     [MyKey, MyValue, MyMembershipVector] = Args,
     Length = length(MyMembershipVector),
-    EmptyNeighbor = lists:duplicate(Length, []),
+    EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     {ok, #state{key=MyKey, value=MyValue, membership_vector=MyMembershipVector, left=EmptyNeighbor, right=EmptyNeighbor}}.
 
 %%--------------------------------------------------------------------
@@ -321,11 +323,12 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
 search_op_left_cast_(ReturnToMe, State, Level, Key) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-%%    ?LOGF("search-hige:left (~p)\n", [Level]),
+%%    ?LOGF("search-hige:left (~p. ~p MyKey=~p ~p)\n", [Level, Key, MyKey, State#state.membership_vector]),
     if
         Level < 0 ->
             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
         true ->
+%%            ?LOGF("search-hige:moge~p ~p left(State, ~p)=~p\n", [State#state.left, State#state.right, Level, left(State, Level)]),
             case left(State, Level) of
                 [] ->
                     search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
@@ -335,6 +338,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
                     Compare = NextKey >= Key,
                     if
                         Compare ->
+%%                            ?LOGF("search-hige:LEFT (~p)\n", [Level]),
                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
                         true ->
                             search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
@@ -345,7 +349,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 
 
 search_op_cast_(ReturnToMe, State, Level, Key) ->
-%%    ?LOGF("search-hige:start (~p, ~p)\n", [Level, length(State#state.right)]),
+%%   ?LOGF("search-hige:start (~p, ~p)\n", [Level, length(State#state.right)]),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -494,7 +498,7 @@ search_op_call(State, Level, Key) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op_call(State) ->
-    MaxLevel = length(State#state.right) - 1,
+    MaxLevel = length(State#state.membership_vector),
     DeletedState = delete_loop_(State, MaxLevel),
     {reply, ok, DeletedState}.
 
@@ -524,6 +528,7 @@ delete_loop_(State, Level) ->
 insert_op_call(State, Introducer) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
+%%    ?LOGF("search-hige:insert ~p MyKey=~p (~p)\n", [self(), MyKey, State#state.membership_vector]),
     if
         %% there's no buddy
         Introducer =:= self() ->
@@ -552,7 +557,7 @@ insert_op_call(State, Introducer) ->
                                           end,
                                           set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
                                   end,
-                    MaxLevel = length(LinkedState#state.right) - 1,
+                    MaxLevel = length(LinkedState#state.membership_vector),
                     %% link on level > 0
                     ReturnState = insert_loop(1, MaxLevel, LinkedState),
                     {reply, ok, ReturnState}

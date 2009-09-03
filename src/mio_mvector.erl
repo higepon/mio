@@ -27,7 +27,7 @@ gt(Level, A, B) ->
 get(MVector, Level) ->
     case Level of
         0 ->
-            MVector;
+            [];
         _ ->
-            lists:sublist(MVector, length(MVector) - Level)
+            lists:sublist(MVector, Level)
     end.

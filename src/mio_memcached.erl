@@ -63,34 +63,34 @@ memcached(Port, MaxLevel, BootNode) ->
             {ok, Listen} =
                 gen_tcp:listen(
                   Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
-            ?LOGF("< server listening ~p\n", [Port]),
+%            ?LOGF("< server listening ~p\n", [Port]),
             %%    {ok, BootPid} = mio_sup:start_node("dummy", list_to_binary("dummy"), [1, 0]), %% todo mvector
             mio_accept(Listen, StartNode, MaxLevel)
     end.
 
 mio_accept(Listen, StartNode, MaxLevel) ->
     {ok, Sock} = gen_tcp:accept(Listen),
-    ?LOGF("<~p new client connection\n", [Sock]),
+%    ?LOGF("<~p new client connection\n", [Sock]),
     spawn(?MODULE, process_command, [Sock, StartNode, MaxLevel]),
     mio_accept(Listen, StartNode, MaxLevel).
 
 process_command(Sock, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
-            ?LOGF(">~p ~s", [Sock, Line]),
+%%            ?LOGF(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
-            ?LOGF("<Token:~p>", [Token]),
+%%            ?LOGF("<Token:~p>", [Token]),
             NewStartNode =
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key),
                     StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+%%                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
                     StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
+%%                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
                     StartNode;
                 ["set", Key, Flags, Expire, Bytes] ->
@@ -110,13 +110,14 @@ process_command(Sock, StartNode, MaxLevel) ->
                     StartNode;
                 ["quit"] -> gen_tcp:close(Sock);
                 X ->
-                    ?LOGF("<Error:~p>", [X]),
+%%                    ?LOGF("<Error:~p>", [X]),
                     gen_tcp:send(Sock, "ERROR\r\n"),
                     StartNode
             end,
             process_command(Sock, NewStartNode, MaxLevel);
         {error, closed} ->
-            ?LOGF("<~p connection closed.\n", [Sock]);
+            ok;
+%            ?LOGF("<~p connection closed.\n", [Sock]);
         Error ->
             ?LOGF("<~p error: ~p\n", [Sock, Error])
     end.
@@ -160,7 +161,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             MVector = mio_mvector:generate(MaxLevel),
-            ?LOG(MVector),
+%%            ?LOG(MVector),
 %            {ok, NodeToInsert} = mio_sup:start_node(Key, true, MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
             mio_node:insert_op(Introducer, NodeToInsert),
@@ -170,7 +171,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
         {error, closed} ->
             ok;
         Error ->
-            ?LOGF("Error: ~p\n", [Error]),
+%            ?LOGF("Error: ~p\n", [Error]),
             gen_tcp:recv(Sock, 2),
             Introducer
     end.

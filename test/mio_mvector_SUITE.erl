@@ -24,10 +24,11 @@ not_equal(_Config) ->
 
 get(_Config) ->
     A = mio_mvector:make([3, 2, 1, 0]),
-    [3, 2, 1, 0] = mio_mvector:get(A, 0),
-    [3, 2, 1] = mio_mvector:get(A, 1),
+    [3, 2, 1, 0] = mio_mvector:get(A, 4),
+    [3, 2, 1] = mio_mvector:get(A, 3),
     [3, 2] = mio_mvector:get(A, 2),
-    [3] = mio_mvector:get(A, 3),
+    [3] = mio_mvector:get(A, 1),
+    [] = mio_mvector:get(A, 0),
     ok.
 
 all() ->
