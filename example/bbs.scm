@@ -15,10 +15,10 @@
 
 (define (profile-image name)
   (define image-alist '(
-                        ("higepon"  . "http://friendfeed-media.com/p-31fe497505b0411dbcf9578b8204ccdf-medium-1000")
-                        ("akky"     . "http://i.friendfeed.com/p-519a7846f34c11dcb99a003048343a40-medium-1")
-                        ("amachang" . "http://i.friendfeed.com/p-a6e5aaeefaf111dca899003048343a40-medium-1")
-                        ("kazuho"   . "http://s3.amazonaws.com/twitter_production/profile_images/51501974/close99_bigger.jpg")))
+                        ("higepon"  . "higepon.png")
+                        ("akky"     . "akky.jpg")
+                        ("amachang" . "amachang.jpg")
+                        ("kazuho"   . "kazuho.jpg")))
   (cond
    [(assoc name image-alist) => cdr]
    [else "http://friendfeed.com/static/images/nomugshot-medium.png?v=0fa9"]))
@@ -34,8 +34,7 @@
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect '(("dorami.local" . "11211")
-                                    ;;("ubuntu1.local" . "11211")
-                                    ;; ("10.89.107.98" . "11211")
+;                                    ("ubuntu1.local" . "11211")
                                     ))
                                     ]
          [next-article-no (or (memcached-get conn "next-article-no") 1)])
