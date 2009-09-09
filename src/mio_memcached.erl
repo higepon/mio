@@ -160,8 +160,9 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
 process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            ?LOGF(">set Key =~p Value=~p\n", [Key, Value]),
+%            ?LOGF(">set Key =~p Value=~p\n", [Key, Value]),
             MVector = mio_mvector:generate(MaxLevel),
+%            ?LOGF("search-hige:insert_=~p ~p\n", [Key, MVector]),
 %%            ?LOG(MVector),
 %            {ok, NodeToInsert} = mio_sup:start_node(Key, true, MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
