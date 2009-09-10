@@ -23,7 +23,7 @@ function bench {
 
 
 # bench_memcached 1 1000
-bench_mio 1 1000
+bench_mio 1 10000
 # bench_memcached 1 100
 
 #bench_memcached 1 10000
