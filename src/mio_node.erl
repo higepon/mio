@@ -647,8 +647,37 @@ insert_loop(Level, MaxLevel, LinkedState) ->
 
                     case Buddy of
                         [] ->
-                            %% we've done
-                            LinkedState;
+                            case right(LinkedState, Level - 1) of
+                                [] ->
+                                    LinkedState;
+                                %% This should never happen, insert to self is returned immediately on insert_op.
+                                %%[] ->
+                                %%    %% we have no buddy on this level.
+                                %%    insert_loop(Level + 1, MaxLevel, LinkedState);
+                                RightNodeOnLevel02 ->
+                                    Start4 = erlang:now(),
+                                    {ok, Buddy2} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
+                                    End4 = erlang:now(),
+                                                %                            io:format("~pINSERT Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
+
+                                    case Buddy2 of
+                                        [] ->
+                                            %% we have no buddy on this level.
+                                            %% So we've done.
+                                            LinkedState;
+                                        %%insert_loop(Level + 1, MaxLevel, LinkedState);
+                                        _ ->
+                                            {_, _, _, BuddyLeft2, _} = gen_server:call(Buddy2, get_op),
+                                            link_left_op(Buddy2, Level, self()),
+                                            %% Since left(Level:0) is empty, this should never happen.
+                                            %% case node_on_level(BuddyLeft, Level) of
+                                            %%    [] -> [];
+                                            %%    X -> link_right_op(X, Level, self())
+                                            %% end,
+                                            NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2), Level, node_on_level(BuddyLeft2, Level)),
+                                            insert_loop(Level + 1, MaxLevel, NewLinkedState2)
+                                    end
+                            end;
                         _ ->
                             Start3 = erlang:now(),
                             {_, _, _, _, BuddyRight} = gen_server:call(Buddy, get_op),
