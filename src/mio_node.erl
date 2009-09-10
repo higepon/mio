@@ -71,17 +71,17 @@ enum_nodes_(StartNode, Level) ->
 insert_op(Introducer, NodeToInsert) ->
     {Key, _, _, LeftNodes, RightNodes} = gen_server:call(Introducer, get_op),
 %    io:format("Intro=~p ~p ~p ~n", [Key, LeftNodes, RightNodes]),
-%%     io:format("search-hige:dump5<~p>~n", [dump_op(Introducer, 5)]),
+%     io:format("search-hige:dump5<~p>~n", [dump_op(Introducer, 5)]),
 %%     io:format("search-hige:dump4<~p>~n", [dump_op(Introducer, 4)]),
 %%     io:format("search-hige:dump3<~p>~n", [dump_op(Introducer, 3)]),
 %%     io:format("search-hige:dump2<~p>~n", [dump_op(Introducer, 2)]),
 %%     io:format("search-hige:dump1<~p>~n", [dump_op(Introducer, 1)]),
 %%     io:format("search-hige:dump0<~p>~n", [dump_op(Introducer, 0)]),
-%%   io:format("~pINSERT START ~n", [self()]),
+%    io:format("~pINSERT START ~n", [self()]),
     Start = erlang:now(),
     Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}),
     End = erlang:now(),
-%%   io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
+%   io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
     Ret.
 
 %%--------------------------------------------------------------------
@@ -358,7 +358,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 %                            io:format("TO LEFT~n", []),
                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
                         true ->
-%                            ?LOGF("search-left LEVEL DOWN", []),
+%%                            ?LOGF("search-left LEVEL DOWN", []),
                             End = erlang:now(),
 %                            io:format("LEVEL DOWN2~n", []),
 
