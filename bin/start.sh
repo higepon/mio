@@ -38,6 +38,7 @@ echo "To start other node, use \"bin/start.sh -i $mio_name -n <other_node_name> 
 
 if [ -n "$mio_introducer" ]; then
     erl +K true -name $mio_name \
+        +P 134217727 \
         -setcookie $mio_cookie \
         -mio \
         -noshell \
@@ -47,6 +48,7 @@ if [ -n "$mio_introducer" ]; then
         -mio debug $mio_verbose port $mio_port boot_node $mio_introducer maxlevel $mio_maxlevel
 else
     erl +K true -name $mio_name \
+        +P 134217727 \
         -setcookie $mio_cookie \
         -mio \
         -noshell \
