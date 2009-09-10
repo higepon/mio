@@ -70,18 +70,18 @@ enum_nodes_(StartNode, Level) ->
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
     {Key, _, _, LeftNodes, RightNodes} = gen_server:call(Introducer, get_op),
-    io:format("Intro=~p ~p ~p ~n", [Key, LeftNodes, RightNodes]),
-    io:format("search-hige:dump5<~p>", [dump_op(Introducer, 5)]),
-    io:format("search-hige:dump4<~p>", [dump_op(Introducer, 4)]),
-    io:format("search-hige:dump3<~p>", [dump_op(Introducer, 3)]),
-    io:format("search-hige:dump2<~p>", [dump_op(Introducer, 2)]),
-    io:format("search-hige:dump1<~p>", [dump_op(Introducer, 1)]),
-    io:format("search-hige:dump0<~p>", [dump_op(Introducer, 0)]),
-   io:format("~pINSERT START ~n", [self()]),
+%    io:format("Intro=~p ~p ~p ~n", [Key, LeftNodes, RightNodes]),
+%%     io:format("search-hige:dump5<~p>~n", [dump_op(Introducer, 5)]),
+%%     io:format("search-hige:dump4<~p>~n", [dump_op(Introducer, 4)]),
+%%     io:format("search-hige:dump3<~p>~n", [dump_op(Introducer, 3)]),
+%%     io:format("search-hige:dump2<~p>~n", [dump_op(Introducer, 2)]),
+%%     io:format("search-hige:dump1<~p>~n", [dump_op(Introducer, 1)]),
+%%     io:format("search-hige:dump0<~p>~n", [dump_op(Introducer, 0)]),
+%%   io:format("~pINSERT START ~n", [self()]),
     Start = erlang:now(),
     Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}),
     End = erlang:now(),
-   io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
+%%   io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
     Ret.
 
 %%--------------------------------------------------------------------
@@ -335,7 +335,7 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
 search_op_left_cast_(ReturnToMe, State, Level, Key) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    io:format("~pLEFT ~p SearchKey=~p MyKey=~p ~n", [self(), erlang:now(), Key, MyKey]),
+%    io:format("~pLEFT ~p SearchKey=~p MyKey=~p ~n", [self(), erlang:now(), Key, MyKey]),
 %    ?LOGF("search-left START MyKey=~p LEVEL=~p", [MyKey, Level]),
 %    ?LOGF("search-hige:left (~p. ~p MyKey=~p ~p)\n", [Level, Key, MyKey, State#state.membership_vector]),
     if
@@ -347,7 +347,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 %%            ?LOGF("search-hige:moge~p ~p left(State, ~p)=~p\n", [State#state.left, State#state.right, Level, left(State, Level)]),
             case left(State, Level) of
                 [] ->
-                    io:format("LEVEL DOWN1~n", []),
+%                    io:format("LEVEL DOWN1~n", []),
                     search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
                 NextNode ->
                     {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
@@ -355,12 +355,12 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
                     Compare = NextKey >= Key,
                     if
                         Compare ->
-                            io:format("TO LEFT~n", []),
+%                            io:format("TO LEFT~n", []),
                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
                         true ->
 %                            ?LOGF("search-left LEVEL DOWN", []),
                             End = erlang:now(),
-                            io:format("LEVEL DOWN2~n", []),
+%                            io:format("LEVEL DOWN2~n", []),
 
                             search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
                     end
@@ -555,18 +555,18 @@ insert_op_call(State, Introducer) ->
         Introducer =:= self() ->
             StartA = erlang:now(),
             EndA = erlang:now(),
-            io:format("~pINSERTA ~p~n", [self(), timer:now_diff(EndA, StartA)]),
+%            io:format("~pINSERTA ~p~n", [self(), timer:now_diff(EndA, StartA)]),
             {reply, ok, State};
         true ->
             StartB =  erlang:now(),
             {Neighbor, NeighBorKey, _} = search_detail_op(Introducer, MyKey),
             EndB = erlang:now(),
-            io:format("~pINSERTB ~p~n", [self(), timer:now_diff(EndB, StartB)]),
+%            io:format("~pINSERTB ~p~n", [self(), timer:now_diff(EndB, StartB)]),
             if NeighBorKey =:= MyKey ->
                     Start0 = erlang:now(),
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
                     End0 = erlang:now(),
-                    io:format("~pINSERT0 ~p~n", [self(), timer:now_diff(End0, Start0)]),
+%                    io:format("~pINSERT0 ~p~n", [self(), timer:now_diff(End0, Start0)]),
                     {reply, ok, State};
                true ->
                     Start = erlang:now(),
@@ -589,13 +589,13 @@ insert_op_call(State, Introducer) ->
                                           set_left(set_right(State, 0, Neighbor), 0, node_on_level(NeighborLeft, 0))
                                   end,
                     End = erlang:now(),
-                    io:format("~pINSERT1 ~p~n", [self(), timer:now_diff(End, Start)]),
+%                    io:format("~pINSERT1 ~p~n", [self(), timer:now_diff(End, Start)]),
                     MaxLevel = length(LinkedState#state.membership_vector),
                     %% link on level > 0
                     Start2 = erlang:now(),
                     ReturnState = insert_loop(1, MaxLevel, LinkedState),
                     End2 = erlang:now(),
-                    io:format("~pINSERT2 ~p~n", [self(), timer:now_diff(End2, Start2)]),
+%                    io:format("~pINSERT2 ~p~n", [self(), timer:now_diff(End2, Start2)]),
 
                     {reply, ok, ReturnState}
             end
@@ -619,7 +619,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             Start = erlang:now(),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
                             End = erlang:now(),
-                            io:format("~pINSERT Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
+%                            io:format("~pINSERT Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
 
                             case Buddy of
                                 [] ->
@@ -643,7 +643,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     Start = erlang:now(),
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                     End = erlang:now(),
-                    io:format("~pINSERT_Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
+%                    io:format("~pINSERT_Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
 
                     case Buddy of
                         [] ->
@@ -660,7 +660,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             end,
                             NewLinkedState = set_right(set_left(LinkedState, Level, Buddy), Level, node_on_level(BuddyRight, Level)),
                             End3 = erlang:now(),
-                            io:format("~pINSERT4 ~p~n", [self(), timer:now_diff(End3, Start3)]),
+%s                            io:format("~pINSERT4 ~p~n", [self(), timer:now_diff(End3, Start3)]),
                             insert_loop(Level + 1, MaxLevel, NewLinkedState)
                     end
             end
