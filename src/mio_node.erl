@@ -26,15 +26,20 @@ call(ServerRef, Request, Timeout, Timeout1) ->
     if 0 >= Timeout ->
             timeout;
        true ->
-            case catch gen_server:call(ServerRef, Request, Timeout1) of
-                {'EXIT', Reason} ->
-                    io:format("~p: Timeout=~p/~p Target=~p Request=~p~n", [self(), Timeout1, Timeout, ServerRef, Request]),
-                    io:format("REASON=~p~n", [Reason]),
-                    timer:sleep(2000),
-                    call(ServerRef, Request, Timeout - Timeout1, Timeout1);
-                ReturnValue ->
-                    io:format("ReturnValue=~p~n", [ReturnValue]),
-                    ReturnValue
+            case ServerRef =:= self() of
+                true ->
+                    io:format("***** FATAL call myself ****~p ~p ~p~n", [self(), ServerRef, Request]);
+                _ ->
+                    case catch gen_server:call(ServerRef, Request, Timeout1) of
+                        {'EXIT', Reason} ->
+                            io:format("~p~p: Timeout=~p/~p Target=~p Request=~p~n", [erlang:now(), self(), Timeout1, Timeout, ServerRef, Request]),
+                            io:format("REASON=~p~n", [Reason]),
+                            timer:sleep(2000),
+                            call(ServerRef, Request, Timeout - Timeout1, Timeout1);
+                        ReturnValue ->
+                            io:format("ReturnValue=~p~n", [ReturnValue]),
+                            ReturnValue
+                    end
             end
     end.
 
@@ -97,7 +102,11 @@ insert_op(Introducer, NodeToInsert) ->
 %%     io:format("search-hige:dump0<~p>~n", [dump_op(Introducer, 0)]),
 %    io:format("~pINSERT START ~n", [self()]),
     Start = erlang:now(),
-    Ret = call(NodeToInsert, {insert_op, Introducer}),
+    ?L(),
+    %% Since insert_op may issue get_op and buddy_op,
+    %% they should be called with timeout and insert_op without timeout.
+    Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity),
+    ?L(),
     End = erlang:now(),
    io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
     Ret.
@@ -109,7 +118,9 @@ delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _} = search_detail_op(Introducer, Key),
     if FoundKey =:= Key ->
             %% ToDo terminate child
+    ?L(),
             call(FoundNode, delete_op),
+    ?L(),
             mio_sup:terminate_node(FoundNode),
             ok;
        true -> ng
@@ -133,7 +144,9 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
+    ?L(),
     {ClosestNode, _, _} = search_detail_op(StartNode, StartKey),
+    ?L(),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -147,14 +160,15 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%  search operation
 %%--------------------------------------------------------------------
 search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
-    if count < 0 ->
+    if Count < 0 ->
        timout;
        true ->
             gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
             receive
                 {search_result, Result} -> Result
             after 1000 ->
-                    timer:sleep(1000),
+                    timer:sleep(2000),
+                    io:format("~p~p SEARCH TIMEOUT ReturnToMe~p~n", [erlang:now(), self(), ReturnToMe]),
                     search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
             end
     end.
@@ -302,6 +316,7 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
     io:format("~p:~p:search_op_cast~n", [erlang:now(), self()]),
     search_op_cast_(ReturnToMe, State, Level, Key),
+    ?L(),
     {noreply, State};
 
 %%--------------------------------------------------------------------
@@ -355,13 +370,17 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
         true ->
             case right(State, Level) of
                 [] ->
+                    ?L(),
                     search_op_right_cast_(ReturnToMe, State, Level - 1, Key);
                 NextNode ->
+                    ?L(),
                     {NextKey, _, _, _, _} = call(NextNode, get_op),
+                    ?L(),
                     %% we can make short cut. when equal case todo
                     Compare = NextKey =< Key,
                     if
                         Compare ->
+                            ?L(),
                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
                         true ->
                             search_op_right_cast_(ReturnToMe, State, Level - 1, Key)
@@ -386,6 +405,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
             case left(State, Level) of
                 [] ->
 %                    io:format("LEVEL DOWN1~n", []),
+                    ?L(),
                     search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
                 NextNode ->
                     io:format("~p:~p:search_op_left_cast:get_op to ~p~n", [erlang:now(), self(), NextNode]),
@@ -402,6 +422,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 %%                            ?LOGF("search-left LEVEL DOWN", []),
 %                            End = erlang:now(),
 %                            io:format("LEVEL DOWN2~n", []),
+                            ?L(),
                             search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
                     end
             end
@@ -477,11 +498,13 @@ search_(MyKey, MyValue, NextNodes, Level, SearchKey, CompareFun) ->
                 [] ->
                     search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun);
                 NextNode ->
+                    ?L(),
                     {NextKey, _, _, _, _} = call(NextNode, get_op),
                     %% we can make short cut. when equal case todo
                     Compare = CompareFun(NextKey, SearchKey),
                     if
                         Compare ->
+                                ?L(),
                             call(NextNode, {search_op, Level, SearchKey});
                         true ->
                             search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun)
@@ -527,6 +550,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
                     case right(State, Level - 1) of %% N.B. should be on Level 0
                         [] -> {ok, []};
                         RightNode ->
+                            ?L(),
                             buddy_op(RightNode, MembershipVector, Direction, Level)
                     end;
                 _ ->
@@ -534,6 +558,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
                         [] -> {ok, []};
                         LeftNode ->
                             io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), self(), LeftNode]),
+                            ?L(),
                             buddy_op(LeftNode, MembershipVector, Direction, Level)
                     end
             end
@@ -660,6 +685,7 @@ insert_op_call(State, Introducer) ->
 
 %% link on Level > 0
 insert_loop(Level, MaxLevel, LinkedState) ->
+    io:format("insert_loop ~p ~p ~p ~p ~n", [self(), Level, MaxLevel, LinkedState]),
     %% Find buddy node and link it.
     %% buddy node has same membership_vector on this level.
     if
@@ -674,6 +700,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                         %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                         RightNodeOnLevel0 ->
                             Start = erlang:now(),
+                            io:format("insert_loop1 ~p ~p ~p ~p ~n", [self(), Level, MaxLevel, LinkedState]),
                             {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
                             End = erlang:now(),
                             io:format("~pINSERT Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
@@ -682,16 +709,22 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                 [] ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
+                                    io:format("~pINSERT Buddy2 ~p~n", [self(), timer:now_diff(End, Start)]),
                                     LinkedState;
                                     %%insert_loop(Level + 1, MaxLevel, LinkedState);
                                 _ ->
+                                    io:format("~pINSERT Buddy3 ~p~n", [self(), timer:now_diff(End, Start)]),
                                     {_, _, _, BuddyLeft, _} = call(Buddy, get_op),
+                                    io:format("~pINSERT Buddy4 ~p~n", [self(), timer:now_diff(End, Start)]),
+                                    io:format("~p~plink_left_op to ~p~n", [erlang:now(), self(), Buddy]),
                                     link_left_op(Buddy, Level, self()),
+                                    io:format("~pINSERT Buddy5 ~p~n", [self(), timer:now_diff(End, Start)]),
                                     %% Since left(Level:0) is empty, this should never happen.
                                     %% case node_on_level(BuddyLeft, Level) of
                                     %%    [] -> [];
                                     %%    X -> link_right_op(X, Level, self())
                                     %% end,
+                                    io:format("~pINSERT Buddy6 ~p~n", [self(), timer:now_diff(End, Start)]),
                                     NewLinkedState = set_left(set_right(LinkedState, Level, Buddy), Level, node_on_level(BuddyLeft, Level)),
                                     insert_loop(Level + 1, MaxLevel, NewLinkedState)
                             end
@@ -702,12 +735,13 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                     io:format("~p:~p:buddy_op to ~pDONE~n", [erlang:now(), self(), LeftNodeOnLevel0]),
                     End = erlang:now(),
-                    io:format("~pINSERT_Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
+                    io:format("~pINSERT_BuddyA ~p~n", [self(), timer:now_diff(End, Start)]),
 
                     case Buddy of
                         [] ->
                             case right(LinkedState, Level - 1) of
                                 [] ->
+                                    io:format("~pINSERT_Buddy7 ~p~n", [self(), timer:now_diff(End, Start)]),
                                     LinkedState;
                                 %% This should never happen, insert to self is returned immediately on insert_op.
                                 %%[] ->
@@ -725,6 +759,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                         [] ->
                                             %% we have no buddy on this level.
                                             %% So we've done.
+                                            io:format("~pINSERT_Buddy8 ~p~n", [self(), timer:now_diff(End, Start)]),
                                             LinkedState;
                                         %%insert_loop(Level + 1, MaxLevel, LinkedState);
                                         _ ->
@@ -737,17 +772,22 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                             %%    [] -> [];
                                             %%    X -> link_right_op(X, Level, self())
                                             %% end,
+                                            io:format("~pINSERT_Buddy9 ~p~n", [self(), timer:now_diff(End, Start)]),
                                             NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2), Level, node_on_level(BuddyLeft2, Level)),
                                             insert_loop(Level + 1, MaxLevel, NewLinkedState2)
                                     end
                             end;
                         _ ->
 %                            Start3 = erlang:now(),
+                            io:format("~pINSERT_BuddyB ~p~n", [self(), timer:now_diff(End, Start)]),
                             {_, _, _, _, BuddyRight} = call(Buddy, get_op),
+                            io:format("insert_loop2 ~p ~p ~p ~p ~n", [self(), Level, MaxLevel, LinkedState]),
                             link_right_op(Buddy, Level, self()),
+                            io:format("insert_loop3 ~p ~p ~p ~p ~n", [self(), Level, MaxLevel, LinkedState]),
                             case node_on_level(BuddyRight, Level) of
                                 [] -> [];
                                 X ->
+                                    io:format("insert_loop4 ~p ~p ~p ~p ~n", [self(), Level, MaxLevel, LinkedState]),
                                     link_left_op(X, Level, self())
                             end,
                             NewLinkedState = set_right(set_left(LinkedState, Level, Buddy), Level, node_on_level(BuddyRight, Level)),
