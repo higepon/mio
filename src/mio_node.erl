@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,
+-export([start_link/1, call/2,
          search_op/2, search_detail_op/2, link_right_op/3, link_left_op/3, set_nth/3,
          buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
          range_search_asc_op/4, range_search_desc_op/4]).
@@ -19,6 +19,24 @@
 -include("mio.hrl").
 
 -record(state, {key, value, membership_vector, left, right}).
+
+call(ServerRef, Request) ->
+    call(ServerRef, Request, 5000, 3000).
+call(ServerRef, Request, Timeout, Timeout1) ->
+    if 0 >= Timeout ->
+            timeout;
+       true ->
+            case catch gen_server:call(ServerRef, Request, Timeout1) of
+                {'EXIT', Reason} ->
+                    io:format("~p: Timeout=~p/~p Target=~p Request=~p~n", [self(), Timeout1, Timeout, ServerRef, Request]),
+                    io:format("REASON=~p~n", [Reason]),
+                    timer:sleep(2000),
+                    call(ServerRef, Request, Timeout - Timeout1, Timeout1);
+                ReturnValue ->
+                    io:format("ReturnValue=~p~n", [ReturnValue]),
+                    ReturnValue
+            end
+    end.
 
 %%====================================================================
 %% API
@@ -58,7 +76,7 @@ dump_side_(StartNode, Side, Level) ->
     end.
 
 enum_nodes_(StartNode, Level) ->
-    {Key, Value, MembershipVector, LeftNodes, RightNodes} = gen_server:call(StartNode, get_op),
+    {Key, Value, MembershipVector, LeftNodes, RightNodes} = call(StartNode, get_op),
     RightNode = node_on_level(RightNodes, Level),
     LeftNode = node_on_level(LeftNodes, Level),
     lists:append([dump_side_(LeftNode, left, Level),
@@ -69,7 +87,7 @@ enum_nodes_(StartNode, Level) ->
 %%  insert operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
-    {Key, _, _, LeftNodes, RightNodes} = gen_server:call(Introducer, get_op),
+    {Key, _, _, LeftNodes, RightNodes} = call(Introducer, get_op),
 %    io:format("Intro=~p ~p ~p ~n", [Key, LeftNodes, RightNodes]),
 %     io:format("search-hige:dump5<~p>~n", [dump_op(Introducer, 5)]),
 %%     io:format("search-hige:dump4<~p>~n", [dump_op(Introducer, 4)]),
@@ -79,7 +97,7 @@ insert_op(Introducer, NodeToInsert) ->
 %%     io:format("search-hige:dump0<~p>~n", [dump_op(Introducer, 0)]),
 %    io:format("~pINSERT START ~n", [self()]),
     Start = erlang:now(),
-    Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}),
+    Ret = call(NodeToInsert, {insert_op, Introducer}),
     End = erlang:now(),
    io:format("~pINSERT ~p~n", [self(), timer:now_diff(End, Start)]),
     Ret.
@@ -91,7 +109,7 @@ delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _} = search_detail_op(Introducer, Key),
     if FoundKey =:= Key ->
             %% ToDo terminate child
-            gen_server:call(FoundNode, delete_op),
+            call(FoundNode, delete_op),
             mio_sup:terminate_node(FoundNode),
             ok;
        true -> ng
@@ -121,25 +139,43 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
     receive
         {range_search_accumed, Accumed} ->
             Accumed
-    after 1000 ->
+    after 100000 ->
             [timeout]
     end.
 
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
+search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
+    if count < 0 ->
+       timout;
+       true ->
+            gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
+            receive
+                {search_result, Result} -> Result
+            after 1000 ->
+                    timer:sleep(1000),
+                    search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
+            end
+    end.
+
+
+
+
 search_detail_op(StartNode, Key) ->
 %    ?LOG(search_detail_op),
     StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
     ReturnToMe = self(),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:call
 %    ?LOGF("search-hige:detail (~p)\n", [StartLevel]),
-    gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
-    receive
-        {search_result, Result} -> Result
-    after 1000 ->
-            timeout
-    end.
+    io:format("~p:~p:search_detail_op~n", [erlang:now(), self()]),
+    search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, 10).
+%%     gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
+%%     receive
+%%         {search_result, Result} -> Result
+%%     after 1000 ->
+%%             timeout2
+%%     end.
 
 search_op(StartNode, Key) ->
 %   ?LOG(searchOP),
@@ -157,16 +193,16 @@ search_op(StartNode, Key) ->
 %%  buddy operation
 %%--------------------------------------------------------------------
 buddy_op(Node, MembershipVector, Direction, Level) ->
-    gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
+    call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
 link_right_op(Node, Level, Right) ->
-    gen_server:call(Node, {link_right_op, Level, Right}).
+    call(Node, {link_right_op, Level, Right}).
 
 link_left_op(Node, Level, Left) ->
-    gen_server:call(Node, {link_left_op, Level, Left}).
+    call(Node, {link_left_op, Level, Left}).
 
 set_nth(Index, Value, List) ->
     lists:append([lists:sublist(List, 1, Index - 1),
@@ -264,6 +300,7 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 %%  search operation
 %%--------------------------------------------------------------------
 handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
+    io:format("~p:~p:search_op_cast~n", [erlang:now(), self()]),
     search_op_cast_(ReturnToMe, State, Level, Key),
     {noreply, State};
 
@@ -320,7 +357,7 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
                 [] ->
                     search_op_right_cast_(ReturnToMe, State, Level - 1, Key);
                 NextNode ->
-                    {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
+                    {NextKey, _, _, _, _} = call(NextNode, get_op),
                     %% we can make short cut. when equal case todo
                     Compare = NextKey =< Key,
                     if
@@ -341,6 +378,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
     if
         Level < 0 ->
 %            ?LOGF("search-left FOUND = ~p Search=~p", [MyKey, Key]),
+            io:format("~p:~p:search_op_left_cast:DONE to ~p~n", [erlang:now(), self(), ReturnToMe]),
             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
         true ->
 %            Start = erlang:now(),
@@ -350,18 +388,20 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 %                    io:format("LEVEL DOWN1~n", []),
                     search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
                 NextNode ->
-                    {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
+                    io:format("~p:~p:search_op_left_cast:get_op to ~p~n", [erlang:now(), self(), NextNode]),
+                    {NextKey, _, _, _, _} = call(NextNode, get_op),
+                    io:format("~p:~p:search_op_left_cast:get_op to ~pDONE~n", [erlang:now(), self(), NextNode]),
                     %% we can make short cut. when equal case todo
                     Compare = NextKey >= Key,
                     if
                         Compare ->
 %                            io:format("TO LEFT~n", []),
+                            io:format("~p:~p:search_op_left_cast:search_op to ~p~n", [erlang:now(), self(), NextNode]),
                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
                         true ->
 %%                            ?LOGF("search-left LEVEL DOWN", []),
 %                            End = erlang:now(),
 %                            io:format("LEVEL DOWN2~n", []),
-
                             search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
                     end
             end
@@ -383,8 +423,10 @@ search_op_cast_(ReturnToMe, State, Level, Key) ->
         MyKey =:= Key ->
             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
         MyKey < Key ->
+            io:format("~p:~p:search_op_right ReturnToMe= ~p~n", [erlang:now(), self(), ReturnToMe]),
             search_op_right_cast_(ReturnToMe, State, SearchLevel, Key);
         true ->
+            io:format("~p:~p:search_op_left ReturnToMe=  ~p~n", [erlang:now(), self(), ReturnToMe]),
             search_op_left_cast_(ReturnToMe, State, SearchLevel, Key)
     end.
 
@@ -435,12 +477,12 @@ search_(MyKey, MyValue, NextNodes, Level, SearchKey, CompareFun) ->
                 [] ->
                     search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun);
                 NextNode ->
-                    {NextKey, _, _, _, _} = gen_server:call(NextNode, get_op),
+                    {NextKey, _, _, _, _} = call(NextNode, get_op),
                     %% we can make short cut. when equal case todo
                     Compare = CompareFun(NextKey, SearchKey),
                     if
                         Compare ->
-                            gen_server:call(NextNode, {search_op, Level, SearchKey});
+                            call(NextNode, {search_op, Level, SearchKey});
                         true ->
                             search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun)
                     end
@@ -466,12 +508,15 @@ set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
 
 get_op_call(State) ->
+    io:format("~p:~p:get_op~n", [erlang:now(), self()]),
     {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}.
 
 set_op_call(State, NewValue) ->
+    io:format("~p:~p:set_op~n", [erlang:now(), self()]),
     {reply, ok, State#state{value=NewValue}}.
 
 buddy_op_call(State, MembershipVector, Direction, Level) ->
+    io:format("~p:~p:buddy_op~n", [erlang:now(), self()]),
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     if
         Found ->
@@ -488,6 +533,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
                     case left(State, Level - 1) of
                         [] -> {ok, []};
                         LeftNode ->
+                            io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), self(), LeftNode]),
                             buddy_op(LeftNode, MembershipVector, Direction, Level)
                     end
             end
@@ -498,6 +544,7 @@ buddy_op_call(State, MembershipVector, Direction, Level) ->
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
 search_op_call(State, Level, Key) ->
+    io:format("~p:~p:search_op~n", [erlang:now(), self()]),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -547,9 +594,9 @@ delete_loop_(State, Level) ->
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
 insert_op_call(State, Introducer) ->
+    io:format("~p:~p:insert_op START~n", [erlang:now(), self()]),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    ?LOGF("INSERT START MyKey=~p (~p)\n", [MyKey, self()]),
     if
         %% there's no buddy
         Introducer =:= self() ->
@@ -559,12 +606,16 @@ insert_op_call(State, Introducer) ->
             {reply, ok, State};
         true ->
             StartB =  erlang:now(),
+            io:format("~p:~p:search_detail_op to ~p~n", [erlang:now(), self(), Introducer]),
             {Neighbor, NeighBorKey, _} = search_detail_op(Introducer, MyKey),
+            io:format("~p:~p:search_detail_op to ~p DONE~n", [erlang:now(), self(), Introducer]),
             EndB = erlang:now(),
             io:format("~pINSERTB ~p~n", [self(), timer:now_diff(EndB, StartB)]),
             if NeighBorKey =:= MyKey ->
                     Start0 = erlang:now(),
-                    ok = gen_server:call(Neighbor, {set_op, MyValue}),
+                    io:format("~p:~p:set_op to ~p~n", [erlang:now(), self(), Neighbor]),
+                    ok = call(Neighbor, {set_op, MyValue}),
+                    io:format("~p:~p:set_op to ~pDONE~n", [erlang:now(), self(), Neighbor]),
                     End0 = erlang:now(),
                     io:format("~pINSERT0 ~p~n", [self(), timer:now_diff(End0, Start0)]),
                     {reply, ok, State};
@@ -572,15 +623,21 @@ insert_op_call(State, Introducer) ->
                     Start = erlang:now(),
                     LinkedState = if
                                       NeighBorKey < MyKey ->
-                                          {_, _, _, _, NeighborRight} = gen_server:call(Neighbor, get_op),
+                                          io:format("~p:~p:get_op to ~p~n", [erlang:now(), self(), Neighbor]),
+                                          {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
+                                          io:format("~p:~p:get_op to ~pDONE~n", [erlang:now(), self(), Neighbor]),
+                                          io:format("~p:~p:link_right_op to ~p~n", [erlang:now(), self(), Neighbor]),
                                           link_right_op(Neighbor, 0, self()),
+                                          io:format("~p:~p:link_right_op to ~pDONE~n", [erlang:now(), self(), Neighbor]),
                                           case node_on_level(NeighborRight, 0) of
                                               [] -> [];
                                               X -> link_left_op(X, 0, self())
                                           end,
                                           set_right(set_left(State, 0, Neighbor), 0, node_on_level(NeighborRight, 0));
                                       true ->
-                                          {_, _, _, NeighborLeft, _} = gen_server:call(Neighbor, get_op),
+                                          io:format("~p:~p:get_op to ~p~n", [erlang:now(), self(), Neighbor]),
+                                          {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
+                                          io:format("~p:~p:get_op to ~pDONE~n", [erlang:now(), self(), Neighbor]),
                                           link_left_op(Neighbor, 0, self()),
                                           case node_on_level(NeighborLeft, 0) of
                                               [] -> [];
@@ -628,7 +685,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                     LinkedState;
                                     %%insert_loop(Level + 1, MaxLevel, LinkedState);
                                 _ ->
-                                    {_, _, _, BuddyLeft, _} = gen_server:call(Buddy, get_op),
+                                    {_, _, _, BuddyLeft, _} = call(Buddy, get_op),
                                     link_left_op(Buddy, Level, self()),
                                     %% Since left(Level:0) is empty, this should never happen.
                                     %% case node_on_level(BuddyLeft, Level) of
@@ -641,7 +698,9 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                     end;
                 LeftNodeOnLevel0 ->
                     Start = erlang:now(),
+                    io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), self(), LeftNodeOnLevel0]),
                     {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+                    io:format("~p:~p:buddy_op to ~pDONE~n", [erlang:now(), self(), LeftNodeOnLevel0]),
                     End = erlang:now(),
                     io:format("~pINSERT_Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
 
@@ -656,7 +715,9 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                 %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                                 RightNodeOnLevel02 ->
 %                                    Start4 = erlang:now(),
+                                    io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), self(), RightNodeOnLevel02]),
                                     {ok, Buddy2} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
+                                    io:format("~p:~p:buddy_op to ~pDONE~n", [erlang:now(), self(), RightNodeOnLevel02]),
 %                                    End4 = erlang:now(),
                                                 %                            io:format("~pINSERT Buddy ~p~n", [self(), timer:now_diff(End, Start)]),
 
@@ -667,7 +728,9 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                                             LinkedState;
                                         %%insert_loop(Level + 1, MaxLevel, LinkedState);
                                         _ ->
-                                            {_, _, _, BuddyLeft2, _} = gen_server:call(Buddy2, get_op),
+                                            io:format("~p:~p:get_op to ~p~n", [erlang:now(), self(), Buddy2]),
+                                            {_, _, _, BuddyLeft2, _} = call(Buddy2, get_op),
+                                            io:format("~p:~p:get_op to ~pDONE~n", [erlang:now(), self(), Buddy2]),
                                             link_left_op(Buddy2, Level, self()),
                                             %% Since left(Level:0) is empty, this should never happen.
                                             %% case node_on_level(BuddyLeft, Level) of
@@ -680,7 +743,7 @@ insert_loop(Level, MaxLevel, LinkedState) ->
                             end;
                         _ ->
 %                            Start3 = erlang:now(),
-                            {_, _, _, _, BuddyRight} = gen_server:call(Buddy, get_op),
+                            {_, _, _, _, BuddyRight} = call(Buddy, get_op),
                             link_right_op(Buddy, Level, self()),
                             case node_on_level(BuddyRight, Level) of
                                 [] -> [];

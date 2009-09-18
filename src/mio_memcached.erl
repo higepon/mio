@@ -166,6 +166,7 @@ process_set(Sock, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
 %%            ?LOG(MVector),
 %            {ok, NodeToInsert} = mio_sup:start_node(Key, true, MVector),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
+            io:format("memcached~p:NodeToInsert=~p ~n", [self(), NodeToInsert]),
             mio_node:insert_op(Introducer, NodeToInsert),
             gen_tcp:send(Sock, "STORED\r\n"),
             gen_tcp:recv(Sock, 2),
