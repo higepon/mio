@@ -12,8 +12,9 @@
 -define(L(), []).
 -define(LOG(X), []).
 -define(LOGF(X, Data), []).
--define(SERVER, ?MODULE).
 
+-define(SERVER, ?MODULE).
+-define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
 
 %%-define(PROFILER_ON, true).
 
