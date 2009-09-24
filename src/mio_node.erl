@@ -631,9 +631,9 @@ delete_loop_(State, Level) ->
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
 insert_op_call(State, Introducer) ->
-    io:format("~p:~p:insert_op START~n", [erlang:now(), self()]),
     MyKey = State#state.key,
     MyValue = State#state.value,
+    io:format("~p:~p:insert ~p START~n", [erlang:now(), self(), MyKey]),
     if
         %% there's no buddy
         Introducer =:= self() ->
@@ -689,7 +689,7 @@ insert_op_call(State, Introducer) ->
                     Start2 = erlang:now(),
                     ReturnState = insert_loop(1, MaxLevel, LinkedState),
                     End2 = erlang:now(),
-                    io:format("~pINSERT2 ~p~n", [self(), timer:now_diff(End2, Start2)]),
+                    io:format("~pINSERT ~p Done ~p~n", [self(), MyKey, timer:now_diff(End2, Start2)]),
 
                     {reply, ok, ReturnState}
             end
