@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, call/2,
+-export([start_link/1, call/2, buddy_op_call/6, get_op_call/3,
          search_op/2, search_detail_op/2, link_right_op/3, link_left_op/3, set_nth/3,
          buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
          range_search_asc_op/4, range_search_desc_op/4]).
@@ -34,7 +34,10 @@ call(ServerRef, Request, Timeout, Timeout1) ->
                         {'EXIT', Reason} ->
                             io:format("~p~p: Timeout=~p/~p Target=~p Request=~p~n", [erlang:now(), self(), Timeout1, Timeout, ServerRef, Request]),
                             io:format("REASON=~p~n", [Reason]),
-                            timer:sleep(2000),
+                    {A1, A2, A3} = now(),
+                    random:seed(A1, A2, A3),
+                    T = random:uniform(2000),
+                            timer:sleep(T),
                             call(ServerRef, Request, Timeout - Timeout1, Timeout1);
                         ReturnValue ->
                             io:format("ReturnValue=~p~n", [ReturnValue]),
@@ -167,7 +170,10 @@ search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
             receive
                 {search_result, Result} -> Result
             after 1000 ->
-                    timer:sleep(2000),
+                    {A1, A2, A3} = now(),
+                    random:seed(A1, A2, A3),
+                    T = random:uniform(2000),
+                    timer:sleep(T),
                     io:format("~p~p SEARCH TIMEOUT ReturnToMe~p~n", [erlang:now(), self(), ReturnToMe]),
                     search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
             end
@@ -252,14 +258,20 @@ init(Args) ->
 
 %% Read Only Operations start
 
-handle_call(get_op, _From, State) ->
-    {reply, get_op_call(State), State};
+handle_call(get_op, From, State) ->
+    Self = self(),
+    Pid = spawn(?MODULE, get_op_call, [From, Self, State]),
+    io:format("PID=~p~n", [Pid]),
+    {noreply, State};
 
 %% handle_call({search_op, Level, Key}, _From, State) ->
 %%     {reply, search_op_call(State, Level, Key), State};
 
-handle_call({buddy_op, MembershipVector, Direction, Level}, _From, State) ->
-    {reply, buddy_op_call(State, MembershipVector, Direction, Level), State};
+handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
+    Self = self(),
+    Pid = spawn(?MODULE, buddy_op_call, [From, Self, State, MembershipVector, Direction, Level]),
+    io:format("SPAWN:~p~n", [Pid]),
+    {noreply, State};
 
 %% Read Only Operations end
 
@@ -530,36 +542,36 @@ set_right(State, Level, Node) ->
 set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
 
-get_op_call(State) ->
-    io:format("~p:~p:get_op~n", [erlang:now(), self()]),
-    {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}.
+get_op_call(From, Self, State) ->
+    io:format("~p:~p:get_op~n", [erlang:now(), Self]),
+    gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
 
 set_op_call(State, NewValue) ->
     io:format("~p:~p:set_op~n", [erlang:now(), self()]),
     {reply, ok, State#state{value=NewValue}}.
 
-buddy_op_call(State, MembershipVector, Direction, Level) ->
-    io:format("~p:~p:buddy_op~n", [erlang:now(), self()]),
+buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
+    io:format("SPAWNED~p:~p:buddy_op~n", [erlang:now(), Self]),
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     if
         Found ->
-            {ok, self()};
+            gen_server:reply(From, {ok, Self});
         true ->
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on Level 0
-                        [] -> {ok, []};
+                        [] -> gen_server:reply(From, {ok, []});
                         RightNode ->
                             ?L(),
-                            buddy_op(RightNode, MembershipVector, Direction, Level)
+                            gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
                     end;
                 _ ->
                     case left(State, Level - 1) of
-                        [] -> {ok, []};
+                        [] -> gen_server:reply(From, {ok, []});
                         LeftNode ->
-                            io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), self(), LeftNode]),
+                            io:format("~p:~p:buddy_op to ~p~n", [erlang:now(), Self, LeftNode]),
                             ?L(),
-                            buddy_op(LeftNode, MembershipVector, Direction, Level)
+                            gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
                     end
             end
     end.
