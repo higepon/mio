@@ -1,9 +1,19 @@
 
 %%-define(L(), error_logger:info_msg("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
--define(L(), io:format("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
--define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
--define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+%% -define(L(), io:format("{~p ~p,~p}:~n", [self(), ?MODULE,?LINE])).
+%% -define(LOG(X), error_logger:info_msg("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
+%% -define(LOGF(X, Data), error_logger:info_msg("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+
+%% -define(L(), io:format("~p{~p ~p,~p}:~n", [erlang:now(), self(), ?MODULE,?LINE])).
+%% -define(LOG(X), io:format("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
+%% -define(LOGF(X, Data), io:format("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
+%% -define(SERVER, ?MODULE).
+
+-define(L(), []).
+-define(LOG(X), []).
+-define(LOGF(X, Data), []).
 -define(SERVER, ?MODULE).
+
 
 %%-define(PROFILER_ON, true).
 
