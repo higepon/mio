@@ -16,12 +16,16 @@ function bench {
     echo "\n****    thread=$3 N=$4\n"
     $1 -m 8 &
     sleep 2
-    mcb -c set -a 127.0.0.1 -p 11211 -t $3 -n $4 -l 100
+    # don't change m parameter
+    mcb -c set -a 127.0.0.1 -p 11211 -m 1000 -t $3 -n $4 -l 100
     $2
 }
 
 
 
+
+# bench_memcached 1 1000
+bench_mio 10 100 # 10 * 100 = N
 # bench_memcached 3 10000
 #bench_mio 1 10000
 # bench_memcached 1 100
@@ -29,7 +33,7 @@ function bench {
 #bench_memcached 1 10000
 
 # bench_memcached 1 10000
-bench_mio 10 1000
+#bench_mio 10 1000
 
 #bench_memcached 10 1000
 #bench_mio 10 200
