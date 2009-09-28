@@ -98,9 +98,9 @@ insert_op(Introducer, NodeToInsert) ->
     %% they should be called with timeout and insert_op without timeout.
 
     %% Insertion timeout should be infinity since they are serialized and waiting.
-    io:format("INSERT START ~p ~n", [self()]),
+%%    io:format("INSERT START ~p ~n", [self()]),
     Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity),
-    io:format("INSERT END ~p ~n", [self()]),
+%%    io:format("INSERT END ~p ~n", [self()]),
     Ret.
 
 

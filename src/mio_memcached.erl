@@ -67,7 +67,7 @@ memcached(Port, MaxLevel, BootNode) ->
 
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
     {ok, Sock} = gen_tcp:accept(Listen),
-   io:format("<~p new client connection\n", [Sock]),
+%   io:format("<~p new client connection\n", [Sock]),
     spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
     mio_accept(Listen, WriteSerializer, StartNode, MaxLevel).
 
@@ -106,7 +106,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
                 ["quit"] ->
-                    io:format("CLOSE~n"),
+%%                    io:format("CLOSE~n"),
                     gen_tcp:close(Sock);
                 X ->
                     io:format("<Error:~p>", [X]),
