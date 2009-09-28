@@ -8,7 +8,7 @@
 %% -define(LOG(X), io:format("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE,?LINE,??X,X])).
 %% -define(LOGF(X, Data), io:format("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
 %% -define(SERVER, ?MODULE).
-%-define(TRACE(X), io:format(" *~p{~p ~p,~p}[~p]~n", [erlang:now(), self(), ?MODULE, ?LINE, X])).
+%%-define(TRACE(X), io:format(" *~p{~p ~p,~p}[~p]~n", [erlang:now(), self(), ?MODULE, ?LINE, X])).
 -define(TRACE(X), []).
 
 

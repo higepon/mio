@@ -98,7 +98,11 @@ insert_op(Introducer, NodeToInsert) ->
     %% they should be called with timeout and insert_op without timeout.
 
     %% Insertion timeout should be infinity since they are serialized and waiting.
-    gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity).
+    io:format("INSERT START ~p ~n", [self()]),
+    Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity),
+    io:format("INSERT END ~p ~n", [self()]),
+    Ret.
+
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -605,19 +609,26 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     if
         Found ->
+            ?TRACE(buddy_op_call),
             gen_server:reply(From, {ok, Self});
         true ->
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on Level 0
-                        [] -> gen_server:reply(From, {ok, []});
+                        [] ->
+                            ?TRACE(buddy_op_call),
+                            gen_server:reply(From, {ok, []});
                         RightNode ->
+                            ?TRACE(buddy_op_call),
                             gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
                     end;
                 _ ->
                     case left(State, Level - 1) of
-                        [] -> gen_server:reply(From, {ok, []});
+                        [] ->
+                            ?TRACE(buddy_op_call),
+                            gen_server:reply(From, {ok, []});
                         LeftNode ->
+                            ?TRACE(buddy_op_call),
                             gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
                     end
             end
@@ -682,7 +693,6 @@ insert_op_call(From, Self, State, Introducer) ->
     ?TRACE(insert_op_call),
     MyKey = State#state.key,
     MyValue = State#state.value,
-    io:format("~p:~p:insert ~p START~n", [erlang:now(), Self, MyKey]),
     if
         %% there's no buddy
         Introducer =:= Self ->
@@ -717,7 +727,6 @@ insert_op_call(From, Self, State, Introducer) ->
                     gen_server:call(Self, {set_state_op, LinkedState}),
                     ReturnState = insert_loop(Self, 1, MaxLevel, LinkedState),
                     gen_server:call(Self, {set_state_op, ReturnState}),
-                    io:format("~p:~p:insert ~p END~n", [erlang:now(), Self, MyKey]),
                     gen_server:reply(From, ok)
             end
     end.

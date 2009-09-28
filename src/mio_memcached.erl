@@ -105,10 +105,12 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                 ["delete", Key, _Time, _NoReply] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
-                ["quit"] -> gen_tcp:close(Sock);
+                ["quit"] ->
+                    io:format("CLOSE~n"),
+                    gen_tcp:close(Sock);
                 X ->
-%%                    ?LOGF("<Error:~p>", [X]),
-                    gen_tcp:send(Sock, "ERROR\r\n"),
+                    io:format("<Error:~p>", [X]),
+                    ok = gen_tcp:send(Sock, "ERROR\r\n"),
                     StartNode
             end,
             process_command(Sock, WriteSerializer, NewStartNode, MaxLevel);
@@ -122,17 +124,17 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
 process_delete(Sock, WriteSerializer, StartNode, Key) ->
     case mio_write_serializer:delete_op(WriteSerializer, StartNode, Key) of
         ng ->
-            gen_tcp:send(Sock, "NOT_FOUND\r\n");
+            ok = gen_tcp:send(Sock, "NOT_FOUND\r\n");
         _ ->
-            gen_tcp:send(Sock, "DELETED\r\n")
+            ok = gen_tcp:send(Sock, "DELETED\r\n")
     end.
 
 process_get(Sock, StartNode, Key) ->
     case mio_node:search_op(StartNode, Key) of
         ng ->
-            gen_tcp:send(Sock, "END\r\n");
+            ok = gen_tcp:send(Sock, "END\r\n");
         {ok, FoundValue} ->
-            gen_tcp:send(Sock, io_lib:format(
+            ok = gen_tcp:send(Sock, io_lib:format(
                                  "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                                  [Key, size(FoundValue), FoundValue]))
     end.
@@ -147,12 +149,12 @@ process_values([]) ->
 process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
     P = process_values(Values),
-    gen_tcp:send(Sock, P).
+    ok = gen_tcp:send(Sock, P).
 
 process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
     P = process_values(Values),
-    gen_tcp:send(Sock, P).
+    ok = gen_tcp:send(Sock, P).
 
 process_set(Sock, WriteSerializer, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
@@ -166,7 +168,7 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, _Expire, Bytes, MaxL
             ?LOGF("memcached~p:NodeToInsert=~p ~n", [self(), NodeToInsert]),
 %%            mio_node:insert_op(Introducer, NodeToInsert),
             mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
-            gen_tcp:send(Sock, "STORED\r\n"),
+            ok = gen_tcp:send(Sock, "STORED\r\n"),
             gen_tcp:recv(Sock, 2),
             NodeToInsert;
         {error, closed} ->
