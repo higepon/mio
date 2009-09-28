@@ -1,6 +1,6 @@
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, terminate_node/1]).
+-export([init/1, start_node/3, start_write_serializer/0, terminate_node/1]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -13,6 +13,12 @@ start_node(Key, Value, MembershipVector) ->
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
                                                {mio_node, start_link, [[Key, Value, MembershipVector]]},
                                                temporary, brutal_kill, worker, [mio_node]}).
+
+start_write_serializer() ->
+    {ok, _} = supervisor:start_child(mio_sup,
+                                     {mio_write_serializer,
+                                      {mio_write_serializer, start_link, []},
+                                      temporary, brutal_kill, worker, [mio_write_serializer]}).
 
 terminate_node(TargetPid) ->
     lists:any(fun({Id, Pid, _, _}) ->

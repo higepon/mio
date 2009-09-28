@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, call/2, buddy_op_call/6, get_op_call/2, insert_op_call/4,
+-export([start_link/1, call/2, buddy_op_call/6, get_op_call/2, insert_op_call/4, delete_op_call/2,link_right_op_call/5, link_left_op_call/5,
          search_op/2, search_detail_op/2, link_right_op/3, link_left_op/3, set_nth/3,
          buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
          range_search_asc_op/4, range_search_desc_op/4]).
@@ -93,10 +93,12 @@ enum_nodes_(StartNode, Level) ->
 %%  insert operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
+    ?TRACE(insert_op),
     %% Since insert_op may issue get_op and buddy_op,
     %% they should be called with timeout and insert_op without timeout.
-    Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity),
-    Ret.
+
+    %% Insertion timeout should be infinity since they are serialized and waiting.
+    gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity).
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -163,12 +165,14 @@ search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
 
 
 search_detail_op(StartNode, Key) ->
+    ?TRACE(search_detail_op),
     StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
     ReturnToMe = self(),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:call
     search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, 10).
 
 search_op(StartNode, Key) ->
+    ?TRACE(search_op),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     case search_detail_op(StartNode, Key) of
         {_FoundNode, FoundKey, FoundValue} ->
@@ -183,18 +187,34 @@ search_op(StartNode, Key) ->
 %%  buddy operation
 %%--------------------------------------------------------------------
 buddy_op(Node, MembershipVector, Direction, Level) ->
+    ?TRACE(buddy_op),
     call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
+
+%% For concurrent node joins, link_right_op checks consistency of SkipGraph.
+%% If found inconsistent state, link_right_op will be redirect to the next node.
 link_right_op(Node, Level, Right) ->
+    ?TRACE(link_right_op),
     call(Node, {link_right_op, Level, Right}).
 
 link_left_op(Node, Level, Left) ->
+    ?TRACE(link_left_op),
     call(Node, {link_left_op, Level, Left}).
 
+%% For delete operation, no redirect is required.
+link_right_no_redirect_op(Node, Level, Right) ->
+    ?TRACE(link_right_no_redirect_op),
+    call(Node, {link_right_no_redirect_op, Level, Right}).
+
+link_left_no_redirect_op(Node, Level, Left) ->
+    ?TRACE(link_left_no_redirect_op),
+    call(Node, {link_left_no_redirect_op, Level, Left}).
+
 set_nth(Index, Value, List) ->
+    ?TRACE(set_nth),
     lists:append([lists:sublist(List, 1, Index - 1),
                  [Value],
                  lists:sublist(List, Index + 1, length(List))]).
@@ -229,36 +249,119 @@ init(Args) ->
 %% Read Only Operations start
 
 handle_call(get_op, From, State) ->
+    ?TRACE(c_get_op),
     spawn(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
+    ?TRACE(c_buddy_op),
     Self = self(),
     spawn(?MODULE, buddy_op_call, [From, Self, State, MembershipVector, Direction, Level]),
     {noreply, State};
 
 handle_call({set_state_op, NewState}, _From, _State) ->
+    ?TRACE(c_set_state_op),
     {reply, ok, NewState};
 
 %% Read Only Operations end
 
 handle_call({insert_op, Introducer}, From, State) ->
+    ?TRACE(c_insert_op),
     Self = self(),
     spawn(?MODULE, insert_op_call, [From, Self, State, Introducer]),
     {noreply, State};
 
 
-handle_call(delete_op, _From, State) ->
-    delete_op_call(State);
+handle_call(delete_op, From, State) ->
+    ?TRACE(delete_op),
+    spawn(?MODULE, delete_op_call, [From, State]),
+    {noreply, State};
 
 handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
 
-handle_call({link_right_op, Level, RightNode}, _From, State) ->
+handle_call({link_right_op, Level, RightNode}, From, State) ->
+    Self = self(),
+    spawn(?MODULE, link_right_op_call, [From, Self, State, RightNode, Level]),
+    {noreply, State};
+%% N.B.
+%% For concurrent join, we should check whether Skip Graph is not broken.
+%% But for now, we serialize join/delete request.
+
+%%     case right(State, Level) of
+%%         [] ->
+%%             {reply, ok, set_right(State, Level, RightNode)};
+%%         MyRightNode ->
+%%             {MyRightKey, _, _, _, _} = call(MyRightNode, get_op),
+%%             {RightKey, _, _, _, _} = call(RightNode, get_op),
+%%     MyKey = State#state.key,
+
+%%             io:format("************MyKey=~p RightKey=~p MyRightKey=~p Level=~p~n", [MyKey, RightKey, MyRightKey, Level]),
+
+%%             if RightKey > MyRightKey ->
+%% %                    link_right_op(MyRightNode, Level, RightNode),
+%%                     {reply, ok, set_right(State, Level, RightNode)};
+%% %                    {reply, ok, State};
+%%                true ->
+%                    {reply, ok, set_right(State, Level, RightNode)};
+%%             end
+%%     end;
+
+handle_call({link_left_op, Level, LeftNode}, From, State) ->
+    Self = self(),
+    spawn(?MODULE, link_left_op_call, [From, Self, State, LeftNode, Level]),
+    {noreply, State};
+%    {reply, ok, set_left(State, Level, LeftNode)};
+
+handle_call({link_right_no_redirect_op, Level, RightNode}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode)};
-handle_call({link_left_op, Level, LeftNode}, _From, State) ->
+handle_call({link_left_no_redirect_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)}.
+
+link_right_op_call(From, Self, State, RightNode, Level) ->
+%%     case right(State, Level) of
+%%         [] ->
+            link_right_no_redirect_op(Self, Level, RightNode),
+            gen_server:reply(From, ok).
+%%         MyRightNode ->
+%%             {MyRightKey, _, _, _, _} = call(MyRightNode, get_op),
+%%             {RightKey, _, _, _, _} = call(RightNode, get_op),
+%%             MyKey = State#state.key,
+
+%%             if RightKey > MyRightKey ->
+%%                     io:format("************MyKey=~p RightKey=~p MyRightKey=~p Level=~p~n", [MyKey, RightKey, MyRightKey, Level]),
+%%                     %% redirec to next node
+%%                     link_right_op(MyRightNode, Level, RightNode),
+%%                     gen_server:reply(From, ok);
+%%                true ->
+%%                     link_right_no_redirect_op(Self, Level, RightNode),
+%%                     gen_server:reply(From, ok)
+%%             end
+%    end.
+
+link_left_op_call(From, Self, State, LeftNode, Level) ->
+%%     case left(State, Level) of
+%%         [] ->
+            link_left_no_redirect_op(Self, Level, LeftNode),
+            gen_server:reply(From, ok).
+%%         MyLeftNode ->
+%%             {MyLeftKey, _, _, _, _} = call(MyLeftNode, get_op),
+%%             {LeftKey, _, _, _, _} = call(LeftNode, get_op),
+%%             MyKey = State#state.key,
+
+%%             if LeftKey < MyLeftKey ->
+%%                     io:format("************MyKey=~p LeftKey=~p MyLeftKey=~p Level=~p~n", [MyKey, LeftKey, MyLeftKey, Level]),
+%%                     %% redirec to next node
+%%                     link_left_op(MyLeftNode, Level, LeftNode),
+%%                     gen_server:reply(From, ok);
+%%                true ->
+%%                     link_left_no_redirect_op(Self, Level, LeftNode),
+%%                     gen_server:reply(From, ok)
+%%             end
+%%     end.
+
+
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -297,6 +400,7 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 %%  search operation
 %%--------------------------------------------------------------------
 handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
+    ?TRACE(ca_search_op),
     search_op_cast_(ReturnToMe, State, Level, Key),
     {noreply, State};
 
@@ -343,6 +447,7 @@ range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsO
     end.
 
 search_op_right_cast_(ReturnToMe, State, Level, Key) ->
+    ?TRACE(search_op_right_cast_),
     MyKey = State#state.key,
     MyValue = State#state.value,
     if
@@ -366,6 +471,7 @@ search_op_right_cast_(ReturnToMe, State, Level, Key) ->
     end.
 
 search_op_left_cast_(ReturnToMe, State, Level, Key) ->
+    ?TRACE(search_op_left_cast_),
     MyKey = State#state.key,
     MyValue = State#state.value,
     if
@@ -391,6 +497,7 @@ search_op_left_cast_(ReturnToMe, State, Level, Key) ->
 
 
 search_op_cast_(ReturnToMe, State, Level, Key) ->
+    ?TRACE(search_op_cast_),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -486,12 +593,15 @@ set_left(State, Level, Node) ->
     State#state{left=set_nth(Level + 1, Node, State#state.left)}.
 
 get_op_call(From, State) ->
+    ?TRACE(get_op_call),
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
 
 set_op_call(State, NewValue) ->
+    ?TRACE(set_op_call),
     {reply, ok, State#state{value=NewValue}}.
 
 buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
+    ?TRACE(buddy_op_call),
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     if
         Found ->
@@ -538,10 +648,11 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-delete_op_call(State) ->
+delete_op_call(From, State) ->
     MaxLevel = length(State#state.membership_vector),
-    DeletedState = delete_loop_(State, MaxLevel),
-    {reply, ok, DeletedState}.
+    delete_loop_(State, MaxLevel),
+    %% My State will not be changed, since I'm killed soon.
+    gen_server:reply(From, ok).
 
 delete_loop_(State, Level) when Level < 0 ->
     State;
@@ -551,12 +662,13 @@ delete_loop_(State, Level) ->
     case RightNode of
         [] -> [];
         _ ->
-            ok = link_left_op(RightNode, Level, LeftNode)
+            ok = link_left_no_redirect_op(RightNode, Level, LeftNode)
     end,
     case LeftNode of
         [] -> [];
         _ ->
-            ok = link_right_op(LeftNode, Level, RightNode)
+            ?LOG(),
+            ok = link_right_no_redirect_op(LeftNode, Level, RightNode)
     end,
     delete_loop_(set_left(set_right(State, Level, []), Level, []), Level - 1).
 
@@ -567,6 +679,7 @@ delete_loop_(State, Level) ->
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
 insert_op_call(From, Self, State, Introducer) ->
+    ?TRACE(insert_op_call),
     MyKey = State#state.key,
     MyValue = State#state.value,
     io:format("~p:~p:insert ~p START~n", [erlang:now(), Self, MyKey]),
@@ -582,6 +695,7 @@ insert_op_call(From, Self, State, Introducer) ->
                true ->
                     LinkedState = if
                                       NeighBorKey < MyKey ->
+                                          ?LOG(),
                                           {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
                                           link_right_op(Neighbor, 0, Self),
                                           case node_on_level(NeighborRight, 0) of
@@ -600,15 +714,17 @@ insert_op_call(From, Self, State, Introducer) ->
                                   end,
                     MaxLevel = length(LinkedState#state.membership_vector),
                     %% link on level > 0
-%                    gen_server:call(Self, {set_state_op, LinkedState}),
+                    gen_server:call(Self, {set_state_op, LinkedState}),
                     ReturnState = insert_loop(Self, 1, MaxLevel, LinkedState),
                     gen_server:call(Self, {set_state_op, ReturnState}),
+                    io:format("~p:~p:insert ~p END~n", [erlang:now(), Self, MyKey]),
                     gen_server:reply(From, ok)
             end
     end.
 
 %% link on Level > 0
 insert_loop(Self, Level, MaxLevel, LinkedState) ->
+    ?TRACE(insert_loop),
     %% Find buddy node and link it.
     %% buddy node has same membership_vector on this level.
     if
@@ -637,7 +753,7 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                     %%    X -> link_right_op(X, Level, Self)
                                     %% end,
                                     NewLinkedState = set_left(set_right(LinkedState, Level, Buddy), Level, node_on_level(BuddyLeft, Level)),
-%                                    gen_server:call(Self, {set_state_op, NewLinkedState}),
+                                    gen_server:call(Self, {set_state_op, NewLinkedState}),
                                     insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
                             end
                     end;
@@ -668,7 +784,7 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                             %%    X -> link_right_op(X, Level, Self)
                                             %% end,
                                             NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2), Level, node_on_level(BuddyLeft2, Level)),
-%                                            gen_server:call(Self, {set_state_op, NewLinkedState2}),
+                                            gen_server:call(Self, {set_state_op, NewLinkedState2}),
                                             insert_loop(Self, Level + 1, MaxLevel, NewLinkedState2)
                                     end
                             end;
@@ -681,6 +797,7 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                     link_left_op(X, Level, Self)
                             end,
                             NewLinkedState = set_right(set_left(LinkedState, Level, Buddy), Level, node_on_level(BuddyRight, Level)),
+                            gen_server:call(Self, {set_state_op, LinkedState}),
                             insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
                     end
             end
