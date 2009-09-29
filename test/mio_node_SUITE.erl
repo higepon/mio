@@ -53,7 +53,7 @@ search_level2_1(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
 
-    ok = link_nodes(0, [Node3, Node5]),
+    ok = link_nodes(0, [{Node3, key3}, {Node5, key5}]),
 
     %% dump nodes on Level 0 and 1
     [{_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]= mio_node:dump_op(Node3, 0),
@@ -75,8 +75,8 @@ search_level2_2(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([0, 1])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 1])),
 
-    ok = link_nodes(0, [Node3, Node5, Node9]),
-    ok = link_nodes(1, [Node3, Node9]),
+    ok = link_nodes(0, [{Node3, key3}, {Node5, key5}, {Node9, key9}]),
+    ok = link_nodes(1, [{Node3, key3}, {Node9, key9}]),
 
     %% dump nodes on Level 0 and 1
     [{_, key3, value3, [1, 0]}, {_, key5, value5, [0, 1]}, {_, key9, value9, [1, 1]}] = mio_node:dump_op(Node3, 0),
@@ -114,11 +114,11 @@ search_level2_3(_Config) ->
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 0])),
 
     %% level 0
-    ok = link_nodes(0, [Node3, Node5, Node7, Node8, Node9]),
+    ok = link_nodes(0, [{Node3, key3}, {Node5, key5}, {Node7, key7}, {Node8, key8}, {Node9, key9}]),
 
     %% level 1
-    ok = link_nodes(1, [Node3, Node7, Node9]),
-    ok = link_nodes(1, [Node5, Node8]),
+    ok = link_nodes(1, [{Node3, key3}, {Node7, key7}, {Node9, key9}]),
+    ok = link_nodes(1, [{Node5, key5}, {Node8, key8}]),
 
     %% dump nodes on Level 0 and 1
     [[{_, key3, value3, [0, 0]}, {_, key7, value7, [0, 1]}, {_, key9, value9, [0, 0]}], [{_, key5, value5, [1, 1]}, {_, key8, value8, [1, 0]}]] = mio_node:dump_op(Node3, 1),
@@ -200,8 +200,8 @@ link_op(_Config) ->
 
     %% link on level 0
     Level = 0,
-    ok = link_node(Level, Node3, Node5),
-    ok = link_node(Level, Node2, Node3),
+    ok = link_node(Level, Node3, key3, Node5, key5),
+    ok = link_node(Level, Node2, key2, Node3, key3),
 
     %% check
     [{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}] = mio_node:dump_op(Node3, 0),
@@ -549,12 +549,12 @@ all() ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-link_node(Level, NodeA, NodeB) ->
-    mio_node:link_right_op(NodeA, Level, NodeB),
-    mio_node:link_left_op(NodeB, Level, NodeA).
+link_node(Level, NodeA, KeyA, NodeB, KeyB) ->
+    mio_node:link_right_op(NodeA, Level, NodeB, KeyB),
+    mio_node:link_left_op(NodeB, Level, NodeA, KeyA).
 
-link_nodes(Level, [NodeA | [NodeB | More]]) ->
-    link_node(Level, NodeA, NodeB),
-    link_nodes(Level, [NodeB | More]);
+link_nodes(Level, [{NodeA, KeyA} | [{NodeB, KeyB} | More]]) ->
+    link_node(Level, NodeA, KeyA, NodeB, KeyB),
+    link_nodes(Level, [{NodeB, KeyB} | More]);
 link_nodes(_Level, []) -> ok;
 link_nodes(_Level, [_Node | []]) -> ok.
