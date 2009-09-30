@@ -524,7 +524,7 @@ all() ->
      get_call,
      search_not_found,
      search_level2_simple,
-    search_level2_1,
+     search_level2_1,
      search_level2_2,
      search_level2_3,
      link_op,
@@ -557,4 +557,4 @@ link_nodes(Level, [{NodeA, KeyA} | [{NodeB, KeyB} | More]]) ->
     link_node(Level, NodeA, KeyA, NodeB, KeyB),
     link_nodes(Level, [{NodeB, KeyB} | More]);
 link_nodes(_Level, []) -> ok;
-link_nodes(_Level, [_Node | []]) -> ok.
+link_nodes(_Level, [{_Node, _Key} | []]) -> ok.

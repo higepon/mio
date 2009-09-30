@@ -330,7 +330,7 @@ handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, Stat
 handle_call({link_left_no_redirect_op, Level, LeftNode, LeftKey}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode, LeftKey)}.
 
-link_right_op_call(From, Self, State, RightNode, RightKey, Level) ->
+link_right_op_call(From, Self, _State, RightNode, RightKey, Level) ->
 %%     case right(State, Level) of
 %%         [] ->
             link_right_no_redirect_op(Self, Level, RightNode, RightKey),
@@ -351,7 +351,7 @@ link_right_op_call(From, Self, State, RightNode, RightKey, Level) ->
 %%             end
 %    end.
 
-link_left_op_call(From, Self, State, LeftNode, LeftKey, Level) ->
+link_left_op_call(From, Self, _State, LeftNode, LeftKey, Level) ->
 %%     case left(State, Level) of
 %%         [] ->
             link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
@@ -605,12 +605,12 @@ right_key(State, Level) ->
 
 
 set_right(State, Level, Node, Key) ->
-    State#state{right=set_nth(Level + 1, Key, State#state.right_keys)},
-    State#state{right=set_nth(Level + 1, Node, State#state.right)}.
+    NewState = State#state{right_keys=set_nth(Level + 1, Key, State#state.right_keys)},
+    NewState#state{right=set_nth(Level + 1, Node, NewState#state.right)}.
 
 set_left(State, Level, Node, Key) ->
-    State#state{left=set_nth(Level + 1, Key, State#state.left_keys)},
-    State#state{left=set_nth(Level + 1, Node, State#state.left)}.
+    NewState = State#state{left_keys=set_nth(Level + 1, Key, State#state.left_keys)},
+    NewState#state{left=set_nth(Level + 1, Node, NewState#state.left)}.
 
 get_op_call(From, State) ->
     ?TRACE(get_op_call),
@@ -626,14 +626,15 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
     if
         Found ->
             ?TRACE(buddy_op_call),
-            gen_server:reply(From, {ok, Self});
+            MyKey = State#state.key,
+            gen_server:reply(From, {ok, Self, MyKey});
         true ->
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on Level 0
                         [] ->
                             ?TRACE(buddy_op_call),
-                            gen_server:reply(From, {ok, []});
+                            gen_server:reply(From, {ok, [], []});
                         RightNode ->
                             ?TRACE(buddy_op_call),
                             gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
@@ -642,7 +643,7 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
                     case left(State, Level - 1) of
                         [] ->
                             ?TRACE(buddy_op_call),
-                            gen_server:reply(From, {ok, []});
+                            gen_server:reply(From, {ok, [], []});
                         LeftNode ->
                             ?TRACE(buddy_op_call),
                             gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
@@ -700,7 +701,7 @@ delete_loop_(State, Level) ->
             ?LOG(),
             ok = link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
-    delete_loop_(set_left(set_right(State, Level, [], no_key), Level, [], no_key), Level - 1).
+    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
@@ -726,18 +727,18 @@ insert_op_call(From, Self, State, Introducer) ->
                                       NeighborKey < MyKey ->
                                           ?LOG(),
                                           {NeighborRightKey, _, _, _, NeighborRight} = call(Neighbor, get_op),
-                                          link_right_op(Neighbor, 0, Self, no_key),
+                                          link_right_op(Neighbor, 0, Self, MyKey),
                                           case node_on_level(NeighborRight, 0) of
                                               [] -> [];
-                                              X -> link_left_op(X, 0, Self, no_key)
+                                              X -> link_left_op(X, 0, Self, MyKey)
                                           end,
                                           set_right(set_left(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborRight, 0), NeighborRightKey);
                                       true ->
                                           {NeighborLeftKey, _, _, NeighborLeft, _} = call(Neighbor, get_op),
-                                          link_left_op(Neighbor, 0, Self, no_key),
+                                          link_left_op(Neighbor, 0, Self, MyKey),
                                           case node_on_level(NeighborLeft, 0) of
                                               [] -> [];
-                                              X -> link_right_op(X, 0, Self, no_key)
+                                              X -> link_right_op(X, 0, Self, MyKey)
                                           end,
                                           set_left(set_right(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborLeft, 0), NeighborLeftKey)
                                   end,
@@ -753,6 +754,7 @@ insert_op_call(From, Self, State, Introducer) ->
 %% link on Level > 0
 insert_loop(Self, Level, MaxLevel, LinkedState) ->
     ?TRACE(insert_loop),
+    MyKey = LinkedState#state.key,
     %% Find buddy node and link it.
     %% buddy node has same membership_vector on this level.
     if
@@ -766,7 +768,7 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                         %%    %% we have no buddy on this level.
                         %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                         RightNodeOnLevel0 ->
-                            {ok, Buddy} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
+                            {ok, Buddy, BuddyKey} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
                             case Buddy of
                                 [] ->
                                     %% we have no buddy on this level.
@@ -774,19 +776,19 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                     LinkedState;
                                 _ ->
                                     {BuddyLeftKey, _, _, BuddyLeft, _} = call(Buddy, get_op),
-                                    link_left_op(Buddy, Level, Self, no_key),
+                                    link_left_op(Buddy, Level, Self, MyKey),
                                     %% Since left(Level:0) is empty, this should never happen.
                                     %% case node_on_level(BuddyLeft, Level) of
                                     %%    [] -> [];
                                     %%    X -> link_right_op(X, Level, Self)
                                     %% end,
-                                    NewLinkedState = set_left(set_right(LinkedState, Level, Buddy, no_key), Level, node_on_level(BuddyLeft, Level), BuddyLeftKey),
+                                    NewLinkedState = set_left(set_right(LinkedState, Level, Buddy, BuddyKey), Level, node_on_level(BuddyLeft, Level), BuddyLeftKey),
                                     gen_server:call(Self, {set_state_op, NewLinkedState}),
                                     insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
                             end
                     end;
                 LeftNodeOnLevel0 ->
-                    {ok, Buddy} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+                    {ok, Buddy, BuddyKey} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
                     case Buddy of
                         [] ->
                             case right(LinkedState, Level - 1) of
@@ -797,7 +799,7 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                 %%    %% we have no buddy on this level.
                                 %%    insert_loop(Level + 1, MaxLevel, LinkedState);
                                 RightNodeOnLevel02 ->
-                                    {ok, Buddy2} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
+                                    {ok, Buddy2, Buddy2Key} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
                                     case Buddy2 of
                                         [] ->
                                             %% we have no buddy on this level.
@@ -805,26 +807,26 @@ insert_loop(Self, Level, MaxLevel, LinkedState) ->
                                             LinkedState;
                                         _ ->
                                             {BuddyLeft2Key, _, _, BuddyLeft2, _} = call(Buddy2, get_op),
-                                            link_left_op(Buddy2, Level, Self, no_key),
+                                            link_left_op(Buddy2, Level, Self, MyKey),
                                             %% Since left(Level:0) is empty, this should never happen.
                                             %% case node_on_level(BuddyLeft, Level) of
                                             %%    [] -> [];
                                             %%    X -> link_right_op(X, Level, Self)
                                             %% end,
-                                            NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2, no_key), Level, node_on_level(BuddyLeft2, Level), BuddyLeft2Key),
+                                            NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2, Buddy2Key), Level, node_on_level(BuddyLeft2, Level), BuddyLeft2Key),
                                             gen_server:call(Self, {set_state_op, NewLinkedState2}),
                                             insert_loop(Self, Level + 1, MaxLevel, NewLinkedState2)
                                     end
                             end;
                         _ ->
                             {BuddyRightKey, _, _, _, BuddyRight} = call(Buddy, get_op),
-                            link_right_op(Buddy, Level, Self, no_key),
+                            link_right_op(Buddy, Level, Self, MyKey),
                             case node_on_level(BuddyRight, Level) of
                                 [] -> [];
                                 X ->
-                                    link_left_op(X, Level, Self, no_key)
+                                    link_left_op(X, Level, Self, MyKey)
                             end,
-                            NewLinkedState = set_right(set_left(LinkedState, Level, Buddy, no_key), Level, node_on_level(BuddyRight, Level), BuddyRightKey),
+                            NewLinkedState = set_right(set_left(LinkedState, Level, Buddy, BuddyKey), Level, node_on_level(BuddyRight, Level), BuddyRightKey),
                             gen_server:call(Self, {set_state_op, LinkedState}),
                             insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
                     end
