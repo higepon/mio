@@ -521,6 +521,7 @@ search_op_cast_(ReturnToMe, State, Level, Key) ->
     if
         %% This is myKey, found!
         MyKey =:= Key ->
+
             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
         MyKey < Key ->
             search_op_right_cast_(ReturnToMe, State, SearchLevel, Key);
