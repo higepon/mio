@@ -713,159 +713,157 @@ delete_loop_(State, Level) ->
 %%   N.B.
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
+insert_op_call(From, Self, _State, Introducer) when Introducer =:= Self->
+    %% there's no buddy
+    gen_server:reply(From, ok);
 insert_op_call(From, Self, State, Introducer) ->
-    if
-        %% there's no buddy
-        Introducer =:= Self ->
-            gen_server:reply(From, ok);
-        true ->
-            MyKey = State#state.key,
-            {Neighbor, NeighborKey, _} = search_detail_op(Introducer, MyKey),
-            if
-                %% MyKey is already exists
-                NeighborKey =:= MyKey ->
-                    MyValue = State#state.value,
-                    %% overwrite the value
-                    ok = call(Neighbor, {set_op, MyValue}),
-                    gen_server:reply(From, ok);
-                %% insert!
-               true ->
-                    insert_node(Self, State, Neighbor, NeighborKey),
-                    gen_server:reply(From, ok)
-            end
-    end.
-
-link_on_level0(Self, State, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
+    {Neighbor, NeighborKey, _} = search_detail_op(Introducer, MyKey),
     if
-        %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-        NeighborKey < MyKey ->
-            %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-            {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
-            link_right_op(Neighbor, 0, Self, MyKey),
-            NeighborRightKey
-                = case node_on_level(NeighborRight, 0) of
-                      [] -> [];
-                      X ->
-                          %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-                          link_left_op(X, 0, Self, MyKey),
-                          {NRKey, _, _, _, _} = call(X, get_op),
-                          NRKey
-                  end,
-            %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-            State1 = set_left(State, 0, Neighbor, NeighborKey),
-            %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-            LinkedState = set_right(State1, 0, node_on_level(NeighborRight, 0), NeighborRightKey),
-            gen_server:call(Self, {set_state_op, LinkedState}),
-            LinkedState;
-        %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
+        %% MyKey is already exists
+        NeighborKey =:= MyKey ->
+            MyValue = State#state.value,
+            %% overwrite the value
+            ok = call(Neighbor, {set_op, MyValue}),
+            gen_server:reply(From, ok);
+        %% insert!
         true ->
-            {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
-            %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-            link_left_op(Neighbor, 0, Self, MyKey),
-            NeighborLeftKey
-                = case node_on_level(NeighborLeft, 0) of
-                      [] -> [];
-                      %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-                      X -> link_right_op(X, 0, Self, MyKey),
-                           {NLKey, _, _, _, _} = call(X, get_op),
-                           NLKey
-                  end,
-            %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-            State1 = set_right(State, 0, Neighbor, NeighborKey),
-            %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-            LinkedState = set_left(State1, 0, node_on_level(NeighborLeft, 0), NeighborLeftKey),
-            gen_server:call(Self, {set_state_op, LinkedState}),
-            LinkedState
+            insert_node(Self, State, Neighbor, NeighborKey),
+            gen_server:reply(From, ok)
     end.
 
 insert_node(Self, State, Neighbor, NeighborKey) ->
     %% link on level = 0
     LinkedState = link_on_level0(Self, State, Neighbor, NeighborKey),
     %% link on level > 0
-    StartLevel = 1,
     MaxLevel = length(LinkedState#state.membership_vector),
-    ReturnState = insert_loop(Self, StartLevel, MaxLevel, LinkedState),
+    ReturnState = link_on_level_ge1(Self, MaxLevel, LinkedState),
     gen_server:call(Self, {set_state_op, ReturnState}).
 
-%% link on Level > 0
-insert_loop(Self, Level, MaxLevel, LinkedState) ->
-    ?TRACE(insert_loop),
+%% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
+link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
+    MyKey = State#state.key,
+    %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
+    {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
+    link_right_op(Neighbor, 0, Self, MyKey),
+    NeighborRightKey
+        = case node_on_level(NeighborRight, 0) of
+              [] -> [];
+              X ->
+                  %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+                  link_left_op(X, 0, Self, MyKey),
+                  {NRKey, _, _, _, _} = call(X, get_op),
+                  NRKey
+          end,
+    %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
+    State1 = set_left(State, 0, Neighbor, NeighborKey),
+    %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
+    LinkedState = set_right(State1, 0, node_on_level(NeighborRight, 0), NeighborRightKey),
+    gen_server:call(Self, {set_state_op, LinkedState}),
+    LinkedState;
+
+%% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
+link_on_level0(Self, State, Neighbor, NeighborKey) ->
+    MyKey = State#state.key,
+    {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
+    %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
+    link_left_op(Neighbor, 0, Self, MyKey),
+    NeighborLeftKey
+        = case node_on_level(NeighborLeft, 0) of
+              [] -> [];
+              %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+              X -> link_right_op(X, 0, Self, MyKey),
+                   {NLKey, _, _, _, _} = call(X, get_op),
+                   NLKey
+          end,
+    %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
+    State1 = set_right(State, 0, Neighbor, NeighborKey),
+    %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
+    LinkedState = set_left(State1, 0, node_on_level(NeighborLeft, 0), NeighborLeftKey),
+    gen_server:call(Self, {set_state_op, LinkedState}),
+    LinkedState.
+
+%% link on Level >= 1
+link_on_level_ge1(Self, MaxLevel, LinkedState) ->
+    link_on_level_ge1(Self, 1, MaxLevel, LinkedState).
+
+%% Link on all levels done.
+link_on_level_ge1(_Self, Level, MaxLevel, LinkedState) when Level > MaxLevel ->
+    LinkedState;
+
+%% Find buddy node and link it.
+%% buddy node has same membership_vector on this level.
+link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
     MyKey = LinkedState#state.key,
-    %% Find buddy node and link it.
-    %% buddy node has same membership_vector on this level.
-    if
-        Level > MaxLevel -> LinkedState;
-        true ->
-            case left(LinkedState, Level - 1) of
+    case left(LinkedState, Level - 1) of
+        [] ->
+            case right(LinkedState, Level - 1) of
+                %% This should never happen, insert to self is returned immediately on insert_op.
+                %%[] ->
+                %%    %% we have no buddy on this level.
+                %%    insert_loop(Level + 1, MaxLevel, LinkedState);
+                RightNodeOnLevel0 ->
+                    {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, _, _} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
+                    case Buddy of
+                        [] ->
+                            %% we have no buddy on this level.
+                            %% So we've done.
+                            LinkedState;
+                        _ ->
+                                                %                                    {BuddyLeftKey, _, _, BuddyLeft, _} = call(Buddy, get_op),
+                            link_left_op(Buddy, Level, Self, MyKey),
+                            %% Since left(Level:0) is empty, this should never happen.
+                            %% case node_on_level(BuddyLeft, Level) of
+                            %%    [] -> [];
+                            %%    X -> link_right_op(X, Level, Self)
+                            %% end,
+                            NewLinkedState = set_left(set_right(LinkedState, Level, Buddy, BuddyKey), Level, node_on_level(BuddyLeft, Level), BuddyLeftKey),
+                            gen_server:call(Self, {set_state_op, NewLinkedState}),
+                            link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState)
+                    end
+            end;
+        LeftNodeOnLevel0 ->
+            {ok, Buddy, BuddyKey, _, _, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
+            case Buddy of
                 [] ->
                     case right(LinkedState, Level - 1) of
+                        [] ->
+                            LinkedState;
                         %% This should never happen, insert to self is returned immediately on insert_op.
                         %%[] ->
                         %%    %% we have no buddy on this level.
                         %%    insert_loop(Level + 1, MaxLevel, LinkedState);
-                        RightNodeOnLevel0 ->
-                            {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, _, _} = buddy_op(RightNodeOnLevel0, LinkedState#state.membership_vector, right, Level),
-                            case Buddy of
+                        RightNodeOnLevel02 ->
+                            {ok, Buddy2, Buddy2Key, BuddyLeft2, BuddyLeft2Key, _, _} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
+                            case Buddy2 of
                                 [] ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
                                     LinkedState;
                                 _ ->
-%                                    {BuddyLeftKey, _, _, BuddyLeft, _} = call(Buddy, get_op),
-                                    link_left_op(Buddy, Level, Self, MyKey),
+                                                %                                            {BuddyLeft2Key, _, _, BuddyLeft2, _} = call(Buddy2, get_op),
+                                    link_left_op(Buddy2, Level, Self, MyKey),
                                     %% Since left(Level:0) is empty, this should never happen.
                                     %% case node_on_level(BuddyLeft, Level) of
                                     %%    [] -> [];
                                     %%    X -> link_right_op(X, Level, Self)
                                     %% end,
-                                    NewLinkedState = set_left(set_right(LinkedState, Level, Buddy, BuddyKey), Level, node_on_level(BuddyLeft, Level), BuddyLeftKey),
-                                    gen_server:call(Self, {set_state_op, NewLinkedState}),
-                                    insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
+                                    NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2, Buddy2Key), Level, node_on_level(BuddyLeft2, Level), BuddyLeft2Key),
+                                    gen_server:call(Self, {set_state_op, NewLinkedState2}),
+                                    link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
                             end
                     end;
-                LeftNodeOnLevel0 ->
-                    {ok, Buddy, BuddyKey, _, _, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLevel0, LinkedState#state.membership_vector, left, Level),
-                    case Buddy of
-                        [] ->
-                            case right(LinkedState, Level - 1) of
-                                [] ->
-                                    LinkedState;
-                                %% This should never happen, insert to self is returned immediately on insert_op.
-                                %%[] ->
-                                %%    %% we have no buddy on this level.
-                                %%    insert_loop(Level + 1, MaxLevel, LinkedState);
-                                RightNodeOnLevel02 ->
-                                    {ok, Buddy2, Buddy2Key, BuddyLeft2, BuddyLeft2Key, _, _} = buddy_op(RightNodeOnLevel02, LinkedState#state.membership_vector, right, Level),
-                                    case Buddy2 of
-                                        [] ->
-                                            %% we have no buddy on this level.
-                                            %% So we've done.
-                                            LinkedState;
-                                        _ ->
-%                                            {BuddyLeft2Key, _, _, BuddyLeft2, _} = call(Buddy2, get_op),
-                                            link_left_op(Buddy2, Level, Self, MyKey),
-                                            %% Since left(Level:0) is empty, this should never happen.
-                                            %% case node_on_level(BuddyLeft, Level) of
-                                            %%    [] -> [];
-                                            %%    X -> link_right_op(X, Level, Self)
-                                            %% end,
-                                            NewLinkedState2 = set_left(set_right(LinkedState, Level, Buddy2, Buddy2Key), Level, node_on_level(BuddyLeft2, Level), BuddyLeft2Key),
-                                            gen_server:call(Self, {set_state_op, NewLinkedState2}),
-                                            insert_loop(Self, Level + 1, MaxLevel, NewLinkedState2)
-                                    end
-                            end;
-                        _ ->
-%                            {BuddyRightKey, _, _, _, BuddyRight} = call(Buddy, get_op),
-                            link_right_op(Buddy, Level, Self, MyKey),
-                            case BuddyRight of %node_on_level(BuddyRight, Level)
-                                [] -> [];
-                                X ->
-                                    link_left_op(X, Level, Self, MyKey)
-                            end,
-                            NewLinkedState = set_right(set_left(LinkedState, Level, Buddy, BuddyKey), Level, BuddyRight, BuddyRightKey),
-                            gen_server:call(Self, {set_state_op, LinkedState}),
-                            insert_loop(Self, Level + 1, MaxLevel, NewLinkedState)
-                    end
+                _ ->
+                                                %                            {BuddyRightKey, _, _, _, BuddyRight} = call(Buddy, get_op),
+                    link_right_op(Buddy, Level, Self, MyKey),
+                    case BuddyRight of %node_on_level(BuddyRight, Level)
+                        [] -> [];
+                        X ->
+                            link_left_op(X, Level, Self, MyKey)
+                    end,
+                    NewLinkedState = set_right(set_left(LinkedState, Level, Buddy, BuddyKey), Level, BuddyRight, BuddyRightKey),
+                    gen_server:call(Self, {set_state_op, LinkedState}),
+                    link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState)
             end
     end.
+
