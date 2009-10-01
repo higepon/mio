@@ -165,9 +165,6 @@ search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
             end
     end.
 
-
-
-
 search_detail_op(StartNode, Key) ->
     ?TRACE(search_detail_op),
     StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
@@ -717,46 +714,96 @@ delete_loop_(State, Level) ->
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
 insert_op_call(From, Self, State, Introducer) ->
-    ?TRACE(insert_op_call),
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    if
-        %% there's no buddy
+    if %% there's no buddy
         Introducer =:= Self ->
             gen_server:reply(From, ok);
         true ->
+            MyKey = State#state.key,
+            MyValue = State#state.value,
             {Neighbor, NeighborKey, _} = search_detail_op(Introducer, MyKey),
             if NeighborKey =:= MyKey ->
                     ok = call(Neighbor, {set_op, MyValue}),
                     gen_server:reply(From, ok);
                true ->
-                    LinkedState = if
-                                      NeighborKey < MyKey ->
-                                          ?LOG(),
-                                          {NeighborRightKey, _, _, _, NeighborRight} = call(Neighbor, get_op),
-                                          link_right_op(Neighbor, 0, Self, MyKey),
-                                          case node_on_level(NeighborRight, 0) of
-                                              [] -> [];
-                                              X -> link_left_op(X, 0, Self, MyKey)
-                                          end,
-                                          set_right(set_left(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborRight, 0), NeighborRightKey);
-                                      true ->
-                                          {NeighborLeftKey, _, _, NeighborLeft, _} = call(Neighbor, get_op),
-                                          link_left_op(Neighbor, 0, Self, MyKey),
-                                          case node_on_level(NeighborLeft, 0) of
-                                              [] -> [];
-                                              X -> link_right_op(X, 0, Self, MyKey)
-                                          end,
-                                          set_left(set_right(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborLeft, 0), NeighborLeftKey)
-                                  end,
-                    MaxLevel = length(LinkedState#state.membership_vector),
-                    %% link on level > 0
-                    gen_server:call(Self, {set_state_op, LinkedState}),
-                    ReturnState = insert_loop(Self, 1, MaxLevel, LinkedState),
-                    gen_server:call(Self, {set_state_op, ReturnState}),
+                    insert_node(From, Self, State, Introducer, Neighbor, NeighborKey),
+%%                     LinkedState = if
+%%                                       NeighborKey < MyKey ->
+%%                                           {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
+%%                                           link_right_op(Neighbor, 0, Self, MyKey),
+%%                                           NeighborRightKey
+%%                                               = case node_on_level(NeighborRight, 0) of
+%%                                                     [] -> [];
+%%                                                     X -> link_left_op(X, 0, Self, MyKey),
+%%                                                          {NRKey, _, _, _, _} = call(X, get_op),
+%%                                                          NRKey
+%%                                                 end,
+%%                                           set_right(set_left(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborRight, 0), NeighborRightKey);
+%%                                       true ->
+%%                                           {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
+%%                                           link_left_op(Neighbor, 0, Self, MyKey),
+%% %%                                           case node_on_level(NeighborLeft, 0) of
+%% %%                                               [] -> [];
+%% %%                                               X -> link_right_op(X, 0, Self, MyKey)
+%% %%                                           end,
+%%                                           NeighborLeftKey
+%%                                               = case node_on_level(NeighborLeft, 0) of
+%%                                                     [] -> [];
+%%                                                     X -> link_right_op(X, 0, Self, MyKey),
+%%                                                          {NLKey, _, _, _, _} = call(X, get_op),
+%%                                                          NLKey
+%%                                                 end,
+
+%%                                           %% NeighborLeftKey が正しくない
+%%                                           set_left(set_right(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborLeft, 0), NeighborLeftKey)
+%%                                   end,
+%%                     MaxLevel = length(LinkedState#state.membership_vector),
+%%                     %% link on level > 0
+%%                     gen_server:call(Self, {set_state_op, LinkedState}),
+%%                     ReturnState = insert_loop(Self, 1, MaxLevel, LinkedState),
+%%                     gen_server:call(Self, {set_state_op, ReturnState}),
                     gen_server:reply(From, ok)
             end
     end.
+
+insert_node(From, Self, State, Introducer, Neighbor, NeighborKey) ->
+    MyKey = State#state.key,
+    MyValue = State#state.value,
+
+    LinkedState = if
+                      NeighborKey < MyKey ->
+                          {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
+                          link_right_op(Neighbor, 0, Self, MyKey),
+                          NeighborRightKey
+                              = case node_on_level(NeighborRight, 0) of
+                                    [] -> [];
+                                    X -> link_left_op(X, 0, Self, MyKey),
+                                         {NRKey, _, _, _, _} = call(X, get_op),
+                                         NRKey
+                                end,
+                          set_right(set_left(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborRight, 0), NeighborRightKey);
+                      true ->
+                          {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
+                          link_left_op(Neighbor, 0, Self, MyKey),
+                          %%                                           case node_on_level(NeighborLeft, 0) of
+                          %%                                               [] -> [];
+                          %%                                               X -> link_right_op(X, 0, Self, MyKey)
+                          %%                                           end,
+                          NeighborLeftKey
+                              = case node_on_level(NeighborLeft, 0) of
+                                    [] -> [];
+                                    X -> link_right_op(X, 0, Self, MyKey),
+                                         {NLKey, _, _, _, _} = call(X, get_op),
+                                         NLKey
+                                end,
+
+                          %% NeighborLeftKey が正しくない
+                          set_left(set_right(State, 0, Neighbor, NeighborKey), 0, node_on_level(NeighborLeft, 0), NeighborLeftKey)
+                  end,
+    MaxLevel = length(LinkedState#state.membership_vector),
+    %% link on level > 0
+    gen_server:call(Self, {set_state_op, LinkedState}),
+    ReturnState = insert_loop(Self, 1, MaxLevel, LinkedState),
+    gen_server:call(Self, {set_state_op, ReturnState}).
 
 %% link on Level > 0
 insert_loop(Self, Level, MaxLevel, LinkedState) ->
