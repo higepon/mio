@@ -69,16 +69,13 @@ dump_op(StartNode, Level) ->
                       StartNodes)
     end.
 
+dump_side_([], _Side, _Level) ->
+    [];
 dump_side_(StartNode, Side, Level) ->
-    case StartNode of
-        [] ->
-            [];
-        _ ->
-            gen_server:cast(StartNode, {dump_side_cast, Side, Level, self(), []}),
-            receive
-                {dump_side_accumed, Accumed} ->
-                    Accumed
-            end
+    gen_server:cast(StartNode, {dump_side_cast, Side, Level, self(), []}),
+    receive
+        {dump_side_accumed, Accumed} ->
+            Accumed
     end.
 
 enum_nodes_(StartNode, Level) ->
@@ -93,15 +90,8 @@ enum_nodes_(StartNode, Level) ->
 %%  insert operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
-    ?TRACE(insert_op),
-    %% Since insert_op may issue get_op and buddy_op,
-    %% they should be called with timeout and insert_op without timeout.
-
     %% Insertion timeout should be infinity since they are serialized and waiting.
-%%    io:format("INSERT START ~p ~n", [self()]),
-    Ret = gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity),
-%%    io:format("INSERT END ~p ~n", [self()]),
-    Ret.
+    gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity).
 
 
 %%--------------------------------------------------------------------
@@ -148,32 +138,29 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
+search_detail_timeout(_StartNode, _ReturnToMe, _StartLevel, _Key, Count) when Count < 0 ->
+    timeout;
 search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
-    if Count < 0 ->
-       timout;
-       true ->
-            gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
-            receive
-                {search_result, Result} -> Result
-            after 1000 ->
-                    {A1, A2, A3} = now(),
-                    random:seed(A1, A2, A3),
-                    T = random:uniform(2000),
-                    timer:sleep(T),
-                    io:format("~p~p SEARCH TIMEOUT ReturnToMe~p~n", [erlang:now(), self(), ReturnToMe]),
-                    search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
-            end
+    gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
+    receive
+        {search_result, Result} -> Result
+    after 1000 ->
+            {A1, A2, A3} = now(),
+            random:seed(A1, A2, A3),
+            T = random:uniform(2000),
+            timer:sleep(T),
+            io:format("~p~p SEARCH TIMEOUT ReturnToMe~p~n", [erlang:now(), self(), ReturnToMe]),
+            search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
     end.
 
 search_detail_op(StartNode, Key) ->
-    ?TRACE(search_detail_op),
-    StartLevel = [], %% If Level is not specified, the start node checkes his max level and use it
+    %% If Level is not specified, the start node checkes his max level and use it
+    StartLevel = [], 
     ReturnToMe = self(),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:call
     search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, 10).
 
 search_op(StartNode, Key) ->
-    ?TRACE(search_op),
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     case search_detail_op(StartNode, Key) of
         {_FoundNode, FoundKey, FoundValue} ->
@@ -198,24 +185,19 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %% For concurrent node joins, link_right_op checks consistency of SkipGraph.
 %% If found inconsistent state, link_right_op will be redirect to the next node.
 link_right_op(Node, Level, Right, RightKey) ->
-    ?TRACE(link_right_op),
     call(Node, {link_right_op, Level, Right, RightKey}).
 
 link_left_op(Node, Level, Left, LeftKey) ->
-    ?TRACE(link_left_op),
     call(Node, {link_left_op, Level, Left, LeftKey}).
 
 %% For delete operation, no redirect is required.
 link_right_no_redirect_op(Node, Level, Right, RightKey) ->
-    ?TRACE(link_right_no_redirect_op),
     call(Node, {link_right_no_redirect_op, Level, Right, RightKey}).
 
 link_left_no_redirect_op(Node, Level, Left, LeftKey) ->
-    ?TRACE(link_left_no_redirect_op),
     call(Node, {link_left_no_redirect_op, Level, Left, LeftKey}).
 
 set_nth(Index, Value, List) ->
-    ?TRACE(set_nth),
     lists:append([lists:sublist(List, 1, Index - 1),
                  [Value],
                  lists:sublist(List, Index + 1, length(List))]).
@@ -257,32 +239,23 @@ init(Args) ->
 %% Read Only Operations start
 
 handle_call(get_op, From, State) ->
-    ?TRACE(c_get_op),
     spawn(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
-
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
-    ?TRACE(c_buddy_op),
     Self = self(),
     spawn(?MODULE, buddy_op_call, [From, Self, State, MembershipVector, Direction, Level]),
     {noreply, State};
 
 handle_call({set_state_op, NewState}, _From, _State) ->
-    ?TRACE(c_set_state_op),
     {reply, ok, NewState};
 
-%% Read Only Operations end
-
 handle_call({insert_op, Introducer}, From, State) ->
-    ?TRACE(c_insert_op),
     Self = self(),
     spawn(?MODULE, insert_op_call, [From, Self, State, Introducer]),
     {noreply, State};
 
-
 handle_call(delete_op, From, State) ->
-    ?TRACE(delete_op),
     spawn(?MODULE, delete_op_call, [From, State]),
     {noreply, State};
 
@@ -290,7 +263,6 @@ handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
 
 handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
-    Self = self(),
     spawn(?MODULE, link_right_op_call, [From, Self, State, RightNode, RightKey, Level]),
     {noreply, State};
 %% N.B.
@@ -320,7 +292,6 @@ handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),
     spawn(?MODULE, link_left_op_call, [From, Self, State, LeftNode, LeftKey, Level]),
     {noreply, State};
-%    {reply, ok, set_left(State, Level, LeftNode)};
 
 handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode, RightKey)};
