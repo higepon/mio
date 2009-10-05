@@ -483,20 +483,20 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
             MyRightKey = right_key(State, Level),
             MyLeft = left(State, Level),
             MyRight = right(State, Level),
-            gen_server:reply(From, {ok, Self, MyKey, MyLeft, MyLeftKey, MyRight, MyRightKey});
+            gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on LowerLevel
                         [] ->
-                            gen_server:reply(From, {ok, [], [], [], [], [], []});
+                            gen_server:reply(From, {ok, [], [], [], []});
                         RightNode ->
                             gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
                     end;
                 _ ->
                     case left(State, Level - 1) of
                         [] ->
-                            gen_server:reply(From, {ok, [], [], [], [], [], []});
+                            gen_server:reply(From, {ok, [], [], [], []});
                         LeftNode ->
                             gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
                     end
@@ -704,7 +704,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
             %% since insert to self is returned immediately on insert_op.
             ?ASSERT_NOT_NIL(RightNodeOnLower),
-            {ok, Buddy, BuddyKey, _, _, _, _} = buddy_op(RightNodeOnLower, LinkedState#state.membership_vector, right, Level),
+            {ok, Buddy, BuddyKey, _, _} = buddy_op(RightNodeOnLower, LinkedState#state.membership_vector, right, Level),
             case Buddy of
                 %% [NodeToInsert]
                 [] ->
@@ -732,7 +732,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         LeftNodeOnLower ->
-            {ok, Buddy, BuddyKey, _, _, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLower, LinkedState#state.membership_vector, left, Level),
+            {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLower, LinkedState#state.membership_vector, left, Level),
             case Buddy of
                 [] ->
                     case right(LinkedState, LowerLevel) of
@@ -744,7 +744,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                             LinkedState;
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
-                            {ok, Buddy2, Buddy2Key, _, _, _, _} = buddy_op(RightNodeOnLower2, LinkedState#state.membership_vector, right, Level),
+                            {ok, Buddy2, Buddy2Key, _, _} = buddy_op(RightNodeOnLower2, LinkedState#state.membership_vector, right, Level),
                             case Buddy2 of
                                 %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n]
                                 [] ->
