@@ -18,24 +18,24 @@
 
 -define(SERVER, ?MODULE).
 -define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
-%%-define(ASSERT_MATCH(EXPECTED, X), []).
-%%-define(ASSERT_NOT_NIL(X), []).
--define(ASSERT_MATCH(EXPECTED, X),
-        case X of
-            EXPECTED -> true;
-            Value ->
-                io:format("** Assertion failed: ~p expected, but got ~p at ~p:~p~n", [EXPECTED, Value, ?MODULE, ?LINE]),
-                exit(assertion_failed)
-        end.
+-define(ASSERT_MATCH(EXPECTED, X), []).
+-define(ASSERT_NOT_NIL(X), []).
+%% -define(ASSERT_MATCH(EXPECTED, X),
+%%         case X of
+%%             EXPECTED -> true;
+%%             Value ->
+%%                 io:format("** Assertion failed: ~p expected, but got ~p at ~p:~p~n", [EXPECTED, Value, ?MODULE, ?LINE]),
+%%                 exit(assertion_failed)
+%%         end.
 
--define(ASSERT_NOT_NIL(X),
-        case X of
-            [] ->
-                io:format("** Assertion failed: not [] expected, but got [] at ~p:~p~n", [?MODULE, ?LINE]),
-                exit(assertion_failed);
-            _ ->
-                true
-        end.
+%% -define(ASSERT_NOT_NIL(X),
+%%         case X of
+%%             [] ->
+%%                 io:format("** Assertion failed: not [] expected, but got [] at ~p:~p~n", [?MODULE, ?LINE]),
+%%                 exit(assertion_failed);
+%%             _ ->
+%%                 true
+%%         end.
 
 
 
