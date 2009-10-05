@@ -1,3 +1,4 @@
+
 %%% Description : Skip Graph Node
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
@@ -138,33 +139,10 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
-search_detail_timeout(_StartNode, _ReturnToMe, _StartLevel, _Key, Count) when Count < 0 ->
-    timeout;
-search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count) ->
-    gen_server:cast(StartNode, {search_op, ReturnToMe, StartLevel, Key}),
-    receive
-        {search_result, Result} -> Result
-    after 1000 ->
-            {A1, A2, A3} = now(),
-            random:seed(A1, A2, A3),
-            T = random:uniform(2000),
-            timer:sleep(T),
-            io:format("~p~p SEARCH TIMEOUT ReturnToMe~p~n", [erlang:now(), self(), ReturnToMe]),
-            search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, Count -1)
-    end.
-
 search_detail_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
     gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity).
-
-
-search_detail_op2(StartNode, Key) ->
-    %% If Level is not specified, the start node checkes his max level and use it
-    StartLevel = [],
-    ReturnToMe = self(),
-    %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:call
-    search_detail_timeout(StartNode, ReturnToMe, StartLevel, Key, 10).
 
 search_op(StartNode, Key) ->
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
@@ -391,11 +369,6 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
-handle_cast({search_op, ReturnToMe, Level, Key}, State) ->
-    ?TRACE(ca_search_op),
-    search_op_cast_(ReturnToMe, State, Level, Key),
-    {noreply, State};
-
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
@@ -438,78 +411,6 @@ range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsO
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
     end.
 
-search_op_right_cast_(ReturnToMe, State, Level, Key) ->
-    ?TRACE(search_op_right_cast_),
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    if
-        Level < 0 ->
-            ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
-        true ->
-            case right(State, Level) of
-                [] ->
-                    search_op_right_cast_(ReturnToMe, State, Level - 1, Key);
-                NextNode ->
-                    NextKey = right_key(State, Level),
-%                    {NextKey, _, _, _, _} = call(NextNode, get_op),
-                    %% we can make short cut. when equal case todo
-                    Compare = NextKey =< Key,
-                    if
-                        Compare ->
-                            gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
-                        true ->
-                            search_op_right_cast_(ReturnToMe, State, Level - 1, Key)
-                    end
-            end
-    end.
-
-search_op_left_cast_(ReturnToMe, State, Level, Key) ->
-    ?TRACE(search_op_left_cast_),
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    if
-        Level < 0 ->
-            ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
-        true ->
-            case left(State, Level) of
-                [] ->
-                    search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
-                NextNode ->
-%                    {NextKey, _, _, _, _} = call(NextNode, get_op),
-                    NextKey = left_key(State, Level),
-                    %% we can make short cut. when equal case todo
-                    Compare = NextKey >= Key,
-                    if
-                        Compare ->
-                            gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
-                        true ->
-                            search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
-                    end
-            end
-    end.
-
-
-
-search_op_cast_(ReturnToMe, State, Level, Key) ->
-    ?TRACE(search_op_cast_),
-    SearchLevel = case Level of
-                      [] ->
-                          length(State#state.right) - 1; %% Level is 0 origin
-                      _ -> Level
-                  end,
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    if
-        %% This is myKey, found!
-        MyKey =:= Key ->
-
-            ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
-        MyKey < Key ->
-            search_op_right_cast_(ReturnToMe, State, SearchLevel, Key);
-        true ->
-            search_op_left_cast_(ReturnToMe, State, SearchLevel, Key)
-    end.
-
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
 %%                                       {noreply, State, Timeout} |
@@ -539,36 +440,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-
-%% search_right_(MyKey, MyValue, RightNodes, Level, SearchKey) ->
-%%     search_(MyKey, MyValue, RightNodes, Level, SearchKey,
-%%             fun(Key, SKey) -> Key =< SKey end).
-
-%% search_left_(MyKey, MyValue, LeftNodes, Level, SearchKey) ->
-%%     search_(MyKey, MyValue, LeftNodes, Level, SearchKey,
-%%             fun(Key, SKey) -> Key >= SKey end).
-
-%% search_(MyKey, MyValue, NextNodes, Level, SearchKey, CompareFun) ->
-%%     if
-%%         Level < 0 ->
-%%             {ok, self(), MyKey, MyValue};
-%%         true ->
-%%             case node_on_level(NextNodes, Level) of
-%%                 [] ->
-%%                     search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun);
-%%                 NextNode ->
-%%                     {NextKey, _, _, _, _} = call(NextNode, get_op),
-%%                     %% we can make short cut. when equal case todo
-%%                     Compare = CompareFun(NextKey, SearchKey),
-%%                     if
-%%                         Compare ->
-%%                             call(NextNode, {search_op, Level, SearchKey});
-%%                         true ->
-%%                             search_(MyKey, MyValue, NextNodes, Level - 1, SearchKey, CompareFun)
-%%                     end
-%%             end
-%%     end.
-
 node_on_level(Nodes, Level) ->
     case Nodes of
         [] -> [];
@@ -636,7 +507,6 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
 %%  Search operation
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
-
 search_op_call(From, Self, State, Key, Level) ->
     SearchLevel = case Level of
                       [] ->
@@ -656,20 +526,17 @@ search_op_call(From, Self, State, Key, Level) ->
     end.
 
 %% Not found
-search_to_right(From, Self, State, Level, Key) when Level < 0 ->
+search_to_right(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     gen_server:reply(From, {Self, MyKey, MyValue});
 
 search_to_right(From, Self, State, Level, Key) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
     case right(State, Level) of
         [] ->
             search_to_right(From, Self, State, Level - 1, Key);
         NextNode ->
             NextKey = right_key(State, Level),
-            %% we can make short cut. when equal case todo
             if
                 NextKey =< Key ->
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
@@ -679,20 +546,17 @@ search_to_right(From, Self, State, Level, Key) ->
     end.
 
 %% Not found
-search_to_left(From, Self, State, Level, Key) when Level < 0 ->
+search_to_left(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     gen_server:reply(From, {Self, MyKey, MyValue});
 
 search_to_left(From, Self, State, Level, Key) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
     case left(State, Level) of
         [] ->
             search_to_left(From, Self, State, Level - 1, Key);
         NextNode ->
             NextKey = left_key(State, Level),
-            %% we can make short cut. when equal case todo
             if
                 NextKey >= Key ->
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
@@ -700,74 +564,6 @@ search_to_left(From, Self, State, Level, Key) ->
                     search_to_left(From, Self, State, Level - 1, Key)
             end
     end.
-
-
-%% search_op_left_cast_(ReturnToMe, State, Level, Key) ->
-%%     ?TRACE(search_op_left_cast_),
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     if
-%%         Level < 0 ->
-%%             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
-%%         true ->
-%%             case left(State, Level) of
-%%                 [] ->
-%%                     search_op_left_cast_(ReturnToMe, State, Level - 1, Key);
-%%                 NextNode ->
-%% %                    {NextKey, _, _, _, _} = call(NextNode, get_op),
-%%                     NextKey = left_key(State, Level),
-%%                     %% we can make short cut. when equal case todo
-%%                     Compare = NextKey >= Key,
-%%                     if
-%%                         Compare ->
-%%                             gen_server:cast(NextNode, {search_op, ReturnToMe, Level, Key});
-%%                         true ->
-%%                             search_op_left_cast_(ReturnToMe, State, Level - 1, Key)
-%%                     end
-%%             end
-%%     end.
-
-
-
-%% search_op_cast_(ReturnToMe, State, Level, Key) ->
-%%     ?TRACE(search_op_cast_),
-%%     SearchLevel = case Level of
-%%                       [] ->
-%%                           length(State#state.right) - 1; %% Level is 0 origin
-%%                       _ -> Level
-%%                   end,
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     if
-%%         %% This is myKey, found!
-%%         MyKey =:= Key ->
-
-%%             ReturnToMe ! {search_result, {self(), MyKey, MyValue}};
-%%         MyKey < Key ->
-%%             search_op_right_cast_(ReturnToMe, State, SearchLevel, Key);
-%%         true ->
-%%             search_op_left_cast_(ReturnToMe, State, SearchLevel, Key)
-%%     end.
-
-
-
-%% search_op_call(State, Level, Key) ->
-%%     SearchLevel = case Level of
-%%                       [] ->
-%%                           length(State#state.right) - 1; %% Level is 0 origin
-%%                       _ -> Level
-%%                   end,
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     if
-%%         %% This is myKey, found!
-%%         MyKey =:= Key ->
-%%             {ok, self(), MyKey, MyValue};
-%%         MyKey < Key ->
-%%             search_right_(MyKey, MyValue, State#state.right, SearchLevel, Key);
-%%         true ->
-%%             search_left_(MyKey, MyValue, State#state.left, SearchLevel, Key)
-%%     end.
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -908,7 +704,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
             %% since insert to self is returned immediately on insert_op.
             ?ASSERT_NOT_NIL(RightNodeOnLower),
-            {ok, Buddy, BuddyKey, BuddyLeft, _, _, _} = buddy_op(RightNodeOnLower, LinkedState#state.membership_vector, right, Level),
+            {ok, Buddy, BuddyKey, _, _, _, _} = buddy_op(RightNodeOnLower, LinkedState#state.membership_vector, right, Level),
             case Buddy of
                 %% [NodeToInsert]
                 [] ->
@@ -948,7 +744,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                             LinkedState;
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
-                            {ok, Buddy2, Buddy2Key, BuddyLeft2, _, _, _} = buddy_op(RightNodeOnLower2, LinkedState#state.membership_vector, right, Level),
+                            {ok, Buddy2, Buddy2Key, _, _, _, _} = buddy_op(RightNodeOnLower2, LinkedState#state.membership_vector, right, Level),
                             case Buddy2 of
                                 %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n]
                                 [] ->
