@@ -18,8 +18,8 @@
 
 -define(SERVER, ?MODULE).
 -define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
-
-
+%%-define(ASSERT_MATCH(EXPECTED, X), []).
+%%-define(ASSERT_NOT_NIL(X), []).
 -define(ASSERT_MATCH(EXPECTED, X),
         case X of
             EXPECTED -> true;
