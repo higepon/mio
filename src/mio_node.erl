@@ -711,28 +711,23 @@ insert_node(Self, State, Neighbor, NeighborKey) ->
 link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
     %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-    {_, _, _, _, NeighborRight} = call(Neighbor, get_op),
-    link_right_op(Neighbor, 0, Self, MyKey),
-    NeighborRightKey
-        = case node_on_level(NeighborRight, 0) of
-              [] -> [];
-              X ->
-                  %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-                  link_left_op(X, 0, Self, MyKey),
-                  {NRKey, _, _, _, _} = call(X, get_op),
-                  NRKey
-          end,
+    {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
+    case PrevNeighborRight of
+        [] -> [];
+        _ ->
+            %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+            link_left_op(PrevNeighborRight, 0, Self, MyKey)
+    end,
     %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
     State1 = set_left(State, 0, Neighbor, NeighborKey),
     %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-    LinkedState = set_right(State1, 0, node_on_level(NeighborRight, 0), NeighborRightKey),
+    LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
     gen_server:call(Self, {set_state_op, LinkedState}),
     LinkedState;
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(Self, State, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
-%    {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
     {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
     case PrevNeighborLeft of
@@ -741,14 +736,6 @@ link_on_level0(Self, State, Neighbor, NeighborKey) ->
             %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
             link_right_op(PrevNeighborLeft, 0, Self, MyKey)
     end,
-%%     NeighborLeftKey
-%%         = case node_on_level(NeighborLeft, 0) of
-%%               [] -> [];
-%%               %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-%%               X -> link_right_op(X, 0, Self, MyKey),
-%%                    {NLKey, _, _, _, _} = call(X, get_op),
-%%                    NLKey
-%%           end,
     %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
     State1 = set_right(State, 0, Neighbor, NeighborKey),
     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
