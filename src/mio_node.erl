@@ -295,15 +295,17 @@ handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     {noreply, State};
 
 handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
-    {reply, ok, set_right(State, Level, RightNode, RightKey)};
+    Prev = {right(State, Level), right_key(State, Level)},
+    {reply, Prev, set_right(State, Level, RightNode, RightKey)};
 handle_call({link_left_no_redirect_op, Level, LeftNode, LeftKey}, _From, State) ->
-    {reply, ok, set_left(State, Level, LeftNode, LeftKey)}.
+    Prev = {left(State, Level), left_key(State, Level)},
+    {reply, Prev, set_left(State, Level, LeftNode, LeftKey)}.
 
 link_right_op_call(From, Self, _State, RightNode, RightKey, Level) ->
 %%     case right(State, Level) of
 %%         [] ->
-            link_right_no_redirect_op(Self, Level, RightNode, RightKey),
-            gen_server:reply(From, ok).
+            Prev = link_right_no_redirect_op(Self, Level, RightNode, RightKey),
+            gen_server:reply(From, Prev).
 %%         MyRightNode ->
 %%             {MyRightKey, _, _, _, _} = call(MyRightNode, get_op),
 %%             {RightKey, _, _, _, _} = call(RightNode, get_op),
@@ -323,8 +325,8 @@ link_right_op_call(From, Self, _State, RightNode, RightKey, Level) ->
 link_left_op_call(From, Self, _State, LeftNode, LeftKey, Level) ->
 %%     case left(State, Level) of
 %%         [] ->
-            link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
-            gen_server:reply(From, ok).
+            Prev = link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
+            gen_server:reply(From, Prev).
 %%         MyLeftNode ->
 %%             {MyLeftKey, _, _, _, _} = call(MyLeftNode, get_op),
 %%             {LeftKey, _, _, _, _} = call(LeftNode, get_op),
@@ -580,6 +582,7 @@ set_right(State, Level, Node, Key) ->
     NewState = State#state{right_keys=set_nth(Level + 1, Key, State#state.right_keys)},
     NewState#state{right=set_nth(Level + 1, Node, NewState#state.right)}.
 
+
 set_left(State, Level, Node, Key) ->
     NewState = State#state{left_keys=set_nth(Level + 1, Key, State#state.left_keys)},
     NewState#state{left=set_nth(Level + 1, Node, NewState#state.left)}.
@@ -661,13 +664,13 @@ delete_loop_(State, Level) ->
     case RightNode of
         [] -> [];
         _ ->
-            ok = link_left_no_redirect_op(RightNode, Level, LeftNode, LeftKey)
+            link_left_no_redirect_op(RightNode, Level, LeftNode, LeftKey)
     end,
     case LeftNode of
         [] -> [];
         _ ->
             ?LOG(),
-            ok = link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
+            link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
     delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
 
@@ -729,21 +732,27 @@ link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#stat
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(Self, State, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
-    {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
+%    {_, _, _, NeighborLeft, _} = call(Neighbor, get_op),
     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-    link_left_op(Neighbor, 0, Self, MyKey),
-    NeighborLeftKey
-        = case node_on_level(NeighborLeft, 0) of
-              [] -> [];
-              %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-              X -> link_right_op(X, 0, Self, MyKey),
-                   {NLKey, _, _, _, _} = call(X, get_op),
-                   NLKey
-          end,
+    {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
+    case PrevNeighborLeft of
+        [] -> [];
+        _ ->
+            %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+            link_right_op(PrevNeighborLeft, 0, Self, MyKey)
+    end,
+%%     NeighborLeftKey
+%%         = case node_on_level(NeighborLeft, 0) of
+%%               [] -> [];
+%%               %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+%%               X -> link_right_op(X, 0, Self, MyKey),
+%%                    {NLKey, _, _, _, _} = call(X, get_op),
+%%                    NLKey
+%%           end,
     %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
     State1 = set_right(State, 0, Neighbor, NeighborKey),
     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-    LinkedState = set_left(State1, 0, node_on_level(NeighborLeft, 0), NeighborLeftKey),
+    LinkedState = set_left(State1, 0, PrevNeighborLeft, PrevNeighborLeftKey),
     gen_server:call(Self, {set_state_op, LinkedState}),
     LinkedState.
 
