@@ -156,8 +156,7 @@ process_get(Sock, WriteSerializer, StartNode, Key) ->
     end,
     %% enqueue to the delete queue
     if NeedEnqueue ->
-            mio_node:set_expire_date_op(Node, -1),
-            spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end);
+            enqueue_to_delete(WriteSerializer, Node);
        true -> []
     end.
 
@@ -168,32 +167,29 @@ process_values([{_, Key, Value, _} | More]) ->
 process_values([]) ->
     "END\r\n".
 
+enqueue_to_delete(WriteSerializer, Node) ->
+    mio_node:set_expire_date_op(Node, -1),
+    spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
+
+filter_expired(WriteSerializer, Values) ->
+    lists:filter(fun({Node, _, _, ExpireDate}) ->
+                         {Expired, NeedEnqueue} = check_expired(ExpireDate),
+                         if NeedEnqueue ->
+                                 enqueue_to_delete(WriteSerializer, Node);
+                            true -> []
+                         end,
+                         not Expired
+                 end, Values).
+
 process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, Limit) ->
     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    ActiveValues = lists:filter(fun({Node, _, _, ExpireDate}) ->
-                                        {Expired, NeedEnqueue} = check_expired(ExpireDate),
-                                        if NeedEnqueue ->
-                                                mio_node:set_expire_date_op(Node, -1),
-                                                spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end);
-                                           true -> []
-                                        end,
-                                        not Expired
-                                end, Values),
+    ActiveValues = filter_expired(WriteSerializer, Values),
     P = process_values(ActiveValues),
     ok = gen_tcp:send(Sock, P).
 
 process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, Limit) ->
     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    ActiveValues = lists:filter(fun({Node, _, _, ExpireDate}) ->
-                                        {Expired, NeedEnqueue} = check_expired(ExpireDate),
-                                        if NeedEnqueue ->
-                                                mio_node:set_expire_date_op(Node, -1),
-                                                spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end);
-                                           true -> []
-                                        end,
-                                        not Expired
-                                end, Values),
-
+    ActiveValues = filter_expired(WriteSerializer, Values),
     P = process_values(ActiveValues),
     ok = gen_tcp:send(Sock, P).
 
