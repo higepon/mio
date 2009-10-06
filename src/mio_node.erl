@@ -9,7 +9,7 @@
 
 %% API
 -export([start_link/1, call/2, search_op_call/5, buddy_op_call/6, get_op_call/2, insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
-         search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3,
+         search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3, set_expire_date_op/2,
          buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2, delete_op/1,
          range_search_asc_op/4, range_search_desc_op/4]).
 
@@ -86,6 +86,12 @@ enum_nodes_(StartNode, Level) ->
     lists:append([dump_side_(LeftNode, left, Level),
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side_(RightNode, right, Level)]).
+
+%%--------------------------------------------------------------------
+%%  set expire_date operation
+%%--------------------------------------------------------------------
+set_expire_date_op(Node, Expire_Date) ->
+    gen_server:call(Node, {set_expire_date_op, Expire_Date}).
 
 %%--------------------------------------------------------------------
 %%  insert operation
@@ -281,6 +287,9 @@ handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
 %                    {reply, ok, set_right(State, Level, RightNode)};
 %%             end
 %%     end;
+
+handle_call({set_expire_date_op, ExpireDate}, _From, State) ->
+    {reply, ok, State#state{expire=ExpireDate}};
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),

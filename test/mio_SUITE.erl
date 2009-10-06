@@ -49,6 +49,7 @@ expiration(_Config) ->
     ok = merle2:set("myname", "0", "1", "john"),
     "john" = merle2:getkey("myname"),
     timer:sleep(1000),
+    undefined = merle2:getkey("myname"),
     undefined = merle2:getkey("myname").
 
 all() ->

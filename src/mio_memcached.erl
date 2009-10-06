@@ -90,9 +90,9 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
                     StartNode;
-                ["set", Key, Flags, Expire, Bytes] ->
+                ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(Expire), Bytes, MaxLevel),
+                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
                     StartNode;
 %%                    InsertedNode;
@@ -129,10 +129,25 @@ process_delete(Sock, WriteSerializer, StartNode, Key) ->
             ok = gen_tcp:send(Sock, "DELETED\r\n")
     end.
 
+%% Expiry format definition
+%% Expire:
+%%   0 -> never expire
+%%   -1 -> expired and enqueued to delete queue
+%%   greater than zero -> expiration date in Unix time format
+
+%% Returns {Expired?, NeedEnqueue}
+check_expired(0) ->
+    {false, false};
+check_expired(-1) ->
+    {true, false};
+check_expired(ExpireDate) ->
+    Expired = ExpireDate =< unixtime(),
+    {Expired, Expired}.
+
 process_get(Sock, WriteSerializer, StartNode, Key) ->
-    {Node, FoundKey, Value, Expire} = mio_node:search_detail_op(StartNode, Key),
-    Now = unixtime(),
-    if Key =:= FoundKey andalso (Expire > Now orelse Expire =:= 0)->
+    {Node, FoundKey, Value, ExpireDate} = mio_node:search_detail_op(StartNode, Key),
+    {Expired, NeedEnqueue} = check_expired(ExpireDate),
+    if Key =:= FoundKey andalso not Expired ->
             ok = gen_tcp:send(Sock, io_lib:format(
                                       "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                                       [Key, size(Value), Value]));
@@ -140,7 +155,8 @@ process_get(Sock, WriteSerializer, StartNode, Key) ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end,
     %% enqueue to the delete queue
-    if Expire =/= 0 andalso Expire =< Now ->
+    if NeedEnqueue ->
+            mio_node:set_expire_date_op(Node, -1),
             spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end);
        true -> []
     end.
@@ -162,19 +178,20 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
     P = process_values(Values),
     ok = gen_tcp:send(Sock, P).
 
-process_set(Sock, WriteSerializer, Introducer, Key, _Flags, Expire, Bytes, MaxLevel) ->
+%% See expiry format definition on process_get
+process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             MVector = mio_mvector:generate(MaxLevel),
             UnixTime = unixtime(),
-            ExpireUnixTime = if  Expire =:= 0 ->
+            ExpireDateUnixTime = if  ExpireDate =:= 0 ->
                                      0;
-                                 Expire > UnixTime ->
-                                     Expire;
-                                true ->
-                                     Expire + UnixTime
+                                 ExpireDate > UnixTime ->
+                                     ExpireDate;
+                                 true ->
+                                     ExpireDate + UnixTime
                              end,
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireUnixTime),
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
             mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             gen_tcp:recv(Sock, 2),
