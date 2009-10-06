@@ -38,7 +38,7 @@ get_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {_, myKey, myValue} = mio_node:search_detail_op(Node, myKey),
+    {_, myKey, myValue, _} = mio_node:search_detail_op(Node, myKey),
 
     %% dump nodes on Level 0 and 1
     [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
@@ -99,7 +99,7 @@ search_level2_2(_Config) ->
 
     ng = mio_node:search_op(Node5, key10),
     %% closest node should be returned
-    {_, key5, value5} = mio_node:search_detail_op(Node5, key8),
+    {_, key5, value5, _} = mio_node:search_detail_op(Node5, key8),
     ok.
 
 search_level2_3(_Config) ->
@@ -165,8 +165,8 @@ search_level2_3(_Config) ->
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {_, key9, value9} = mio_node:search_detail_op(Node5, key9_9),
-    {_, key7, value7} = mio_node:search_detail_op(Node9, key6),
+    {_, key9, value9, _} = mio_node:search_detail_op(Node5, key9_9),
+    {_, key7, value7, _} = mio_node:search_detail_op(Node9, key6),
     ok.
 
 test_set_nth(_Config) ->
@@ -471,10 +471,10 @@ search_closest(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
-    {_, key7, value7} = mio_node:search_detail_op(Node3, key8),
-    {_, key7, value7} = mio_node:search_detail_op(Node5, key8),
-    {_, key7, value7} = mio_node:search_detail_op(Node7, key8),
-    {_, key7, value7} = mio_node:search_detail_op(Node9, key8),
+    {_, key7, value7, _} = mio_node:search_detail_op(Node3, key8),
+    {_, key7, value7, _} = mio_node:search_detail_op(Node5, key8),
+    {_, key7, value7, _} = mio_node:search_detail_op(Node7, key8),
+    {_, key7, value7, _} = mio_node:search_detail_op(Node9, key8),
     ok.
 
 overwrite_value(_Config) ->

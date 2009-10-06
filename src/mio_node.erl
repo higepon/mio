@@ -10,7 +10,7 @@
 %% API
 -export([start_link/1, call/2, search_op_call/5, buddy_op_call/6, get_op_call/2, insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
          search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3,
-         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2,
+         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2, delete_op/1,
          range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
@@ -19,7 +19,7 @@
 
 -include("mio.hrl").
 
--record(state, {key, value, membership_vector, left, right, left_keys, right_keys}).
+-record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire}).
 
 call(ServerRef, Request) ->
     call(ServerRef, Request, 5000, 3000).
@@ -99,7 +99,7 @@ insert_op(Introducer, NodeToInsert) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
-    {FoundNode, FoundKey, _} = search_detail_op(Introducer, Key),
+    {FoundNode, FoundKey, _, _} = search_detail_op(Introducer, Key),
     if FoundKey =:= Key ->
             %% ToDo terminate child
             call(FoundNode, delete_op),
@@ -108,10 +108,14 @@ delete_op(Introducer, Key) ->
        true -> ng
     end.
 
+delete_op(Node) ->
+    call(Node, delete_op),
+    mio_sup:terminate_node(Node),
+    ok.
+
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
-
 %% Key1 and Key2 are not in the search result.
 range_search_asc_op(StartNode, Key1, Key2, Limit) ->
     range_search_order_op_(StartNode, Key1, Key2, Limit, asc).
@@ -126,7 +130,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ClosestNode, _, _} = search_detail_op(StartNode, StartKey),
+    {ClosestNode, _, _, _} = search_detail_op(StartNode, StartKey),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -147,7 +151,7 @@ search_detail_op(StartNode, Key) ->
 search_op(StartNode, Key) ->
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     case search_detail_op(StartNode, Key) of
-        {_FoundNode, FoundKey, FoundValue} ->
+        {_FoundNode, FoundKey, FoundValue, _Expire} ->
             if FoundKey =:= Key ->
                     {ok, FoundValue};
                true -> ng
@@ -198,7 +202,7 @@ set_nth(Index, Value, List) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(Args) ->
-    [MyKey, MyValue, MyMembershipVector] = Args,
+    [MyKey, MyValue, MyMembershipVector, Expire] = Args,
     Length = length(MyMembershipVector),
     EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     {ok, #state{key=MyKey,
@@ -207,7 +211,8 @@ init(Args) ->
                 left=EmptyNeighbor,
                 right=EmptyNeighbor,
                 left_keys=EmptyNeighbor,
-                right_keys=EmptyNeighbor
+                right_keys=EmptyNeighbor,
+                expire=Expire
                }}.
 
 %%--------------------------------------------------------------------
@@ -479,9 +484,9 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
     if
         Found ->
             MyKey = State#state.key,
-            MyLeftKey = left_key(State, Level),
+%%             MyLeftKey = left_key(State, Level),
             MyRightKey = right_key(State, Level),
-            MyLeft = left(State, Level),
+%%             MyLeft = left(State, Level),
             MyRight = right(State, Level),
             gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
@@ -514,11 +519,12 @@ search_op_call(From, Self, State, Key, Level) ->
                       _ -> Level
                   end,
     MyKey = State#state.key,
-    MyValue = State#state.value,
     if
         %% Found!
         MyKey =:= Key ->
-            gen_server:reply(From, {Self, MyKey, MyValue});
+            MyValue = State#state.value,
+            MyExpire = State#state.expire,
+            gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
         MyKey < Key ->
             search_to_right(From, Self, State, SearchLevel, Key);
         true ->
@@ -529,7 +535,8 @@ search_op_call(From, Self, State, Key, Level) ->
 search_to_right(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    gen_server:reply(From, {Self, MyKey, MyValue});
+    MyExpire = State#state.expire,
+    gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
 
 search_to_right(From, Self, State, Level, Key) ->
     case right(State, Level) of
@@ -549,7 +556,8 @@ search_to_right(From, Self, State, Level, Key) ->
 search_to_left(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    gen_server:reply(From, {Self, MyKey, MyValue});
+    MyExpire = State#state.expire,
+    gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
 
 search_to_left(From, Self, State, Level, Key) ->
     case left(State, Level) of
@@ -606,7 +614,7 @@ insert_op_call(From, Self, _State, Introducer) when Introducer =:= Self->
     gen_server:reply(From, ok);
 insert_op_call(From, Self, State, Introducer) ->
     MyKey = State#state.key,
-    {Neighbor, NeighborKey, _} = search_detail_op(Introducer, MyKey),
+    {Neighbor, NeighborKey, _, _} = search_detail_op(Introducer, MyKey),
     if
         %% MyKey is already exists
         NeighborKey =:= MyKey ->

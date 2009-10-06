@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, insert_op/3, delete_op/3]).
+-export([start_link/0, insert_op/3, delete_op/3, delete_op/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -38,6 +38,8 @@ insert_op(Serializer, Introducer, NodeToInsert) ->
 delete_op(Serializer, StartNode, Key) ->
     gen_server:call(Serializer, {delete_op, StartNode, Key}, infinity).
 
+delete_op(Serializer, Node) ->
+    gen_server:call(Serializer, {delete_op, Node}, infinity).
 
 %%====================================================================
 %% gen_server callbacks
@@ -65,6 +67,8 @@ init([]) ->
 handle_call({insert_op, Introducer, NodeToInsert}, _From, State) ->
     mio_node:insert_op(Introducer, NodeToInsert),
     {reply, ok, State};
+handle_call({delete_op, Node}, _From, State) ->
+    {reply, mio_node:delete_op(Node), State};
 handle_call({delete_op, StartNode, Key}, _From, State) ->
     {reply, mio_node:delete_op(StartNode, Key), State}.
 

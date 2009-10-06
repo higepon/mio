@@ -80,7 +80,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
             NewStartNode =
             case Token of
                 ["get", Key] ->
-                    process_get(Sock, StartNode, Key),
+                    process_get(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
@@ -92,7 +92,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     StartNode;
                 ["set", Key, Flags, Expire, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, Expire, Bytes, MaxLevel),
+                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(Expire), Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
                     StartNode;
 %%                    InsertedNode;
@@ -129,14 +129,20 @@ process_delete(Sock, WriteSerializer, StartNode, Key) ->
             ok = gen_tcp:send(Sock, "DELETED\r\n")
     end.
 
-process_get(Sock, StartNode, Key) ->
-    case mio_node:search_op(StartNode, Key) of
-        ng ->
-            ok = gen_tcp:send(Sock, "END\r\n");
-        {ok, FoundValue} ->
+process_get(Sock, WriteSerializer, StartNode, Key) ->
+    {Node, FoundKey, Value, Expire} = mio_node:search_detail_op(StartNode, Key),
+    Now = unixtime(),
+    if Key =:= FoundKey andalso (Expire > Now orelse Expire =:= 0)->
             ok = gen_tcp:send(Sock, io_lib:format(
-                                 "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
-                                 [Key, size(FoundValue), FoundValue]))
+                                      "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
+                                      [Key, size(Value), Value]));
+       true ->
+            ok = gen_tcp:send(Sock, "END\r\n")
+    end,
+    %% enqueue to the delete queue
+    if Expire =/= 0 andalso Expire =< Now ->
+            spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end);
+       true -> []
     end.
 
 
@@ -156,17 +162,19 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
     P = process_values(Values),
     ok = gen_tcp:send(Sock, P).
 
-process_set(Sock, WriteSerializer, Introducer, Key, _Flags, _Expire, Bytes, MaxLevel) ->
+process_set(Sock, WriteSerializer, Introducer, Key, _Flags, Expire, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-%            ?LOGF(">set Key =~p Value=~p\n", [Key, Value]),
             MVector = mio_mvector:generate(MaxLevel),
-%            ?LOGF("search-hige:insert_=~p ~p\n", [Key, MVector]),
-%%            ?LOG(MVector),
-%            {ok, NodeToInsert} = mio_sup:start_node(Key, true, MVector),
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector),
-            ?LOGF("memcached~p:NodeToInsert=~p ~n", [self(), NodeToInsert]),
-%%            mio_node:insert_op(Introducer, NodeToInsert),
+            UnixTime = unixtime(),
+            ExpireUnixTime = if  Expire =:= 0 ->
+                                     0;
+                                 Expire > UnixTime ->
+                                     Expire;
+                                true ->
+                                     Expire + UnixTime
+                             end,
+            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireUnixTime),
             mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             gen_tcp:recv(Sock, 2),
@@ -178,3 +186,7 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, _Expire, Bytes, MaxL
             gen_tcp:recv(Sock, 2),
             Introducer
     end.
+
+unixtime() ->
+    {Msec, Sec, _} = now(),
+    Msec * 1000 + Sec.
