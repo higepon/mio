@@ -48,7 +48,7 @@ expiration(_Config) ->
     {ok, _MerlePid} = merle2:connect("localhost", 11211),
     ok = merle2:set("myname", "0", "1", "john"),
     "john" = merle2:getkey("myname"),
-    timer:sleep(2000),
+    timer:sleep(1000),
     undefined = merle2:getkey("myname").
 
 all() ->
