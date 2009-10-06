@@ -18,6 +18,15 @@
         (test* 'get '((hi . "japan")) (get m "mio:range-search" "he" "ipod" "1" "desc"))
         (delete m "hello")
         (test* 'get '() (get m "hello"))
+        ;; expiry tests
+        (set m "abc" "1")
+        (set m "abd" "2" :exptime 1)
+        (set m "abe" "3")
+        (test* 'get '((abd . "2") (abc . "1")) (get m "mio:range-search" "ab" "abe" "2" "desc"))
+        (sys-sleep 1)
+        (test* 'get '((abc . "1")) (get m "mio:range-search" "ab" "abe" "2" "desc"))
         (memcache-close m)))
+
+
     (test-end)))
 

@@ -447,23 +447,23 @@ setup_nodes_for_range_search_op() ->
 range_search_asc_op(_Config) ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_asc_op(Node3, key3, key9, 10),
-    [{_, key5, value5}, {_, key7, value7}, {_, key9, value9}] = mio_node:range_search_asc_op(Node3, key3, key999, 10),
-    [{_, key5, value5}, {_, key7, value7}] = mio_node:range_search_asc_op(Node3, key3, key999, 2),
-    [{_, key5, value5}] = mio_node:range_search_asc_op(Node3, key3, key999, 1),
+    [{_, key5, value5, _}, {_, key7, value7, _}] = mio_node:range_search_asc_op(Node3, key3, key9, 10),
+    [{_, key5, value5, _}, {_, key7, value7, _}, {_, key9, value9, _}] = mio_node:range_search_asc_op(Node3, key3, key999, 10),
+    [{_, key5, value5, _}, {_, key7, value7, _}] = mio_node:range_search_asc_op(Node3, key3, key999, 2),
+    [{_, key5, value5, _}] = mio_node:range_search_asc_op(Node3, key3, key999, 1),
     [] = mio_node:range_search_asc_op(Node3, key3, key999, 0),
-    [{_, key3, value3}] = mio_node:range_search_asc_op(Node3, key1, key4, 1),
+    [{_, key3, value3, _}] = mio_node:range_search_asc_op(Node3, key1, key4, 1),
     [] = mio_node:range_search_asc_op(Node3, key99, key999, 1),
     ok.
 
 range_search_desc_op(_Config) ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
-    [{_, key7, value7}] = mio_node:range_search_desc_op(Node3, key3, key9, 1),
-    [{_, key9, value9}, {_, key7, value7}, {_, key5, value5}] = mio_node:range_search_desc_op(Node3, key3, key99, 10),
-    [{_, key9, value9}, {_, key7, value7}] = mio_node:range_search_desc_op(Node3, key3, key99, 2),
+    [{_, key7, value7, _}] = mio_node:range_search_desc_op(Node3, key3, key9, 1),
+    [{_, key9, value9, _}, {_, key7, value7, _}, {_, key5, value5, _}] = mio_node:range_search_desc_op(Node3, key3, key99, 10),
+    [{_, key9, value9, _}, {_, key7, value7, _}] = mio_node:range_search_desc_op(Node3, key3, key99, 2),
     [] = mio_node:range_search_desc_op(Node3, key3, key5, 2),
-    [{_, key3, value3}] = mio_node:range_search_desc_op(Node3, key2, key5, 1),
+    [{_, key3, value3, _}] = mio_node:range_search_desc_op(Node3, key2, key5, 1),
     [] = mio_node:range_search_desc_op(Node3, key1, key2, 1),
     ok.
 

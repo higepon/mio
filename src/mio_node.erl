@@ -403,6 +403,7 @@ handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, S
 range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
+    MyExpire = State#state.expire,
     if Limit =:= 0 ->
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
        IsOutOfRange ->
@@ -416,10 +417,10 @@ range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsO
        Key1 < MyKey andalso MyKey < Key2 ->
             case NextNodeFunc(State, 0) of
                 [] ->
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue} | Accum])};
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyExpire} | Accum])};
                 NextNode ->
                     gen_server:cast(NextNode,
-                                    {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue} | Accum], Limit - 1})
+                                    {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyExpire} | Accum], Limit - 1})
             end;
        true ->
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
