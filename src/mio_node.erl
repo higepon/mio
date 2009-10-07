@@ -166,9 +166,6 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     spawn(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
-handle_call({set_state_op, NewState}, _From, _State) ->
-    {reply, ok, NewState};
-
 handle_call({insert_op, Introducer}, From, State) ->
     Self = self(),
     spawn(?MODULE, insert_op_call, [From, State, Self, Introducer]),
@@ -522,9 +519,10 @@ link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#stat
     end,
     %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
     State1 = set_left(State, 0, Neighbor, NeighborKey),
+    link_left_op(Self, 0, Neighbor, NeighborKey),
     %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
     LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
-    gen_server:call(Self, {set_state_op, LinkedState}),
+    link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
     LinkedState;
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
@@ -540,9 +538,10 @@ link_on_level0(Self, State, Neighbor, NeighborKey) ->
     end,
     %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
     State1 = set_right(State, 0, Neighbor, NeighborKey),
+    link_right_op(Self, 0, Neighbor, NeighborKey),
     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
     LinkedState = set_left(State1, 0, PrevNeighborLeft, PrevNeighborLeftKey),
-    gen_server:call(Self, {set_state_op, LinkedState}),
+    link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
     LinkedState.
 
 %% link on Level >= 1
@@ -605,8 +604,8 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
 
                     %% [NodeToInsert] -> [Buddy]
                     NewLinkedState = set_right(LinkedState, Level, Buddy, BuddyKey),
+                    link_right_op(Self, Level, Buddy, BuddyKey),
 
-                    gen_server:call(Self, {set_state_op, NewLinkedState}),
                     %% Go up to next Level.
                     link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState)
             end;
@@ -640,8 +639,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
 
                                     %% [NodeToInsert:m] -> [D:m]
                                     NewLinkedState2 = set_right(LinkedState, Level, Buddy2, Buddy2Key),
-%                                    NewLinkedState3 = set_left(NewLinkedState2, Level, node_on_level(BuddyLeft2, Level), BuddyLeft2Key),
-                                    gen_server:call(Self, {set_state_op, NewLinkedState2}),
+                                    link_right_op(Self, Level, Buddy2, Buddy2Key),
                                     link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
                             end
                     end;
@@ -660,7 +658,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
 
                     % [NodeToInsert:m] -> [D:m]
                     NewLinkedState2 = set_right(NewLinkedState1, Level, BuddyRight, BuddyRightKey),
-                    gen_server:call(Self, {set_state_op, NewLinkedState2}),
+                    link_right_op(Self, Level, BuddyRight, BuddyRightKey),
                     link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
             end
     end.
