@@ -1,49 +1,48 @@
-
 %%% Description : Skip Graph Node
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
 -module(mio_node).
+-include("mio.hrl").
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, call/2, search_op_call/5, buddy_op_call/6, get_op_call/2, insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
-         search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3, set_expire_date_op/2,
-         buddy_op/4, insert_op/2, dump_op/2, node_on_level/2, delete_op/2, delete_op/1,
-         range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2,
+         insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
+         search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3,
+         set_expire_date_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
+         delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include("mio.hrl").
-
 -record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire}).
 
-call(ServerRef, Request) ->
-    call(ServerRef, Request, 5000, 3000).
-call(ServerRef, Request, Timeout, Timeout1) ->
-    if 0 >= Timeout ->
-            timeout;
-       true ->
-            case ServerRef =:= self() of
-                true ->
-                    ?ERRORF("***** FATAL call myself **** : ~p ~p~n", [ServerRef, Request]);
-                _ ->
-                    case catch gen_server:call(ServerRef, Request, Timeout1) of
-                        {'EXIT', Reason} ->
-                            ?ERRORF("Timeout=~p/~p Target=~p Request=~p Request=~p~n", [Timeout1, Timeout, ServerRef, Request, Reason]),
-                    {A1, A2, A3} = now(),
-                    random:seed(A1, A2, A3),
-                    T = random:uniform(2000),
-                            timer:sleep(T),
-                            call(ServerRef, Request, Timeout - Timeout1, Timeout1);
-                        ReturnValue ->
-                            ReturnValue
-                    end
-            end
-    end.
+%% call(ServerRef, Request) ->
+%%     call(ServerRef, Request, 5000, 3000).
+%% call(ServerRef, Request, Timeout, Timeout1) ->
+%%     if 0 >= Timeout ->
+%%             timeout;
+%%        true ->
+%%             case ServerRef =:= self() of
+%%                 true ->
+%%                     ?ERRORF("***** FATAL call myself **** : ~p ~p~n", [ServerRef, Request]);
+%%                 _ ->
+%%                     case catch gen_server:call(ServerRef, Request, Timeout1) of
+%%                         {'EXIT', Reason} ->
+%%                             ?ERRORF("Timeout=~p/~p Target=~p Request=~p Request=~p~n", [Timeout1, Timeout, ServerRef, Request, Reason]),
+%%                     {A1, A2, A3} = now(),
+%%                     random:seed(A1, A2, A3),
+%%                     T = random:uniform(2000),
+%%                             timer:sleep(T),
+%%                             call(ServerRef, Request, Timeout - Timeout1, Timeout1);
+%%                         ReturnValue ->
+%%                             ReturnValue
+%%                     end
+%%             end
+%%     end.
 
 %%====================================================================
 %% API
@@ -51,41 +50,6 @@ call(ServerRef, Request, Timeout, Timeout1) ->
 start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
-%%--------------------------------------------------------------------
-%%  dump operation
-%%--------------------------------------------------------------------
-dump_op(StartNode, Level) ->
-    Level0Nodes = enum_nodes_(StartNode, 0),
-    case Level of
-        0 ->
-            Level0Nodes;
-        _ ->
-            StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
-                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
-                                                                                    Level0Nodes))),
-            lists:map(fun(Node) ->
-                              lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
-                                        enum_nodes_(Node, Level))
-                      end,
-                      StartNodes)
-    end.
-
-dump_side_([], _Side, _Level) ->
-    [];
-dump_side_(StartNode, Side, Level) ->
-    gen_server:cast(StartNode, {dump_side_cast, Side, Level, self(), []}),
-    receive
-        {dump_side_accumed, Accumed} ->
-            Accumed
-    end.
-
-enum_nodes_(StartNode, Level) ->
-    {Key, Value, MembershipVector, LeftNodes, RightNodes} = call(StartNode, get_op),
-    RightNode = node_on_level(RightNodes, Level),
-    LeftNode = node_on_level(LeftNodes, Level),
-    lists:append([dump_side_(LeftNode, left, Level),
-                  [{StartNode, Key, Value, MembershipVector}],
-                  dump_side_(RightNode, right, Level)]).
 
 %%--------------------------------------------------------------------
 %%  set expire_date operation
@@ -107,15 +71,14 @@ insert_op(Introducer, NodeToInsert) ->
 delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _, _} = search_detail_op(Introducer, Key),
     if FoundKey =:= Key ->
-            %% ToDo terminate child
-            call(FoundNode, delete_op),
+            gen_server:call(FoundNode, delete_op),
             mio_sup:terminate_node(FoundNode),
             ok;
        true -> ng
     end.
 
 delete_op(Node) ->
-    call(Node, delete_op),
+    gen_server:call(Node, delete_op),
     mio_sup:terminate_node(Node),
     ok.
 
@@ -170,7 +133,7 @@ search_op(StartNode, Key) ->
 %%--------------------------------------------------------------------
 buddy_op(Node, MembershipVector, Direction, Level) ->
     ?TRACE(buddy_op),
-    call(Node, {buddy_op, MembershipVector, Direction, Level}).
+    gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
 %%--------------------------------------------------------------------
 %%  link operation
@@ -179,17 +142,17 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %% For concurrent node joins, link_right_op checks consistency of SkipGraph.
 %% If found inconsistent state, link_right_op will be redirect to the next node.
 link_right_op(Node, Level, Right, RightKey) ->
-    call(Node, {link_right_op, Level, Right, RightKey}).
+    gen_server:call(Node, {link_right_op, Level, Right, RightKey}).
 
 link_left_op(Node, Level, Left, LeftKey) ->
-    call(Node, {link_left_op, Level, Left, LeftKey}).
+    gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
 
 %% For delete operation, no redirect is required.
 link_right_no_redirect_op(Node, Level, Right, RightKey) ->
-    call(Node, {link_right_no_redirect_op, Level, Right, RightKey}).
+    gen_server:call(Node, {link_right_no_redirect_op, Level, Right, RightKey}).
 
 link_left_no_redirect_op(Node, Level, Left, LeftKey) ->
-    call(Node, {link_left_no_redirect_op, Level, Left, LeftKey}).
+    gen_server:call(Node, {link_left_no_redirect_op, Level, Left, LeftKey}).
 
 set_nth(Index, Value, List) ->
     lists:append([lists:sublist(List, 1, Index - 1),
@@ -630,7 +593,7 @@ insert_op_call(From, Self, State, Introducer) ->
         NeighborKey =:= MyKey ->
             MyValue = State#state.value,
             %% overwrite the value
-            ok = call(Neighbor, {set_op, MyValue}),
+            ok = gen_server:call(Neighbor, {set_op, MyValue}),
             gen_server:reply(From, ok);
         %% insert!
         true ->
@@ -801,3 +764,39 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                     link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
             end
     end.
+
+%%--------------------------------------------------------------------
+%%  dump operation
+%%--------------------------------------------------------------------
+dump_op(StartNode, Level) ->
+    Level0Nodes = enum_nodes_(StartNode, 0),
+    case Level of
+        0 ->
+            Level0Nodes;
+        _ ->
+            StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
+                                                                          lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
+                                                                                    Level0Nodes))),
+            lists:map(fun(Node) ->
+                              lists:map(fun({Pid, Key, Value, MV}) -> {Pid, Key, Value, MV} end,
+                                        enum_nodes_(Node, Level))
+                      end,
+                      StartNodes)
+    end.
+
+dump_side_([], _Side, _Level) ->
+    [];
+dump_side_(StartNode, Side, Level) ->
+    gen_server:cast(StartNode, {dump_side_cast, Side, Level, self(), []}),
+    receive
+        {dump_side_accumed, Accumed} ->
+            Accumed
+    end.
+
+enum_nodes_(StartNode, Level) ->
+    {Key, Value, MembershipVector, LeftNodes, RightNodes} = gen_server:call(StartNode, get_op),
+    RightNode = node_on_level(RightNodes, Level),
+    LeftNode = node_on_level(LeftNodes, Level),
+    lists:append([dump_side_(LeftNode, left, Level),
+                  [{StartNode, Key, Value, MembershipVector}],
+                  dump_side_(RightNode, right, Level)]).
