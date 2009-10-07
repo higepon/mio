@@ -50,12 +50,9 @@ start_link(Port, MaxLevel, BootNode) ->
     Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
-%% todo: on exit, cleanup socket
-
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
 memcached(Port, MaxLevel, BootNode) ->
     Self = self(),
     spawn(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
@@ -67,27 +64,22 @@ memcached(Port, MaxLevel, BootNode) ->
 
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
     {ok, Sock} = gen_tcp:accept(Listen),
-%   io:format("<~p new client connection\n", [Sock]),
     spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
     mio_accept(Listen, WriteSerializer, StartNode, MaxLevel).
 
 process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
-%%            ?LOGF(">~p ~s", [Sock, Line]),
             Token = string:tokens(binary_to_list(Line), " \r\n"),
-%%            ?LOGF("<Token:~p>", [Token]),
             NewStartNode =
             case Token of
                 ["get", Key] ->
                     process_get(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
                     StartNode;
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    ?LOGF(">range search Key1 =~p Key2=~p Limit=~p\n", [Key1, Key2, Limit]),
                     process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
                     StartNode;
                 ["set", Key, Flags, ExpireDate, Bytes] ->
@@ -95,7 +87,6 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
                     StartNode;
-%%                    InsertedNode;
                 ["delete", Key] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
@@ -106,17 +97,15 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
                 ["quit"] ->
-%%                    io:format("CLOSE~n"),
                     gen_tcp:close(Sock);
                 X ->
-                    io:format("<Error:~p>", [X]),
+                    ?ERRORF("<~p error: ~p\n", [Sock, X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n"),
                     StartNode
             end,
             process_command(Sock, WriteSerializer, NewStartNode, MaxLevel);
         {error, closed} ->
             ok;
-%            ?LOGF("<~p connection closed.\n", [Sock]);
         Error ->
             ?ERRORF("<~p error: ~p\n", [Sock, Error])
     end.
@@ -159,7 +148,6 @@ process_get(Sock, WriteSerializer, StartNode, Key) ->
             enqueue_to_delete(WriteSerializer, Node);
        true -> []
     end.
-
 
 process_values([{_, Key, Value, _} | More]) ->
     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
@@ -206,7 +194,6 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, M
                                  true ->
                                      ExpireDate + UnixTime
                              end,
-            io:format("ExpireDate=~p\n", [ExpireDateUnixTime]),
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
             mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),

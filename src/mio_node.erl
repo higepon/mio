@@ -503,8 +503,7 @@ insert_node(Self, State, Neighbor, NeighborKey) ->
     LinkedState = link_on_level0(Self, State, Neighbor, NeighborKey),
     %% link on level > 0
     MaxLevel = length(LinkedState#state.membership_vector),
-    ReturnState = link_on_level_ge1(Self, MaxLevel, LinkedState),
-    gen_server:call(Self, {set_state_op, ReturnState}).
+    link_on_level_ge1(Self, MaxLevel, LinkedState).
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
@@ -655,6 +654,7 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                     end,
                     % [A:m] <- [NodeToInsert:m]
                     NewLinkedState1 = set_left(LinkedState, Level, Buddy, BuddyKey),
+                    link_left_op(Self, Level, Buddy, BuddyKey),
 
                     % [NodeToInsert:m] -> [D:m]
                     NewLinkedState2 = set_right(NewLinkedState1, Level, BuddyRight, BuddyRightKey),
