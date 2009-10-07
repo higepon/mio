@@ -503,6 +503,35 @@ overwrite_value(_Config) ->
     {ok, new_value3} = search_op(Node9, key3),
     ok.
 
+% for coverage we need this test.
+overwrite_value2(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 1])),
+
+    {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
+    ok = mio_node:insert_op(Node3, Node3),
+    ok = mio_node:insert_op(Node3, Node9),
+    ok = mio_node:insert_op(Node3, Node7),
+    ok = mio_node:insert_op(Node3, Node5),
+    ok.
+
+% for coverage we need this test.
+overwrite_value3(_Config) ->
+    {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
+    {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
+    {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
+    {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
+
+    {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
+    ok = mio_node:insert_op(Node3, Node3),
+    ok = mio_node:insert_op(Node3, Node9),
+    ok = mio_node:insert_op(Node3, Node7),
+    ok = mio_node:insert_op(Node3, Node5),
+    ok.
+
+
 search_not_found(_Config) ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -552,6 +581,8 @@ all() ->
      range_search_asc_op,
      range_search_desc_op,
      overwrite_value,
+     overwrite_value2,
+     overwrite_value3,
      handle_info,
      terminate_node,
      node_on_level
