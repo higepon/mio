@@ -30,6 +30,17 @@ end_per_suite(_Config) ->
     application:stop(mio),
     ok.
 
+%% Helper
+search_op(StartNode, Key) ->
+    case mio_node:search_op(StartNode, Key) of
+        {_FoundNode, FoundKey, FoundValue, _ExpireTime} ->
+            if FoundKey =:= Key ->
+                    {ok, FoundValue};
+               true -> ng
+            end;
+        timeout -> ng
+    end.
+
 get_call(_Config) ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
@@ -38,7 +49,7 @@ get_call(_Config) ->
 %% very simple case: there is only one node.
 search_level2_simple(_Config) ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    {_, myKey, myValue, _} = mio_node:search_detail_op(Node, myKey),
+    {_, myKey, myValue, _} = mio_node:search_op(Node, myKey),
 
     %% dump nodes on Level 0 and 1
     [{_, myKey, myValue, [1, 0]}] = mio_node:dump_op(Node, 0),
@@ -60,10 +71,10 @@ search_level2_1(_Config) ->
     [[{_, key3, value3, [0, 0]}], [{_, key5, value5, [1, 1]}]] = mio_node:dump_op(Node3, 1),
 
     %% search!
-    {ok, value3} = mio_node:search_op(Node3, key3),
-    {ok, value3} = mio_node:search_op(Node5, key3),
-    {ok, value5} = mio_node:search_op(Node3, key5),
-    {ok, value5} = mio_node:search_op(Node5, key5),
+    {ok, value3} = search_op(Node3, key3),
+    {ok, value3} = search_op(Node5, key3),
+    {ok, value5} = search_op(Node3, key5),
+    {ok, value5} = search_op(Node5, key5),
     ok.
 
 search_level2_2(_Config) ->
@@ -86,20 +97,20 @@ search_level2_2(_Config) ->
     [[{_, key5, value5, [0, 1]}], [{_, key3, value3, [1, 0]}, {_, key9, value9, [1, 1]}]] = mio_node:dump_op(Node9, 1),
 
     %% search!
-    {ok, value3} = mio_node:search_op(Node3, key3),
-    {ok, value3} = mio_node:search_op(Node5, key3),
-    {ok, value3} = mio_node:search_op(Node9, key3),
+    {ok, value3} = search_op(Node3, key3),
+    {ok, value3} = search_op(Node5, key3),
+    {ok, value3} = search_op(Node9, key3),
 
-    {ok, value5} = mio_node:search_op(Node3, key5),
-    {ok, value5} = mio_node:search_op(Node5, key5),
-    {ok, value5} = mio_node:search_op(Node9, key5),
+    {ok, value5} = search_op(Node3, key5),
+    {ok, value5} = search_op(Node5, key5),
+    {ok, value5} = search_op(Node9, key5),
 
-    {ok, value9} = mio_node:search_op(Node3, key9),
-    {ok, value9} = mio_node:search_op(Node5, key9),
+    {ok, value9} = search_op(Node3, key9),
+    {ok, value9} = search_op(Node5, key9),
 
-    ng = mio_node:search_op(Node5, key10),
+    ng = search_op(Node5, key10),
     %% closest node should be returned
-    {_, key5, value5, _} = mio_node:search_detail_op(Node5, key8),
+    {_, key5, value5, _} = mio_node:search_op(Node5, key8),
     ok.
 
 search_level2_3(_Config) ->
@@ -129,44 +140,44 @@ search_level2_3(_Config) ->
 
     %% search!
     %%  level1: 3->7 level0: 7->8
-    {ok, value8} = mio_node:search_op(Node3, key8),
-    {ok, value3} = mio_node:search_op(Node3, key3),
-    {ok, value5} = mio_node:search_op(Node3, key5),
-    {ok, value7} = mio_node:search_op(Node3, key7),
-    {ok, value9} = mio_node:search_op(Node3, key9),
+    {ok, value8} = search_op(Node3, key8),
+    {ok, value3} = search_op(Node3, key3),
+    {ok, value5} = search_op(Node3, key5),
+    {ok, value7} = search_op(Node3, key7),
+    {ok, value9} = search_op(Node3, key9),
 
-    {ok, value8} = mio_node:search_op(Node5, key8),
-    {ok, value3} = mio_node:search_op(Node5, key3),
-    {ok, value5} = mio_node:search_op(Node5, key5),
-    {ok, value7} = mio_node:search_op(Node5, key7),
-    {ok, value9} = mio_node:search_op(Node5, key9),
+    {ok, value8} = search_op(Node5, key8),
+    {ok, value3} = search_op(Node5, key3),
+    {ok, value5} = search_op(Node5, key5),
+    {ok, value7} = search_op(Node5, key7),
+    {ok, value9} = search_op(Node5, key9),
 
-    {ok, value8} = mio_node:search_op(Node7, key8),
-    {ok, value3} = mio_node:search_op(Node7, key3),
-    {ok, value5} = mio_node:search_op(Node7, key5),
-    {ok, value7} = mio_node:search_op(Node7, key7),
-    {ok, value9} = mio_node:search_op(Node7, key9),
+    {ok, value8} = search_op(Node7, key8),
+    {ok, value3} = search_op(Node7, key3),
+    {ok, value5} = search_op(Node7, key5),
+    {ok, value7} = search_op(Node7, key7),
+    {ok, value9} = search_op(Node7, key9),
 
-    {ok, value8} = mio_node:search_op(Node8, key8),
-    {ok, value3} = mio_node:search_op(Node8, key3),
-    {ok, value5} = mio_node:search_op(Node8, key5),
-    {ok, value7} = mio_node:search_op(Node8, key7),
-    {ok, value9} = mio_node:search_op(Node8, key9),
+    {ok, value8} = search_op(Node8, key8),
+    {ok, value3} = search_op(Node8, key3),
+    {ok, value5} = search_op(Node8, key5),
+    {ok, value7} = search_op(Node8, key7),
+    {ok, value9} = search_op(Node8, key9),
 
-    {ok, value8} = mio_node:search_op(Node9, key8),
-    {ok, value3} = mio_node:search_op(Node9, key3),
-    {ok, value5} = mio_node:search_op(Node9, key5),
-    {ok, value7} = mio_node:search_op(Node9, key7),
-    {ok, value9} = mio_node:search_op(Node9, key9),
+    {ok, value8} = search_op(Node9, key8),
+    {ok, value3} = search_op(Node9, key3),
+    {ok, value5} = search_op(Node9, key5),
+    {ok, value7} = search_op(Node9, key7),
+    {ok, value9} = search_op(Node9, key9),
 
 
-    ng = mio_node:search_op(Node5, key10),
-    ng = mio_node:search_op(Node5, key6),
+    ng = search_op(Node5, key10),
+    ng = search_op(Node5, key6),
     %% closest node should be returned
     %% Is this ok?
     %%  The definition of closest node will change depends on whether search direction is right or left.
-    {_, key9, value9, _} = mio_node:search_detail_op(Node5, key9_9),
-    {_, key7, value7, _} = mio_node:search_detail_op(Node9, key6),
+    {_, key9, value9, _} = mio_node:search_op(Node5, key9_9),
+    {_, key7, value7, _} = mio_node:search_op(Node9, key6),
     ok.
 
 test_set_nth(_Config) ->
@@ -471,10 +482,10 @@ search_closest(_Config) ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
-    {_, key7, value7, _} = mio_node:search_detail_op(Node3, key8),
-    {_, key7, value7, _} = mio_node:search_detail_op(Node5, key8),
-    {_, key7, value7, _} = mio_node:search_detail_op(Node7, key8),
-    {_, key7, value7, _} = mio_node:search_detail_op(Node9, key8),
+    {_, key7, value7, _} = mio_node:search_op(Node3, key8),
+    {_, key7, value7, _} = mio_node:search_op(Node5, key8),
+    {_, key7, value7, _} = mio_node:search_op(Node7, key8),
+    {_, key7, value7, _} = mio_node:search_op(Node9, key8),
     ok.
 
 overwrite_value(_Config) ->
@@ -489,7 +500,7 @@ overwrite_value(_Config) ->
     ok = mio_node:insert_op(Node5, Node9),
     ok = mio_node:insert_op(Node9, Node7),
     ok = mio_node:insert_op(Node9, NewNode3),
-    {ok, new_value3} = mio_node:search_op(Node9, key3),
+    {ok, new_value3} = search_op(Node9, key3),
     ok.
 
 search_not_found(_Config) ->
@@ -497,7 +508,7 @@ search_not_found(_Config) ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node3, Node5),
-    ng =  mio_node:search_op(Node5, key4),
+    ng =  search_op(Node5, key4),
     ok.
 
 handle_info(_Config) ->

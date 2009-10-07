@@ -10,7 +10,7 @@
 %% API
 -export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2,
          insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
-         search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3,
+         search_op/2, link_right_op/4, link_left_op/4, set_nth/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4]).
 
@@ -39,15 +39,13 @@ insert_op(Introducer, NodeToInsert) ->
     %% Insertion timeout should be infinity since they are serialized and waiting.
     gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity).
 
-
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
-    {FoundNode, FoundKey, _, _} = search_detail_op(Introducer, Key),
+    {FoundNode, FoundKey, _, _} = search_op(Introducer, Key),
     if FoundKey =:= Key ->
-            gen_server:call(FoundNode, delete_op),
-            mio_sup:terminate_node(FoundNode),
+            delete_op(FoundNode),
             ok;
        true -> ng
     end.
@@ -74,34 +72,23 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ClosestNode, _, _, _} = search_detail_op(StartNode, StartKey),
+    {ClosestNode, _, _, _} = search_op(StartNode, StartKey),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
         {range_search_accumed, Accumed} ->
             Accumed
     after 100000 ->
-            [timeout]
+            range_search_timeout %% should never happen
     end.
 
 %%--------------------------------------------------------------------
 %%  search operation
 %%--------------------------------------------------------------------
-search_detail_op(StartNode, Key) ->
+search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
     gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity).
-
-search_op(StartNode, Key) ->
-    %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
-    case search_detail_op(StartNode, Key) of
-        {_FoundNode, FoundKey, FoundValue, _ExpireTime} ->
-            if FoundKey =:= Key ->
-                    {ok, FoundValue};
-               true -> ng
-            end;
-        timeout -> ng
-    end.
 
 %%--------------------------------------------------------------------
 %%  buddy operation
@@ -562,7 +549,7 @@ insert_op_call(From, Self, _State, Introducer) when Introducer =:= Self->
     gen_server:reply(From, ok);
 insert_op_call(From, Self, State, Introducer) ->
     MyKey = State#state.key,
-    {Neighbor, NeighborKey, _, _} = search_detail_op(Introducer, MyKey),
+    {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
     if
         %% MyKey is already exists
         NeighborKey =:= MyKey ->

@@ -145,7 +145,7 @@ check_expired(ExpireDate) ->
     {Expired, Expired}.
 
 process_get(Sock, WriteSerializer, StartNode, Key) ->
-    {Node, FoundKey, Value, ExpireDate} = mio_node:search_detail_op(StartNode, Key),
+    {Node, FoundKey, Value, ExpireDate} = mio_node:search_op(StartNode, Key),
     {Expired, NeedEnqueue} = check_expired(ExpireDate),
     if Key =:= FoundKey andalso not Expired ->
             ok = gen_tcp:send(Sock, io_lib:format(
