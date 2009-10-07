@@ -94,7 +94,6 @@ search_op(StartNode, Key) ->
 %%  buddy operation
 %%--------------------------------------------------------------------
 buddy_op(Node, MembershipVector, Direction, Level) ->
-    ?TRACE(buddy_op),
     gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
 
 %%--------------------------------------------------------------------
@@ -103,6 +102,7 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 
 %% For concurrent node joins, link_right_op checks consistency of SkipGraph.
 %% If found inconsistent state, link_right_op will be redirect to the next node.
+%% But for now, since we serialize all insert/delete requests, we don't redirect.
 link_right_op(Node, Level, Right, RightKey) ->
     gen_server:call(Node, {link_right_op, Level, Right, RightKey}).
 
@@ -115,11 +115,6 @@ link_right_no_redirect_op(Node, Level, Right, RightKey) ->
 
 link_left_no_redirect_op(Node, Level, Left, LeftKey) ->
     gen_server:call(Node, {link_left_no_redirect_op, Level, Left, LeftKey}).
-
-set_nth(Index, Value, List) ->
-    lists:append([lists:sublist(List, 1, Index - 1),
-                 [Value],
-                 lists:sublist(List, Index + 1, length(List))]).
 
 %%====================================================================
 %% gen_server callbacks
@@ -159,7 +154,7 @@ init(Args) ->
 %% Read Only Operations start
 handle_call({search_op, Key, Level}, From, State) ->
     Self = self(),
-    spawn(?MODULE, search_op_call, [From, Self, State, Key, Level]),
+    spawn(?MODULE, search_op_call, [From, State, Self, Key, Level]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->
@@ -168,7 +163,7 @@ handle_call(get_op, From, State) ->
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
-    spawn(?MODULE, buddy_op_call, [From, Self, State, MembershipVector, Direction, Level]),
+    spawn(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
 handle_call({set_state_op, NewState}, _From, _State) ->
@@ -176,7 +171,7 @@ handle_call({set_state_op, NewState}, _From, _State) ->
 
 handle_call({insert_op, Introducer}, From, State) ->
     Self = self(),
-    spawn(?MODULE, insert_op_call, [From, Self, State, Introducer]),
+    spawn(?MODULE, insert_op_call, [From, State, Self, Introducer]),
     {noreply, State};
 
 handle_call(delete_op, From, State) ->
@@ -188,37 +183,15 @@ handle_call({set_op, NewValue}, _From, State) ->
 
 handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
     Self = self(),
-    spawn(?MODULE, link_right_op_call, [From, Self, State, RightNode, RightKey, Level]),
+    spawn(?MODULE, link_right_op_call, [From, State, Self, RightNode, RightKey, Level]),
     {noreply, State};
-%% N.B.
-%% For concurrent join, we should check whether Skip Graph is not broken.
-%% But for now, we serialize join/delete request.
-
-%%     case right(State, Level) of
-%%         [] ->
-%%             {reply, ok, set_right(State, Level, RightNode)};
-%%         MyRightNode ->
-%%             {MyRightKey, _, _, _, _} = call(MyRightNode, get_op),
-%%             {RightKey, _, _, _, _} = call(RightNode, get_op),
-%%     MyKey = State#state.key,
-
-%%             io:format("************MyKey=~p RightKey=~p MyRightKey=~p Level=~p~n", [MyKey, RightKey, MyRightKey, Level]),
-
-%%             if RightKey > MyRightKey ->
-%% %                    link_right_op(MyRightNode, Level, RightNode),
-%%                     {reply, ok, set_right(State, Level, RightNode)};
-%% %                    {reply, ok, State};
-%%                true ->
-%                    {reply, ok, set_right(State, Level, RightNode)};
-%%             end
-%%     end;
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),
-    spawn(?MODULE, link_left_op_call, [From, Self, State, LeftNode, LeftKey, Level]),
+    spawn(?MODULE, link_left_op_call, [From, State, Self, LeftNode, LeftKey, Level]),
     {noreply, State};
 
 handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
@@ -228,49 +201,13 @@ handle_call({link_left_no_redirect_op, Level, LeftNode, LeftKey}, _From, State) 
     Prev = {left(State, Level), left_key(State, Level)},
     {reply, Prev, set_left(State, Level, LeftNode, LeftKey)}.
 
-link_right_op_call(From, Self, _State, RightNode, RightKey, Level) ->
-%%     case right(State, Level) of
-%%         [] ->
-            Prev = link_right_no_redirect_op(Self, Level, RightNode, RightKey),
-            gen_server:reply(From, Prev).
-%%         MyRightNode ->
-%%             {MyRightKey, _, _, _, _} = call(MyRightNode, get_op),
-%%             {RightKey, _, _, _, _} = call(RightNode, get_op),
-%%             MyKey = State#state.key,
+link_right_op_call(From, _State, Self, RightNode, RightKey, Level) ->
+    Prev = link_right_no_redirect_op(Self, Level, RightNode, RightKey),
+    gen_server:reply(From, Prev).
 
-%%             if RightKey > MyRightKey ->
-%%                     io:format("************MyKey=~p RightKey=~p MyRightKey=~p Level=~p~n", [MyKey, RightKey, MyRightKey, Level]),
-%%                     %% redirec to next node
-%%                     link_right_op(MyRightNode, Level, RightNode),
-%%                     gen_server:reply(From, ok);
-%%                true ->
-%%                     link_right_no_redirect_op(Self, Level, RightNode),
-%%                     gen_server:reply(From, ok)
-%%             end
-%    end.
-
-link_left_op_call(From, Self, _State, LeftNode, LeftKey, Level) ->
-%%     case left(State, Level) of
-%%         [] ->
-            Prev = link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
-            gen_server:reply(From, Prev).
-%%         MyLeftNode ->
-%%             {MyLeftKey, _, _, _, _} = call(MyLeftNode, get_op),
-%%             {LeftKey, _, _, _, _} = call(LeftNode, get_op),
-%%             MyKey = State#state.key,
-
-%%             if LeftKey < MyLeftKey ->
-%%                     io:format("************MyKey=~p LeftKey=~p MyLeftKey=~p Level=~p~n", [MyKey, LeftKey, MyLeftKey, Level]),
-%%                     %% redirec to next node
-%%                     link_left_op(MyLeftNode, Level, LeftNode),
-%%                     gen_server:reply(From, ok);
-%%                true ->
-%%                     link_left_no_redirect_op(Self, Level, LeftNode),
-%%                     gen_server:reply(From, ok)
-%%             end
-%%     end.
-
-
+link_left_op_call(From, _State, Self, LeftNode, LeftKey, Level) ->
+    Prev = link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
+    gen_server:reply(From, Prev).
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -304,10 +241,6 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
     end,
     {noreply, State};
 
-
-%%--------------------------------------------------------------------
-%%  search operation
-%%--------------------------------------------------------------------
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
@@ -380,6 +313,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+set_nth(Index, Value, List) ->
+    lists:append([lists:sublist(List, 1, Index - 1),
+                 [Value],
+                 lists:sublist(List, Index + 1, length(List))]).
+
 node_on_level(Nodes, Level) ->
     case Nodes of
         [] -> [];
@@ -398,30 +336,29 @@ left_key(State, Level) ->
 right_key(State, Level) ->
     node_on_level(State#state.right_keys, Level).
 
-
 set_right(State, Level, Node, Key) ->
     NewState = State#state{right_keys=set_nth(Level + 1, Key, State#state.right_keys)},
     NewState#state{right=set_nth(Level + 1, Node, NewState#state.right)}.
-
 
 set_left(State, Level, Node, Key) ->
     NewState = State#state{left_keys=set_nth(Level + 1, Key, State#state.left_keys)},
     NewState#state{left=set_nth(Level + 1, Node, NewState#state.left)}.
 
+%%--------------------------------------------------------------------
+%%% Implementation of call
+%%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
 
 set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
 
-buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
+buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     if
         Found ->
             MyKey = State#state.key,
-%%             MyLeftKey = left_key(State, Level),
             MyRightKey = right_key(State, Level),
-%%             MyLeft = left(State, Level),
             MyRight = right(State, Level),
             gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
@@ -447,7 +384,7 @@ buddy_op_call(From, Self, State, MembershipVector, Direction, Level) ->
 %%  Search operation
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
-search_op_call(From, Self, State, Key, Level) ->
+search_op_call(From, State, Self, Key, Level) ->
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -544,10 +481,11 @@ delete_loop_(State, Level) ->
 %%   N.B.
 %%   insert_op may issue other xxx_op, for example link_right_op.
 %%   These issued op should not be circular.
-insert_op_call(From, Self, _State, Introducer) when Introducer =:= Self->
+%%
+insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% there's no buddy
     gen_server:reply(From, ok);
-insert_op_call(From, Self, State, Introducer) ->
+insert_op_call(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
     if
