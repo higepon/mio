@@ -11,38 +11,14 @@
 -export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2,
          insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
          search_op/2, search_detail_op/2, link_right_op/4, link_left_op/4, set_nth/3,
-         set_expire_date_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
+         set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire}).
-
-%% call(ServerRef, Request) ->
-%%     call(ServerRef, Request, 5000, 3000).
-%% call(ServerRef, Request, Timeout, Timeout1) ->
-%%     if 0 >= Timeout ->
-%%             timeout;
-%%        true ->
-%%             case ServerRef =:= self() of
-%%                 true ->
-%%                     ?ERRORF("***** FATAL call myself **** : ~p ~p~n", [ServerRef, Request]);
-%%                 _ ->
-%%                     case catch gen_server:call(ServerRef, Request, Timeout1) of
-%%                         {'EXIT', Reason} ->
-%%                             ?ERRORF("Timeout=~p/~p Target=~p Request=~p Request=~p~n", [Timeout1, Timeout, ServerRef, Request, Reason]),
-%%                     {A1, A2, A3} = now(),
-%%                     random:seed(A1, A2, A3),
-%%                     T = random:uniform(2000),
-%%                             timer:sleep(T),
-%%                             call(ServerRef, Request, Timeout - Timeout1, Timeout1);
-%%                         ReturnValue ->
-%%                             ReturnValue
-%%                     end
-%%             end
-%%     end.
+-record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time}).
 
 %%====================================================================
 %% API
@@ -50,12 +26,11 @@
 start_link(Args) ->
     gen_server:start_link(?MODULE, Args, []).
 
-
 %%--------------------------------------------------------------------
-%%  set expire_date operation
+%%  set expire_time operation
 %%--------------------------------------------------------------------
-set_expire_date_op(Node, Expire_Date) ->
-    gen_server:call(Node, {set_expire_date_op, Expire_Date}).
+set_expire_time_op(Node, ExpireTime) ->
+    gen_server:call(Node, {set_expire_time_op, ExpireTime}).
 
 %%--------------------------------------------------------------------
 %%  insert operation
@@ -120,7 +95,7 @@ search_detail_op(StartNode, Key) ->
 search_op(StartNode, Key) ->
     %% Since we don't want to lock any nodes on search path, we use gen_server:cast instead of gen_server:cast
     case search_detail_op(StartNode, Key) of
-        {_FoundNode, FoundKey, FoundValue, _Expire} ->
+        {_FoundNode, FoundKey, FoundValue, _ExpireTime} ->
             if FoundKey =:= Key ->
                     {ok, FoundValue};
                true -> ng
@@ -171,7 +146,7 @@ set_nth(Index, Value, List) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(Args) ->
-    [MyKey, MyValue, MyMembershipVector, Expire] = Args,
+    [MyKey, MyValue, MyMembershipVector, ExpireTime] = Args,
     Length = length(MyMembershipVector),
     EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     {ok, #state{key=MyKey,
@@ -181,7 +156,7 @@ init(Args) ->
                 right=EmptyNeighbor,
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
-                expire=Expire
+                expire_time=ExpireTime
                }}.
 
 %%--------------------------------------------------------------------
@@ -251,8 +226,8 @@ handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
 %%             end
 %%     end;
 
-handle_call({set_expire_date_op, ExpireDate}, _From, State) ->
-    {reply, ok, State#state{expire=ExpireDate}};
+handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
+    {reply, ok, State#state{expire_time=ExpireTime}};
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),
@@ -366,7 +341,7 @@ handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, S
 range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    MyExpire = State#state.expire,
+    MyExpireTime = State#state.expire_time,
     if Limit =:= 0 ->
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
        IsOutOfRange ->
@@ -380,10 +355,10 @@ range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsO
        Key1 < MyKey andalso MyKey < Key2 ->
             case NextNodeFunc(State, 0) of
                 [] ->
-                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyExpire} | Accum])};
+                    ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyExpireTime} | Accum])};
                 NextNode ->
                     gen_server:cast(NextNode,
-                                    {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyExpire} | Accum], Limit - 1})
+                                    {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyExpireTime} | Accum], Limit - 1})
             end;
        true ->
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
@@ -496,8 +471,8 @@ search_op_call(From, Self, State, Key, Level) ->
         %% Found!
         MyKey =:= Key ->
             MyValue = State#state.value,
-            MyExpire = State#state.expire,
-            gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
+            MyExpireTime = State#state.expire_time,
+            gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
         MyKey < Key ->
             search_to_right(From, Self, State, SearchLevel, Key);
         true ->
@@ -508,8 +483,8 @@ search_op_call(From, Self, State, Key, Level) ->
 search_to_right(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    MyExpire = State#state.expire,
-    gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
+    MyExpireTime = State#state.expire_time,
+    gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
 
 search_to_right(From, Self, State, Level, Key) ->
     case right(State, Level) of
@@ -529,8 +504,8 @@ search_to_right(From, Self, State, Level, Key) ->
 search_to_left(From, Self, State, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
-    MyExpire = State#state.expire,
-    gen_server:reply(From, {Self, MyKey, MyValue, MyExpire});
+    MyExpireTime = State#state.expire_time,
+    gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
 
 search_to_left(From, Self, State, Level, Key) ->
     case left(State, Level) of

@@ -168,7 +168,7 @@ process_values([]) ->
     "END\r\n".
 
 enqueue_to_delete(WriteSerializer, Node) ->
-    mio_node:set_expire_date_op(Node, -1),
+    mio_node:set_expire_time_op(Node, -1),
     spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
 
 filter_expired(WriteSerializer, Values) ->
