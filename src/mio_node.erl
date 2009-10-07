@@ -467,7 +467,6 @@ delete_loop_(State, Level) ->
     case LeftNode of
         [] -> [];
         _ ->
-            ?LOG(),
             link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
     delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
@@ -596,11 +595,6 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                     %% [NodeToInsert] <- [Buddy]
                     link_left_op(Buddy, Level, Self, MyKey),
 
-                    %% We need not to care about Buddy's left.
-                    %% LeftNodeOnLower doesn't exist,
-                    %% it means Buddy is left most
-                    ?ASSERT_MATCH([], node_on_level(BuddyLeft, Level)),
-
                     %% [NodeToInsert] -> [Buddy]
                     NewLinkedState = set_right(LinkedState, Level, Buddy, BuddyKey),
                     link_right_op(Self, Level, Buddy, BuddyKey),
@@ -634,7 +628,6 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                                 _ ->
                                     %% [NodeToInsert:m] <- [D:m]
                                     link_left_op(Buddy2, Level, Self, MyKey),
-                                    ?ASSERT_MATCH([], node_on_level(BuddyLeft2, Level)),
 
                                     %% [NodeToInsert:m] -> [D:m]
                                     NewLinkedState2 = set_right(LinkedState, Level, Buddy2, Buddy2Key),
