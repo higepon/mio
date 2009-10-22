@@ -8,7 +8,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2,
+-export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
          insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
          search_op/2, link_right_op/4, link_left_op/4, set_nth/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
@@ -159,6 +159,10 @@ handle_call({search_op, Key, Level}, From, State) ->
 
 handle_call(get_op, From, State) ->
     spawn(?MODULE, get_op_call, [From, State]),
+    {noreply, State};
+
+handle_call({get_right_op, Level}, From, State) ->
+    spawn(?MODULE, get_right_op_call, [From, State, Level]),
     {noreply, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
@@ -346,6 +350,10 @@ set_left(State, Level, Node, Key) ->
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
+get_right_op_call(From, State, Level) ->
+    RightNode = right(State, Level),
+    RightKey = right_key(State, Level),
+    gen_server:reply(From, {RightNode, RightKey}).
 
 set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
@@ -495,6 +503,7 @@ insert_op_call(From, State, Self, Introducer) ->
 
             %% overwrite the value
             ok = gen_server:call(Neighbor, {set_op, MyValue}),
+
             mio_lock:unlock([Neighbor]),
             gen_server:reply(From, ok);
         %% insert!
@@ -513,25 +522,54 @@ insert_node(Self, State, Neighbor, NeighborKey) ->
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
-    %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-    {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
-    case PrevNeighborRight of
-        [] -> [];
-        _ ->
-            %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-            link_left_op(PrevNeighborRight, 0, Self, MyKey)
+
+    %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
+    {_, _, _, _, NeigborRightNodes} = gen_server:call(Neighbor, get_op),
+    NeighborRight = node_on_level(NeigborRightNodes, 0),
+    IsLocked = mio_lock:lock([Neighbor, Self, NeighborRight]),
+    if not IsLocked ->
+            ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
+            exit(lock_failed);
+       true -> []
     end,
-    %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-    State1 = set_left(State, 0, Neighbor, NeighborKey),
-    link_left_op(Self, 0, Neighbor, NeighborKey),
-    %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-    LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
-    link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
-    LinkedState;
+
+    %% TODO: check deleted
+
+    %% After locked 3 nodes, check invariants.
+    %% invariant
+    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+    %%   Neighbor->rightKey < MyKey
+    {NeighborRight, NeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
+
+    if NeighborRightKey =/= [] andalso MyKey >= NeighborRightKey ->
+            %% Retry: another key is inserted
+            %% unlock
+            hoge;
+       true ->
+            %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
+            {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
+            case PrevNeighborRight of
+                [] -> [];
+                _ ->
+                    %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+                    link_left_op(PrevNeighborRight, 0, Self, MyKey)
+            end,
+            %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
+            State1 = set_left(State, 0, Neighbor, NeighborKey),
+            link_left_op(Self, 0, Neighbor, NeighborKey),
+            %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
+            LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
+            link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
+
+            mio_lock:unlock([Neighbor, Self, NeighborRight]),
+            LinkedState
+    end;
+
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(Self, State, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
+
     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
     {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
     case PrevNeighborLeft of
