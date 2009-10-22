@@ -31,14 +31,16 @@ unlock(Nodes) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-set_lock([], _LockedNodes) ->
+set_lock(NodesToLock, LockedNodes) ->
+    set_lock(NodesToLock, LockedNodes, 0).
+set_lock([], _LockedNodes, _Retries) ->
     true;
-set_lock([NodeToLock | More], LockedNodes) ->
-    case global:set_lock({NodeToLock, self()}, [node() | nodes()], 0) of
+set_lock([NodeToLock | More], LockedNodes, Retries) ->
+    case global:set_lock({NodeToLock, self()}, [node() | nodes()], Retries) of
         false ->
             del_lock(LockedNodes);
         true ->
-            set_lock(More, [NodeToLock | LockedNodes])
+            set_lock(More, [NodeToLock | LockedNodes], Retries)
     end.
 
 del_lock([]) ->
