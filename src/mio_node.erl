@@ -9,6 +9,7 @@
 
 %% API
 -export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
+         get_left_op_call/3,
          insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
          search_op/2, link_right_op/4, link_left_op/4, set_nth/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
@@ -163,6 +164,10 @@ handle_call(get_op, From, State) ->
 
 handle_call({get_right_op, Level}, From, State) ->
     spawn(?MODULE, get_right_op_call, [From, State, Level]),
+    {noreply, State};
+
+handle_call({get_left_op, Level}, From, State) ->
+    spawn(?MODULE, get_left_op_call, [From, State, Level]),
     {noreply, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
@@ -354,6 +359,11 @@ get_right_op_call(From, State, Level) ->
     RightNode = right(State, Level),
     RightKey = right_key(State, Level),
     gen_server:reply(From, {RightNode, RightKey}).
+
+get_left_op_call(From, State, Level) ->
+    LeftNode = left(State, Level),
+    LeftKey = left_key(State, Level),
+    gen_server:reply(From, {LeftNode, LeftKey}).
 
 set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
@@ -570,21 +580,46 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
 link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
 
-    %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-    {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
-    case PrevNeighborLeft of
-        [] -> [];
-        _ ->
-            %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-            link_right_op(PrevNeighborLeft, 0, Self, MyKey)
+    %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
+    {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
+    IsLocked = mio_lock:lock([Neighbor, Self, NeighborLeft]),
+    if not IsLocked ->
+            ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
+            exit(lock_failed);
+       true -> []
     end,
-    %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-    State1 = set_right(State, 0, Neighbor, NeighborKey),
-    link_right_op(Self, 0, Neighbor, NeighborKey),
-    %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-    LinkedState = set_left(State1, 0, PrevNeighborLeft, PrevNeighborLeftKey),
-    link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
-    LinkedState.
+
+    %% TODO: check deleted
+
+    %% After locked 3 nodes, check invariants.
+    %% invariant
+    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+    %%   Neighbor->leftKey < MyKey
+    {_, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
+
+    if RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey ->
+            %% Retry: another key is inserted
+            io:format("** RETRY link_on_level0 **"),
+            mio_lock:unlock([Neighbor, Self, NeighborLeft]),
+            insert_op_call(From, State, Self, Neighbor);
+       true ->
+            %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
+            {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
+            case PrevNeighborLeft of
+                [] -> [];
+                _ ->
+                    %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+                    link_right_op(PrevNeighborLeft, 0, Self, MyKey)
+            end,
+            %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
+            State1 = set_right(State, 0, Neighbor, NeighborKey),
+            link_right_op(Self, 0, Neighbor, NeighborKey),
+            %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
+            LinkedState = set_left(State1, 0, PrevNeighborLeft, PrevNeighborLeftKey),
+            link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
+            mio_lock:unlock([Neighbor, Self, NeighborLeft]),
+            LinkedState
+    end.
 
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel, LinkedState) ->
