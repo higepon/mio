@@ -488,8 +488,14 @@ insert_op_call(From, State, Self, Introducer) ->
         %% MyKey is already exists
         NeighborKey =:= MyKey ->
             MyValue = State#state.value,
+
+            % Since this process doesn't have any lock, dead lock will never happen.
+            % Just wait infinity.
+            mio_lock:lock([Neighbor], infinity), % TODO: check deleted
+
             %% overwrite the value
             ok = gen_server:call(Neighbor, {set_op, MyValue}),
+            mio_lock:unlock([Neighbor]),
             gen_server:reply(From, ok);
         %% insert!
         true ->
