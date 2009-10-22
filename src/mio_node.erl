@@ -508,24 +508,23 @@ insert_op_call(From, State, Self, Introducer) ->
             gen_server:reply(From, ok);
         %% insert!
         true ->
-            insert_node(Self, State, Neighbor, NeighborKey),
+            insert_node(From, State, Self, Neighbor, NeighborKey),
             gen_server:reply(From, ok)
     end.
 
-insert_node(Self, State, Neighbor, NeighborKey) ->
+insert_node(From, State, Self, Neighbor, NeighborKey) ->
     %% link on level = 0
-    LinkedState = link_on_level0(Self, State, Neighbor, NeighborKey),
+    LinkedState = link_on_level0(From, State, Self, Neighbor, NeighborKey),
     %% link on level > 0
     MaxLevel = length(LinkedState#state.membership_vector),
     link_on_level_ge1(Self, MaxLevel, LinkedState).
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
+link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
 
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
-    {_, _, _, _, NeigborRightNodes} = gen_server:call(Neighbor, get_op),
-    NeighborRight = node_on_level(NeigborRightNodes, 0),
+    {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
     IsLocked = mio_lock:lock([Neighbor, Self, NeighborRight]),
     if not IsLocked ->
             ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
@@ -539,12 +538,13 @@ link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#stat
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     %%   Neighbor->rightKey < MyKey
-    {NeighborRight, NeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
+    {_, RealNeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
 
-    if NeighborRightKey =/= [] andalso MyKey >= NeighborRightKey ->
+    if RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey ->
             %% Retry: another key is inserted
-            %% unlock
-            hoge;
+            io:format("** RETRY link_on_level0 **"),
+            mio_lock:unlock([Neighbor, Self, NeighborRight]),
+            insert_op_call(From, State, Self, Neighbor);
        true ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
             {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
@@ -567,7 +567,7 @@ link_on_level0(Self, State, Neighbor, NeighborKey) when NeighborKey < State#stat
 
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-link_on_level0(Self, State, Neighbor, NeighborKey) ->
+link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     MyKey = State#state.key,
 
     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
