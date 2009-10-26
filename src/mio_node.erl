@@ -549,7 +549,7 @@ random_sleep(Times) ->
 lock(Nodes, infinity) ->
     mio_lock:lock(Nodes, infinity);
 lock(Nodes, 0) ->
-    io:format("mio_node:lock dead lock", [Nodes]),
+    io:format("mio_node:lock dead lock ~p~n", [Nodes]),
     false;
 lock(Nodes, Times) ->
     case mio_lock:lock(Nodes) of
@@ -582,7 +582,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
     IsLocked = lock([Neighbor, Self, NeighborRight]),
     if not IsLocked ->
-            ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
+            ?ERRORF("link_on_level0: key = ~p lock failed~n", [MyKey]),
             exit(lock_failed);
        true -> []
     end,
@@ -601,7 +601,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
        (NeighborRight =/= RealNeighborRight)
        ->
             %% Retry: another key is inserted
-            io:format("** RETRY link_on_level0 **"),
+            io:format("** RETRY link_on_level0[3] **~n"),
             unlock([Neighbor, Self, NeighborRight]),
             insert_op_call(From, State, Self, Neighbor);
        true ->
@@ -633,7 +633,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
     IsLocked = lock([Neighbor, Self, NeighborLeft]),
     if not IsLocked ->
-            ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
+            ?ERRORF("link_on_level0: key = ~p lock failed~n", [MyKey]),
             exit(lock_failed);
        true -> []
     end,
@@ -651,7 +651,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
-            io:format("** RETRY link_on_level0 **"),
+            io:format("** RETRY link_on_level0[1] **~n"),
             unlock([Neighbor, Self, NeighborLeft]),
             insert_op_call(From, State, Self, Neighbor);
        true ->
@@ -726,7 +726,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     IsLocked = lock([Self, Buddy]),
                     if not IsLocked ->
                             %% todo retry
-                            ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
+                            ?ERRORF("link_on_levelge[1]: key = ~p lock failed~n", [MyKey]),
                             exit(lock_failed);
                        true -> []
                     end,
@@ -736,7 +736,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     {_, BuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                     if BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
-                            io:format("** RETRY link_on_levelge1 ~p**", [BuddyLeftKey]),
+                            io:format("** RETRY link_on_levelge1[2] ~p**~n", [BuddyLeftKey]),
                             unlock([Buddy, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
@@ -778,7 +778,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     IsLocked2 = lock([Self, Buddy2]),
                                     if not IsLocked2 ->
                                             %% todo retry
-                                            ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
+                                            ?ERRORF("link_on_levelge[3]: key = ~p lock failed~n", [MyKey]),
                                             exit(lock_failed);
                                        true -> []
                                     end,
@@ -788,7 +788,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
                                     if Buddy2LeftKey =/= [] ->
                                             %% Retry: another key is inserted
-                                            io:format("** RETRY link_on_levelge1 ~p**", [Buddy2LeftKey]),
+                                            io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                             unlock([Buddy2, Self]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
@@ -824,7 +824,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        (RealBuddyRight =/= BuddyRight)
                        ->
                             %% Retry: another key is inserted
-                            io:format("** RETRY link_on_level0 **"),
+                            io:format("** RETRY link_on_levelge[9] **~n"),
                             unlock([Self, Buddy, BuddyRight]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->

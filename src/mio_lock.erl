@@ -38,6 +38,8 @@ set_lock(NodesToLock, LockedNodes) ->
     set_lock(NodesToLock, LockedNodes, 0).
 set_lock([], _LockedNodes, _Retries) ->
     true;
+set_lock([[] | More], LockedNodes, Retries) ->
+    set_lock(More, LockedNodes, Retries);
 set_lock([NodeToLock | More], LockedNodes, Retries) ->
     case global:set_lock({NodeToLock, self()}, [node() | nodes()], Retries) of
         false ->
