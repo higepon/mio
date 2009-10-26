@@ -552,10 +552,14 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   Neighbor->rightKey < MyKey
-    {_, RealNeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
+    %%   NeighborRight == RealNeighborRight
+    %%   Neighbor->rightKey < MyKey (sanity check)
+    {RealNeighborRight, RealNeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
 
-    if RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey ->
+    if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
+       orelse
+       (NeighborRight =/= RealNeighborRight)
+       ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0 **"),
             mio_lock:unlock([Neighbor, Self, NeighborRight]),
@@ -600,9 +604,12 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     %%   Neighbor->leftKey < MyKey
-    {_, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
+    {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
-    if RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey ->
+    if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey) 
+       orelse
+       (RealNeighborLeft =/= NeighborLeft)
+       ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0 **"),
             mio_lock:unlock([Neighbor, Self, NeighborLeft]),
@@ -770,9 +777,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% invariant
                     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
                     %%   Buddy->rightKey < MyKey
-                    {_, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
+                    {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
 
-                    if RealBuddyRightKey =/= [] andalso MyKey >= RealBuddyRightKey ->
+                    if (RealBuddyRightKey =/= [] andalso MyKey >= RealBuddyRightKey)
+                       orelse
+                       (RealBuddyRight =/= BuddyRight)
+                       ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_level0 **"),
                             mio_lock:unlock([Self, Buddy, BuddyRight]),
