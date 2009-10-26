@@ -655,25 +655,25 @@ link_on_level_ge1(_Self, Level, MaxLevel, LinkedState) when Level > MaxLevel ->
 %%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
 %%
 link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
-    MyKey = LinkedState#state.key,
+    {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LowerLevel = Level - 1,
-    case left(LinkedState, LowerLevel) of
+    case node_on_level(MyLeft, LowerLevel) of
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
-            RightNodeOnLower = right(LinkedState, LowerLevel),
+            RightNodeOnLower = node_on_level(MyRight, LowerLevel),
             %% This should never happen.
             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
             %% since insert to self is returned immediately on insert_op.
             ?ASSERT_NOT_NIL(RightNodeOnLower),
-            {ok, Buddy, BuddyKey, _, _} = buddy_op(RightNodeOnLower, LinkedState#state.membership_vector, right, Level),
+            {ok, Buddy, BuddyKey, _, _} = buddy_op(RightNodeOnLower, MyMV, right, Level),
             case Buddy of
                 %% [NodeToInsert]
                 [] ->
                     %% We have no buddy on this level.
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
-                    LinkedState;
+                    [];
                 %% [NodeToInsert] <-> [Buddy]
                 _ ->
 
@@ -700,44 +700,45 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                             link_left_op(Buddy, Level, Self, MyKey),
 
                             %% [NodeToInsert] -> [Buddy]
-                            NewLinkedState = set_right(LinkedState, Level, Buddy, BuddyKey),
+%                            NewLinkedState = set_right(LinkedState, Level, Buddy, BuddyKey),
                             link_right_op(Self, Level, Buddy, BuddyKey),
                             mio_lock:unlock([Buddy, Self]),
                             %% Go up to next Level.
-                            link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState)
+                            link_on_level_ge1(Self, Level + 1, MaxLevel, LinkedState)
                     end
             end;
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         LeftNodeOnLower ->
-            {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLower, LinkedState#state.membership_vector, left, Level),
+            {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLower, MyMV, left, Level),
             case Buddy of
                 [] ->
-                    case right(LinkedState, LowerLevel) of
+                    case node_on_level(MyRight, LowerLevel) of
                         %% We have no buddy on this level.
                         %% On higher Level, we have no buddy also.
                         %% So we've done.
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
-                            LinkedState;
+                            [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
-                            {ok, Buddy2, Buddy2Key, _, _} = buddy_op(RightNodeOnLower2, LinkedState#state.membership_vector, right, Level),
+                            {ok, Buddy2, Buddy2Key, _, _} = buddy_op(RightNodeOnLower2, MyMV, right, Level),
                             case Buddy2 of
                                 %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n]
                                 [] ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
-                                    LinkedState;
+                                    [];
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
                                     %% [NodeToInsert:m] <- [D:m]
+                                    %% todo key may be changed
                                     link_left_op(Buddy2, Level, Self, MyKey),
 
                                     %% [NodeToInsert:m] -> [D:m]
-                                    NewLinkedState2 = set_right(LinkedState, Level, Buddy2, Buddy2Key),
+%%                                    NewLinkedState2 = set_right(LinkedState, Level, Buddy2, Buddy2Key),
                                     link_right_op(Self, Level, Buddy2, Buddy2Key),
-                                    link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
+                                    link_on_level_ge1(Self, Level + 1, MaxLevel, LinkedState)
                             end
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
