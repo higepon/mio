@@ -734,9 +734,11 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% check invariants
                     %%   Buddy's left is []
                     {_, BuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
-                    if BuddyLeftKey =/= [] ->
+                    if BuddyLeftKey =:= MyKey ->
+                            [];
+                       BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
-                            io:format("** RETRY link_on_levelge1[2] ~p**~n", [BuddyLeftKey]),
+                            io:format("** RETRY link_on_levelge1[2] ~p~p**~n", [MyKey, BuddyLeftKey]),
                             unlock([Buddy, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
@@ -819,12 +821,16 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %%   Buddy->rightKey < MyKey
                     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
 
-                    if (RealBuddyRightKey =/= [] andalso MyKey >= RealBuddyRightKey)
+                    if (RealBuddyRightKey =/= [] andalso MyKey =:= RealBuddyRightKey)
+                       ->
+                            %% other process insert on higher level, so we have nothing to do.
+                            [];
+                       (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
                        orelse
                        (RealBuddyRight =/= BuddyRight)
                        ->
                             %% Retry: another key is inserted
-                            io:format("** RETRY link_on_levelge[9] **~n"),
+                            io:format("** RETRY link_on_levelge[9] ~p ~p~n", [[RealBuddyRight, BuddyRight], [MyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
