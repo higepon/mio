@@ -727,13 +727,32 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     [];
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
-                                    %% [NodeToInsert:m] <- [D:m]
-                                    %% todo key may be changed
-                                    link_left_op(Buddy2, Level, Self, MyKey),
+                                    %% Lock 2 nodes [NodeToInsert] and [Buddy]
+                                    IsLocked2 = mio_lock:lock([Self, Buddy2]),
+                                    if not IsLocked2 ->
+                                            %% todo retry
+                                            ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
+                                            exit(lock_failed);
+                                       true -> []
+                                    end,
 
-                                    %% [NodeToInsert:m] -> [D:m]
-                                    link_right_op(Self, Level, Buddy2, Buddy2Key),
-                                    link_on_level_ge1(Self, Level + 1, MaxLevel)
+                                    %% check invariants
+                                    %%   Buddy's left is []
+                                    {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
+                                    if Buddy2LeftKey =/= [] ->
+                                            %% Retry: another key is inserted
+                                            io:format("** RETRY link_on_levelge1 ~p**", [Buddy2LeftKey]),
+                                            mio_lock:unlock([Buddy2, Self]),
+                                            link_on_level_ge1(Self, Level, MaxLevel);
+                                       true ->
+                                            %% [NodeToInsert:m] <- [D:m]
+                                            link_left_op(Buddy2, Level, Self, MyKey),
+
+                                            %% [NodeToInsert:m] -> [D:m]
+                                            link_right_op(Self, Level, Buddy2, Buddy2Key),
+                                            mio_lock:unlock([Buddy2, Self]),
+                                            link_on_level_ge1(Self, Level + 1, MaxLevel)
+                                    end
                             end
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
