@@ -514,18 +514,58 @@ insert_op_call(From, State, Self, Introducer) ->
 
             % Since this process doesn't have any lock, dead lock will never happen.
             % Just wait infinity.
-            mio_lock:lock([Neighbor], infinity), % TODO: check deleted
+            lock([Neighbor], infinity), % TODO: check deleted
 
             %% overwrite the value
             ok = gen_server:call(Neighbor, {set_op, MyValue}),
 
-            mio_lock:unlock([Neighbor]),
+            unlock([Neighbor]),
             gen_server:reply(From, ok);
         %% insert!
         true ->
             insert_node(From, State, Self, Neighbor, NeighborKey),
             gen_server:reply(From, ok)
     end.
+
+%% borrowed from global.erl, todo replace
+random_sleep(Times) ->
+    case (Times rem 10) of
+        0 -> erase(random_seed);
+        _ -> ok
+    end,
+    case get(random_seed) of
+        undefined ->
+            {A1, A2, A3} = now(),
+            random:seed(A1, A2, A3 + erlang:phash(node(), 100000));
+        _ -> ok
+    end,
+    %% First time 1/4 seconds, then doubling each time up to 8 seconds max.
+    Tmax = if Times > 5 -> 8000;
+              true -> ((1 bsl Times) * 1000) div 8
+           end,
+    T = random:uniform(Tmax),
+    receive after T -> ok end.
+
+lock(Nodes, infinity) ->
+    mio_lock:lock(Nodes, infinity);
+lock(Nodes, 0) ->
+    io:format("mio_node:lock dead lock", [Nodes]),
+    false;
+lock(Nodes, Times) ->
+    case mio_lock:lock(Nodes) of
+        true ->
+            true;
+        false ->
+            io:format("mio_node:lock sleeping for ~p~n", [Nodes]),
+            random_sleep(Times),
+            lock(Nodes, Times - 1)
+    end.
+
+lock(Nodes) ->
+    lock(Nodes, 10).
+
+unlock(Nodes) ->
+    mio_lock:unlock(Nodes).
 
 insert_node(From, State, Self, Neighbor, NeighborKey) ->
     %% link on level = 0
@@ -540,7 +580,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
 
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
-    IsLocked = mio_lock:lock([Neighbor, Self, NeighborRight]),
+    IsLocked = lock([Neighbor, Self, NeighborRight]),
     if not IsLocked ->
             ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
             exit(lock_failed);
@@ -562,7 +602,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
        ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0 **"),
-            mio_lock:unlock([Neighbor, Self, NeighborRight]),
+            unlock([Neighbor, Self, NeighborRight]),
             insert_op_call(From, State, Self, Neighbor);
        true ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
@@ -580,7 +620,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
             LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
             link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
 
-            mio_lock:unlock([Neighbor, Self, NeighborRight]),
+            unlock([Neighbor, Self, NeighborRight]),
             LinkedState
     end;
 
@@ -591,7 +631,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
 
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
-    IsLocked = mio_lock:lock([Neighbor, Self, NeighborLeft]),
+    IsLocked = lock([Neighbor, Self, NeighborLeft]),
     if not IsLocked ->
             ?ERRORF("link_on_level0: key = ~p lock failed", [MyKey]),
             exit(lock_failed);
@@ -606,13 +646,13 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     %%   Neighbor->leftKey < MyKey
     {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
-    if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey) 
+    if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey)
        orelse
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0 **"),
-            mio_lock:unlock([Neighbor, Self, NeighborLeft]),
+            unlock([Neighbor, Self, NeighborLeft]),
             insert_op_call(From, State, Self, Neighbor);
        true ->
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
@@ -628,7 +668,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
 
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
             link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
-            mio_lock:unlock([Neighbor, Self, NeighborLeft])
+            unlock([Neighbor, Self, NeighborLeft])
     end.
 
 %% link on Level >= 1
@@ -683,7 +723,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                 _ ->
 
                     %% Lock 2 nodes [NodeToInsert] and [Buddy]
-                    IsLocked = mio_lock:lock([Self, Buddy]),
+                    IsLocked = lock([Self, Buddy]),
                     if not IsLocked ->
                             %% todo retry
                             ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
@@ -697,7 +737,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     if BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_levelge1 ~p**", [BuddyLeftKey]),
-                            mio_lock:unlock([Buddy, Self]),
+                            unlock([Buddy, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
                             %% [NodeToInsert] <- [Buddy]
@@ -705,7 +745,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                             %% [NodeToInsert] -> [Buddy]
                             link_right_op(Self, Level, Buddy, BuddyKey),
-                            mio_lock:unlock([Buddy, Self]),
+                            unlock([Buddy, Self]),
                             %% Go up to next Level.
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
@@ -735,7 +775,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
                                     %% Lock 2 nodes [NodeToInsert] and [Buddy]
-                                    IsLocked2 = mio_lock:lock([Self, Buddy2]),
+                                    IsLocked2 = lock([Self, Buddy2]),
                                     if not IsLocked2 ->
                                             %% todo retry
                                             ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
@@ -749,7 +789,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     if Buddy2LeftKey =/= [] ->
                                             %% Retry: another key is inserted
                                             io:format("** RETRY link_on_levelge1 ~p**", [Buddy2LeftKey]),
-                                            mio_lock:unlock([Buddy2, Self]),
+                                            unlock([Buddy2, Self]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
                                             %% [NodeToInsert:m] <- [D:m]
@@ -757,7 +797,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                                             %% [NodeToInsert:m] -> [D:m]
                                             link_right_op(Self, Level, Buddy2, Buddy2Key),
-                                            mio_lock:unlock([Buddy2, Self]),
+                                            unlock([Buddy2, Self]),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                                     end
                             end
@@ -765,7 +805,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                 _ ->
                     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
-                    IsLocked3 = mio_lock:lock([Self, Buddy, BuddyRight]),
+                    IsLocked3 = lock([Self, Buddy, BuddyRight]),
                     if not IsLocked3 ->
                             %% todo retry
                             ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
@@ -785,7 +825,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_level0 **"),
-                            mio_lock:unlock([Self, Buddy, BuddyRight]),
+                            unlock([Self, Buddy, BuddyRight]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
                             % [A:m] -> [NodeToInsert:m]
@@ -801,7 +841,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                             % [NodeToInsert:m] -> [D:m]
                             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
-                            mio_lock:unlock([Self, Buddy, BuddyRight]),
+                            unlock([Self, Buddy, BuddyRight]),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
