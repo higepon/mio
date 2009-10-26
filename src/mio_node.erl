@@ -617,13 +617,11 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
                     link_right_op(PrevNeighborLeft, 0, Self, MyKey)
             end,
             %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-            State1 = set_right(State, 0, Neighbor, NeighborKey),
             link_right_op(Self, 0, Neighbor, NeighborKey),
+
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-            LinkedState = set_left(State1, 0, PrevNeighborLeft, PrevNeighborLeftKey),
             link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
-            mio_lock:unlock([Neighbor, Self, NeighborLeft]),
-            LinkedState
+            mio_lock:unlock([Neighbor, Self, NeighborLeft])
     end.
 
 %% link on Level >= 1
