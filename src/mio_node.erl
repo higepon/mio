@@ -1,4 +1,4 @@
-%%% Description : Skip Graph Node
+%%% Description : Skip Graphde
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
@@ -529,10 +529,10 @@ insert_op_call(From, State, Self, Introducer) ->
 
 insert_node(From, State, Self, Neighbor, NeighborKey) ->
     %% link on level = 0
-    LinkedState = link_on_level0(From, State, Self, Neighbor, NeighborKey),
+    link_on_level0(From, State, Self, Neighbor, NeighborKey),
     %% link on level > 0
-    MaxLevel = length(LinkedState#state.membership_vector),
-    link_on_level_ge1(Self, MaxLevel, LinkedState).
+    MaxLevel = length(State#state.membership_vector),
+    link_on_level_ge1(Self, MaxLevel).
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
@@ -627,12 +627,12 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
     end.
 
 %% link on Level >= 1
-link_on_level_ge1(Self, MaxLevel, LinkedState) ->
-    link_on_level_ge1(Self, 1, MaxLevel, LinkedState).
+link_on_level_ge1(Self, MaxLevel) ->
+    link_on_level_ge1(Self, 1, MaxLevel).
 
 %% Link on all levels done.
-link_on_level_ge1(_Self, Level, MaxLevel, LinkedState) when Level > MaxLevel ->
-    LinkedState;
+link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
+    [];
 
 %% Find buddy node and link it.
 %% buddy node has same membership_vector on this level.
@@ -654,7 +654,7 @@ link_on_level_ge1(_Self, Level, MaxLevel, LinkedState) when Level > MaxLevel ->
 %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
 %%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
 %%
-link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
+link_on_level_ge1(Self, Level, MaxLevel) ->
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LowerLevel = Level - 1,
     case node_on_level(MyLeft, LowerLevel) of
@@ -700,11 +700,10 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                             link_left_op(Buddy, Level, Self, MyKey),
 
                             %% [NodeToInsert] -> [Buddy]
-%                            NewLinkedState = set_right(LinkedState, Level, Buddy, BuddyKey),
                             link_right_op(Self, Level, Buddy, BuddyKey),
                             mio_lock:unlock([Buddy, Self]),
                             %% Go up to next Level.
-                            link_on_level_ge1(Self, Level + 1, MaxLevel, LinkedState)
+                            link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end;
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
@@ -736,9 +735,8 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                                     link_left_op(Buddy2, Level, Self, MyKey),
 
                                     %% [NodeToInsert:m] -> [D:m]
-%%                                    NewLinkedState2 = set_right(LinkedState, Level, Buddy2, Buddy2Key),
                                     link_right_op(Self, Level, Buddy2, Buddy2Key),
-                                    link_on_level_ge1(Self, Level + 1, MaxLevel, LinkedState)
+                                    link_on_level_ge1(Self, Level + 1, MaxLevel)
                             end
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
@@ -752,13 +750,11 @@ link_on_level_ge1(Self, Level, MaxLevel, LinkedState) ->
                             link_left_op(X, Level, Self, MyKey)
                     end,
                     % [A:m] <- [NodeToInsert:m]
-                    NewLinkedState1 = set_left(LinkedState, Level, Buddy, BuddyKey),
                     link_left_op(Self, Level, Buddy, BuddyKey),
 
                     % [NodeToInsert:m] -> [D:m]
-                    NewLinkedState2 = set_right(NewLinkedState1, Level, BuddyRight, BuddyRightKey),
                     link_right_op(Self, Level, BuddyRight, BuddyRightKey),
-                    link_on_level_ge1(Self, Level + 1, MaxLevel, NewLinkedState2)
+                    link_on_level_ge1(Self, Level + 1, MaxLevel)
             end
     end.
 
