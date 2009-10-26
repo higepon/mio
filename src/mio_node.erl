@@ -691,8 +691,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_levelge1 ~p**", [BuddyLeftKey]),
                             mio_lock:unlock([Buddy, Self]),
-                            exit(todo);
-                            %% todo retry
+                            link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
                             %% [NodeToInsert] <- [Buddy]
                             link_left_op(Buddy, Level, Self, MyKey),
