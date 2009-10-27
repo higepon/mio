@@ -65,8 +65,7 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({insert_op, Introducer, NodeToInsert}, _From, State) ->
-    %% mio_node:insert_op(Introducer, NodeToInsert),
-    spawn(fun () -> mio_node:insert_op(Introducer, NodeToInsert) end),
+    mio_node:insert_op(Introducer, NodeToInsert),
     {reply, ok, State};
 handle_call({delete_op, Node}, _From, State) ->
     {reply, mio_node:delete_op(Node), State};
