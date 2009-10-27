@@ -621,14 +621,12 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
                     link_left_op(PrevNeighborRight, 0, Self, MyKey)
             end,
             %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-            State1 = set_left(State, 0, Neighbor, NeighborKey),
             link_left_op(Self, 0, Neighbor, NeighborKey),
             %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-            LinkedState = set_right(State1, 0, PrevNeighborRight, PrevNeighborRightKey),
             link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
 
-            unlock([Neighbor, Self, NeighborRight]),
-            LinkedState
+            io:format("INSERT ~p level0~n", [MyKey]),
+            unlock([Neighbor, Self, NeighborRight])
     end;
 
 
@@ -675,6 +673,8 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
 
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
             link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
+
+            io:format("INSERT ~p level0~n", [MyKey]),
             unlock([Neighbor, Self, NeighborLeft])
     end.
 
@@ -726,6 +726,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
                     ?CHECK_SANITY(Self, Level),
+                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                     [];
                 %% [NodeToInsert] <-> [Buddy]
                 _ ->
@@ -742,6 +743,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %%   Buddy's left is []
                     {_, BuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                     if BuddyLeftKey =:= MyKey ->
+                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                        BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
@@ -755,6 +757,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             %% [NodeToInsert] -> [Buddy]
                             link_right_op(Self, Level, Buddy, BuddyKey),
                             unlock([Buddy, Self]),
+                            io:format("INSERT ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             %% Go up to next Level.
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end,
@@ -773,6 +776,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
                             ?CHECK_SANITY(Self, Level),
+                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
@@ -783,6 +787,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
                                     ?CHECK_SANITY(Self, Level),
+                                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                     [];
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
@@ -802,6 +807,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             %% Retry: another key is inserted
                                             io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                             unlock([Buddy2, Self]),
+                                            io:format("INSERT ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
                                             %% [NodeToInsert:m] <- [D:m]
@@ -810,6 +816,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             %% [NodeToInsert:m] -> [D:m]
                                             link_right_op(Self, Level, Buddy2, Buddy2Key),
                                             unlock([Buddy2, Self]),
+                                            io:format("INSERT ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                                     end,
                                     ?CHECK_SANITY(Self, Level)
@@ -836,6 +843,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        ->
                             %% other process insert on higher level, so we have nothing to do.
                             ?CHECK_SANITY(Self, Level),
+                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                        (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
                        orelse
@@ -844,6 +852,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
+%                            random_sleep(0),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
                             % [A:m] -> [NodeToInsert:m]
@@ -861,6 +870,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
                             unlock([Self, Buddy, BuddyRight]),
                             ?CHECK_SANITY(Self, Level),
+                            io:format("INSERT ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
