@@ -505,6 +505,7 @@ insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% there's no buddy
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
+    io:format("insert_op_call ~n"),
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
     if
@@ -544,11 +545,12 @@ random_sleep(Times) ->
               true -> ((1 bsl Times) * 1000) div 8
            end,
     T = random:uniform(Tmax),
+    io:format("sleep ~p msec~n", [T]),
     receive after T -> ok end.
 
 lock(Nodes, infinity) ->
     mio_lock:lock(Nodes, infinity);
-lock(Nodes, 0) ->
+lock(Nodes, 10) ->
     io:format("mio_node:lock dead lock ~p~n", [Nodes]),
     false;
 lock(Nodes, Times) ->
@@ -558,11 +560,11 @@ lock(Nodes, Times) ->
         false ->
             io:format("mio_node:lock sleeping for ~p~n", [Nodes]),
             random_sleep(Times),
-            lock(Nodes, Times - 1)
+            lock(Nodes, Times + 1)
     end.
 
 lock(Nodes) ->
-    lock(Nodes, 10).
+    lock(Nodes, 0).
 
 unlock(Nodes) ->
     mio_lock:unlock(Nodes).
