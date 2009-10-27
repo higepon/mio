@@ -375,13 +375,16 @@ set_op_call(State, NewValue) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    io:format("buddy ~p key=~p~n", [MembershipVector, State#state.key]),
     if
         Found ->
+            io:format("buddy ~p found~n", [State#state.key]),
             MyKey = State#state.key,
             MyRightKey = right_key(State, Level),
             MyRight = right(State, Level),
             gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
+            io:format("buddy not found redirect ~n"),
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on LowerLevel
@@ -839,7 +842,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        (RealBuddyRight =/= BuddyRight)
                        ->
                             %% Retry: another key is inserted
-                            io:format("** RETRY link_on_levelge[9] ~p ~p~n", [[RealBuddyRight, BuddyRight], [MyKey, RealBuddyRightKey]]),
+                            io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
