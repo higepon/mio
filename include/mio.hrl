@@ -1,7 +1,8 @@
 %%-define(PROFILER_ON, true).
-%%-define(DEBUG_ON, true).
+-define(DEBUG_ON, true).
 
 -ifdef (DEBUG_ON).
+  -define(CHECK_SANITY(Node, Level), check_sanity(Node, Level, ?MODULE, ?LINE)).
   -define(L(), io:format("~p{~p ~p,~p}:~n", [erlang:now(), self(), ?MODULE, ?LINE])).
   -define(LOG(X), io:format("{~p ~p,~p}: ~s = ~p~n", [self(), ?MODULE, ?LINE, X])).
   -define(LOGF(X, Data), io:format("{~p ~p,~p}: "++X++"~n" , [self(), ?MODULE,?LINE] ++ Data)).
@@ -24,15 +25,16 @@
                   true
           end.
 -else.
+  -define(CHECK_SANITY(Node, Level), []).
   -define(L(), []).
   -define(LOG(X), []).
   -define(LOGF(X, Data), []).
   -define(SERVER, ?MODULE).
-  -define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
   -define(ASSERT_MATCH(EXPECTED, X), []).
   -define(ASSERT_NOT_NIL(X), []).
 -endif.
 
+  -define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
 -ifdef (PROFILER_ON).
   -define(PROFILER_STOP(), fprof:trace([stop]), fprof:profile(), fprof:analyse([totals, {details, true}]), fprof:stop()).
   -define(PROFILER_START(X), fprof:trace([start, {procs, [X]}])).

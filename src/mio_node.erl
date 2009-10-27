@@ -570,6 +570,8 @@ unlock(Nodes) ->
 insert_node(From, State, Self, Neighbor, NeighborKey) ->
     %% link on level = 0
     link_on_level0(From, State, Self, Neighbor, NeighborKey),
+    ?CHECK_SANITY(Self, 0),
+
     %% link on level > 0
     MaxLevel = length(State#state.membership_vector),
     link_on_level_ge1(Self, MaxLevel).
@@ -851,6 +853,38 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
+    end.
+
+%%--------------------------------------------------------------------
+%%  check_sanity
+%%--------------------------------------------------------------------
+assert(Cond, Message, Module, Line) ->
+    if not Cond ->
+            io:format("ASSERTION failed ~p:{~p,~p}:~n", [Message, Module, Line]),
+            exit(Message);
+       true ->
+            []
+    end.
+
+check_sanity(Node, Level, Module, Line) ->
+    {Key, _, _, _, _} = gen_server:call(Node, get_op),
+    {Right, RightKey} = gen_server:call(Node, {get_right_op, Level}),
+    {Left, LeftKey} = gen_server:call(Node, {get_left_op, Level}),
+
+    %% Key < RightKey (if Right exists)
+    case Right of
+        [] -> [];
+        _ ->
+            assert(Key < RightKey, "Key < RightKey", Module, Line),
+            {Neighbor, NeigborKey} = gen_server:call(Right, {get_left_op, Level}),
+            assert(Neighbor =:= Node andalso Key =:= NeigborKey, "Right Node Key consitency", Module, Line)
+    end,
+    case Left of
+        [] -> [];
+        _ ->
+            assert(LeftKey < Key, "LeftKey < Key", Module, Line),
+            {Neighbor2, NeigborKey2} = gen_server:call(Left, {get_right_op, Level}),
+            assert(Neighbor2 =:= Node andalso Key =:= NeigborKey2, "Left Node Key consitency", Module, Line)
     end.
 
 %%--------------------------------------------------------------------

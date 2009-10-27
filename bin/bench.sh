@@ -15,7 +15,7 @@ function bench_mio {
 function bench {
     echo "\n****    thread=$3 N=$4\n"
     $1 -m 8 &
-    sleep 2
+    sleep 3
     # don't change m parameter
     mcb -c set -a 127.0.0.1 -p 11211 -m 1000 -t $3 -n $4 -l 100
     $2
