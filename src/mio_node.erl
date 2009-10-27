@@ -722,10 +722,10 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% We have no buddy on this level.
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
+                    ?CHECK_SANITY(Self, Level),
                     [];
                 %% [NodeToInsert] <-> [Buddy]
                 _ ->
-
                     %% Lock 2 nodes [NodeToInsert] and [Buddy]
                     IsLocked = lock([Self, Buddy]),
                     if not IsLocked ->
@@ -754,7 +754,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             unlock([Buddy, Self]),
                             %% Go up to next Level.
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
-                    end
+                    end,
+                    ?CHECK_SANITY(Self, Level)
             end;
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
@@ -768,6 +769,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         %% So we've done.
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
+                            ?CHECK_SANITY(Self, Level),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
@@ -777,6 +779,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                 [] ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
+                                    ?CHECK_SANITY(Self, Level),
                                     [];
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
@@ -805,7 +808,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             link_right_op(Self, Level, Buddy2, Buddy2Key),
                                             unlock([Buddy2, Self]),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
-                                    end
+                                    end,
+                                    ?CHECK_SANITY(Self, Level)
                             end
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
@@ -828,6 +832,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     if (RealBuddyRightKey =/= [] andalso MyKey =:= RealBuddyRightKey)
                        ->
                             %% other process insert on higher level, so we have nothing to do.
+                            ?CHECK_SANITY(Self, Level),
                             [];
                        (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
                        orelse
@@ -852,6 +857,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             % [NodeToInsert:m] -> [D:m]
                             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
                             unlock([Self, Buddy, BuddyRight]),
+                            ?CHECK_SANITY(Self, Level),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
