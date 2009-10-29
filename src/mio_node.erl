@@ -534,7 +534,7 @@ insert_op_call(From, State, Self, Introducer) ->
         %% insert!
         true ->
             io:format("IN2 insert_op_call self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [self(), MyKey, NeighborKey, IsSameKey]),
-            insert_node(From, State, Self, Neighbor, NeighborKey),
+            insert_node(From, State, Self, Neighbor, NeighborKey, Introducer),
             gen_server:reply(From, ok)
     end,
         io:format("insert_op_call EEE Self=~p self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [Self, self(), MyKey, NeighborKey, IsSameKey]).
@@ -580,15 +580,40 @@ lock(Nodes) ->
 unlock(Nodes) ->
     mio_lock:unlock(Nodes).
 
-insert_node(From, State, Self, Neighbor, NeighborKey) ->
-    io:format("insert_node Self=~p self=~p MyKey=~p NeighborKey=~p~n", [Self, self(), State#state.key, NeighborKey]),
+insert_node(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     %% link on level = 0
-    link_on_level0(From, State, Self, Neighbor, NeighborKey),
+    %%link_on_level0(From, State, Self, Neighbor, NeighborKey),
+    link_on_level0(From, State, Self, Introducer),
     ?CHECK_SANITY(Self, 0),
 
     %% link on level > 0
     MaxLevel = length(State#state.membership_vector),
     link_on_level_ge1(Self, MaxLevel).
+
+link_on_level0(From, State, Self, Introducer) ->
+    MyKey = State#state.key,
+    {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
+    IsSameKey = string:equal(NeighborKey, MyKey),
+    if
+        %% MyKey is already exists
+        IsSameKey ->
+            MyValue = State#state.value,
+            % Since this process doesn't have any other lock, dead lock will never happen.
+            % Just wait infinity.
+            lock([Neighbor], infinity), % TODO: check deleted
+
+            %% overwrite the value
+            ok = gen_server:call(Neighbor, {set_op, MyValue}),
+
+            unlock([Neighbor]),
+            %% tell the callee, link_on_level_ge1 is not necessary
+            no_more;
+        %% insert!
+        true ->
+            link_on_level0(From, State, Self, Neighbor, NeighborKey),
+            need_link_on_level_ge1
+    end.
+
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
