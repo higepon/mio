@@ -897,28 +897,61 @@ assert(Cond, Message, Module, Line) ->
             []
     end.
 
-check_sanity(Node, Level, Module, Line) ->
+check_sanity_to_right(Node, Level, Module, Line) ->
     {Key, _, _, _, _} = gen_server:call(Node, get_op),
     {Right, RightKey} = gen_server:call(Node, {get_right_op, Level}),
-    {Left, LeftKey} = gen_server:call(Node, {get_left_op, Level}),
 
     %% Key < RightKey (if Right exists)
     case Right of
         [] -> [];
         _ ->
             assert(Key < RightKey, "Key < RightKey", Module, Line),
-            {Neighbor, NeigborKey} = gen_server:call(Right, {get_left_op, Level}),
-            IsSameKey = string:equal(Key, NeigborKey),
-            assert(Neighbor =:= Node andalso IsSameKey, "Right Node Key consitency", Module, Line)
-    end,
+%%             {Neighbor, NeigborKey} = gen_server:call(Right, {get_left_op, Level}),
+%%             IsSameKey = string:equal(Key, NeigborKey),
+%%             assert(Neighbor =:= Node andalso IsSameKey, "Right Node Key consitency", Module, Line),
+            check_sanity_to_right(Right, Level, Module, Line)
+    end.
+
+check_sanity_to_left(Node, Level, Module, Line) ->
+    {Key, _, _, _, _} = gen_server:call(Node, get_op),
+    {Left, LeftKey} = gen_server:call(Node, {get_left_op, Level}),
+
+    %% Key < LeftKey (if Left exists)
     case Left of
         [] -> [];
         _ ->
             assert(LeftKey < Key, "LeftKey < Key", Module, Line),
-            {Neighbor2, NeigborKey2} = gen_server:call(Left, {get_right_op, Level}),
-            IsSameKey2 = string:equal(Key, NeigborKey2),
-            assert(Neighbor2 =:= Node andalso IsSameKey2, "Left Node Key consitency", Module, Line)
+%%             {Neighbor, NeigborKey} = gen_server:call(Left, {get_right_op, Level}),
+%%             IsSameKey = string:equal(Key, NeigborKey),
+%%             assert(Neighbor =:= Node andalso IsSameKey, "Left Node Key consitency", Module, Line),
+            check_sanity_to_left(Left, Level, Module, Line)
     end.
+
+
+
+check_sanity(Node, Level, Module, Line) ->
+    check_sanity_to_left(Node, Level, Module, Line),
+    check_sanity_to_right(Node, Level, Module, Line).
+
+
+
+%%     %% Key < RightKey (if Right exists)
+%%     case Right of
+%%         [] -> [];
+%%         _ ->
+%%             assert(Key < RightKey, "Key < RightKey", Module, Line),
+%%             {Neighbor, NeigborKey} = gen_server:call(Right, {get_left_op, Level}),
+%%             IsSameKey = string:equal(Key, NeigborKey),
+%%             assert(Neighbor =:= Node andalso IsSameKey, "Right Node Key consitency", Module, Line)
+%%     end,
+%%     case Left of
+%%         [] -> [];
+%%         _ ->
+%%             assert(LeftKey < Key, "LeftKey < Key", Module, Line),
+%%             {Neighbor2, NeigborKey2} = gen_server:call(Left, {get_right_op, Level}),
+%%             IsSameKey2 = string:equal(Key, NeigborKey2),
+%%             assert(Neighbor2 =:= Node andalso IsSameKey2, "Left Node Key consitency", Module, Line),
+%%     end.
 
 %%--------------------------------------------------------------------
 %%  dump operation
