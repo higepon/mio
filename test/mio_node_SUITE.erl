@@ -234,6 +234,7 @@ buddy_op(_Config) ->
 %%     {key3, value3, _, _, _} = gen_server:call(Buddy2, get_op),
 
 %%     {ok, Buddy3} = mio_node:buddy_op(Node8, [0, 1], left, 0),
+
 %%     {key7, value7, _, _, _} = gen_server:call(Buddy3, get_op),
     ok.
 

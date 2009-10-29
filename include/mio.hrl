@@ -19,7 +19,7 @@
   -define(ASSERT_NOT_NIL(X),
           case X of
               [] ->
-                  io:format("** Assertion failed: not [] expected, but got [] at ~p:~p~n", [?MODULE, ?LINE]),
+                  io:format("** Assertion failed~p: not [] expected, but got [] at ~p:~p~n", [self(), ?MODULE, ?LINE]),
                   exit(assertion_failed);
               _ ->
                   true
