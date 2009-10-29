@@ -582,13 +582,16 @@ unlock(Nodes) ->
 
 insert_node(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     %% link on level = 0
-    %%link_on_level0(From, State, Self, Neighbor, NeighborKey),
-    link_on_level0(From, State, Self, Introducer),
-    ?CHECK_SANITY(Self, 0),
+    case link_on_level0(From, State, Self, Introducer) of
+        no_more ->
+            ?CHECK_SANITY(Self, 0);
+        _ ->
+            ?CHECK_SANITY(Self, 0),
+            %% link on level > 0
+            MaxLevel = length(State#state.membership_vector),
+            link_on_level_ge1(Self, MaxLevel)
+    end.
 
-    %% link on level > 0
-    MaxLevel = length(State#state.membership_vector),
-    link_on_level_ge1(Self, MaxLevel).
 
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
