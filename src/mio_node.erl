@@ -510,34 +510,33 @@ insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% there's no buddy
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
-    MyKey = State#state.key,
-    {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
-    IsSameKey = string:equal(NeighborKey, MyKey),
-    io:format("insert_op_call Self=~p self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [Self, self(), MyKey, NeighborKey, IsSameKey]),
+%    MyKey = State#state.key,
+%%     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
+%%     IsSameKey = string:equal(NeighborKey, MyKey),
+%%     io:format("insert_op_call Self=~p self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [Self, self(), MyKey, NeighborKey, IsSameKey]),
 
-    if
-        %% MyKey is already exists
-%%        NeighborKey =:= MyKey ->
-         IsSameKey ->
-            io:format("IN1 insert_op_call self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [self(), MyKey, NeighborKey, IsSameKey]),
-            MyValue = State#state.value,
+%%     if
+%%         %% MyKey is already exists
+%% %%        NeighborKey =:= MyKey ->
+%%          IsSameKey ->
+%%             io:format("IN1 insert_op_call self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [self(), MyKey, NeighborKey, IsSameKey]),
+%%             MyValue = State#state.value,
 
-            % Since this process doesn't have any lock, dead lock will never happen.
-            % Just wait infinity.
-            lock([Neighbor], infinity), % TODO: check deleted
+%%             % Since this process doesn't have any lock, dead lock will never happen.
+%%             % Just wait infinity.
+%%             lock([Neighbor], infinity), % TODO: check deleted
 
-            %% overwrite the value
-            ok = gen_server:call(Neighbor, {set_op, MyValue}),
+%%             %% overwrite the value
+%%             ok = gen_server:call(Neighbor, {set_op, MyValue}),
 
-            unlock([Neighbor]),
-            gen_server:reply(From, ok);
-        %% insert!
-        true ->
-            io:format("IN2 insert_op_call self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [self(), MyKey, NeighborKey, IsSameKey]),
-            insert_node(From, State, Self, Neighbor, NeighborKey, Introducer),
-            gen_server:reply(From, ok)
-    end,
-        io:format("insert_op_call EEE Self=~p self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [Self, self(), MyKey, NeighborKey, IsSameKey]).
+%%             unlock([Neighbor]),
+%%             gen_server:reply(From, ok);
+%%         %% insert!
+%%         true ->
+            insert_node(From, State, Self, Introducer),
+            gen_server:reply(From, ok).
+%%     end,
+%%         io:format("insert_op_call EEE Self=~p self=~p MyKey=~p NeighborKey=~p IsSameKey=~p~n", [Self, self(), MyKey, NeighborKey, IsSameKey]).
 
 %% borrowed from global.erl, todo replace
 random_sleep(Times) ->
@@ -580,7 +579,7 @@ lock(Nodes) ->
 unlock(Nodes) ->
     mio_lock:unlock(Nodes).
 
-insert_node(From, State, Self, Neighbor, NeighborKey, Introducer) ->
+insert_node(From, State, Self, Introducer) ->
     %% link on level = 0
     case link_on_level0(From, State, Self, Introducer) of
         no_more ->
