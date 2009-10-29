@@ -563,19 +563,6 @@ lock(Nodes) ->
 unlock(Nodes) ->
     mio_lock:unlock(Nodes).
 
-%% insert_node(From, State, Self, Introducer) ->
-%%     %% link on level = 0
-%%     case link_on_level0(From, State, Self, Introducer) of
-%%         no_more ->
-%%             ?CHECK_SANITY(Self, 0);
-%%         _ ->
-%%             ?CHECK_SANITY(Self, 0),
-%%             %% link on level > 0
-%%             MaxLevel = length(State#state.membership_vector),
-%%             link_on_level_ge1(Self, MaxLevel)
-%%     end.
-
-
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
@@ -596,13 +583,13 @@ link_on_level0(From, State, Self, Introducer) ->
             no_more;
         %% insert!
         true ->
-            link_on_level0(From, State, Self, Neighbor, NeighborKey),
+            link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer),
             need_link_on_level_ge1
     end.
 
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < State#state.key ->
+link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
     io:format("start link_on_level0! Self=~p self=~p~n", [Self, self()]),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
@@ -630,7 +617,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
             unlock([Neighbor, Self, NeighborRight]),
-            insert_op_call(From, State, Self, Neighbor);
+            link_on_level0(From, State, Self, Introducer);
        true ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
             {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
@@ -651,7 +638,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) when NeighborKey < Stat
 
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
+link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
     io:format("start link_on_level0 Self=~p self=~p~n", [Self, self()]),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
@@ -678,7 +665,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey) ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p ~p ~p**~n", [Self, self(), RealNeighborLeftKey, [MyKey, RealNeighborLeftKey], [RealNeighborLeft, NeighborLeft]]),
             unlock([Neighbor, Self, NeighborLeft]),
-            insert_op_call(From, State, Self, Neighbor);
+            link_on_level0(From, State, Self, Introducer);
        true ->
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
             {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
