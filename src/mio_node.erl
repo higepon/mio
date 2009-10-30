@@ -376,16 +376,16 @@ set_op_call(State, NewValue) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
-    io:format("buddy ~p key=~p~n", [MembershipVector, State#state.key]),
+%    io:format("buddy ~p key=~p~n", [MembershipVector, State#state.key]),
     if
         Found ->
-            io:format("buddy ~p found~n", [State#state.key]),
+%            io:format("buddy ~p found~n", [State#state.key]),
             MyKey = State#state.key,
             MyRightKey = right_key(State, Level),
             MyRight = right(State, Level),
             gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
-            io:format("buddy not found redirect ~n"),
+%            io:format("buddy not found redirect ~n"),
             case Direction of
                 right ->
                     case right(State, Level - 1) of %% N.B. should be on LowerLevel
@@ -633,6 +633,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
             link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
 
             io:format("INSERTed ~p level0 Self=~p ~n", [MyKey, Self]),
+            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
             unlock([Neighbor, Self, NeighborRight])
     end;
 
@@ -682,6 +683,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
 
             io:format("INSERTed ~p level0 Self=~p~n", [MyKey, Self]),
+            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
             unlock([Neighbor, Self, NeighborLeft])
     end.
 
@@ -768,6 +770,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_right_op(Self, Level, Buddy, BuddyKey),
                             unlock([Buddy, Self]),
                             io:format("INSERTed ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             %% Go up to next Level.
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end,
@@ -818,6 +821,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                             unlock([Buddy2, Self]),
                                             io:format("INSERTed ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
                                             %% [NodeToInsert:m] <- [D:m]
@@ -827,6 +831,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             link_right_op(Self, Level, Buddy2, Buddy2Key),
                                             unlock([Buddy2, Self]),
                                             io:format("INSERTed ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                                     end,
                                     ?CHECK_SANITY(Self, Level)
@@ -881,6 +886,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             unlock([Self, Buddy, BuddyRight]),
                             ?CHECK_SANITY(Self, Level),
                             io:format("INSERTed ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
