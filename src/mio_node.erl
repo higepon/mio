@@ -571,6 +571,7 @@ unlock(Nodes) ->
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
+    io:format("link_on_level0 MyKey=~p NeighborKey=~p ~n", [MyKey, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -588,8 +589,7 @@ link_on_level0(From, State, Self, Introducer) ->
             no_more;
         %% insert!
         true ->
-            link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer),
-            need_link_on_level_ge1
+            link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer)
     end.
 
 
@@ -639,7 +639,8 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
 
             io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
-            unlock([Neighbor, Self, NeighborRight])
+            unlock([Neighbor, Self, NeighborRight]),
+            need_link_on_level_ge1
     end;
 
 
@@ -669,7 +670,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
-            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p ~p ~p**~n", [Self, self(), RealNeighborLeftKey, [MyKey, RealNeighborLeftKey], [RealNeighborLeft, NeighborLeft]]),
+            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
             unlock([Neighbor, Self, NeighborLeft]),
             link_on_level0(From, State, Self, Introducer);
        true ->
@@ -689,7 +690,8 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
 
             io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
-            unlock([Neighbor, Self, NeighborLeft])
+            unlock([Neighbor, Self, NeighborLeft]),
+            need_link_on_level_ge1
     end.
 
 %% link on Level >= 1
