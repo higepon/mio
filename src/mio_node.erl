@@ -620,7 +620,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
        (NeighborRight =/= RealNeighborRight)
        ->
             %% Retry: another key is inserted
-%            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
+            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
             unlock([Neighbor, Self, NeighborRight]),
             link_on_level0(From, State, Self, Introducer);
        true ->
@@ -670,7 +670,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
-%            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
+            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
             unlock([Neighbor, Self, NeighborLeft]),
             link_on_level0(From, State, Self, Introducer);
        true ->
@@ -766,7 +766,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             [];
                        BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
-%                            io:format("** RETRY link_on_levelge1[2] ~p~p**~n", [MyKey, BuddyLeftKey]),
+                            io:format("** RETRY link_on_levelge1[2] ~p~p**~n", [MyKey, BuddyLeftKey]),
                             unlock([Buddy, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
@@ -825,7 +825,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
                                     if Buddy2LeftKey =/= [] ->
                                             %% Retry: another key is inserted
-%                                            io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
+                                            io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                             unlock([Buddy2, Self]),
 %                                            io:format("INSERTed D~p level~p:~p~n", [MyKey, Level, ?LINE]),
 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
@@ -866,7 +866,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     IsSameKey = string:equal(MyKey,RealBuddyRightKey),
                     if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
                             %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-%                            io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
+                            io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
                             random_sleep(0),
                             link_on_level_ge1(Self, Level, MaxLevel);
@@ -881,7 +881,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        (RealBuddyRight =/= BuddyRight)
                        ->
                             %% Retry: another key is inserted
-%                            io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
+                            io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
 %                            random_sleep(0),
                             link_on_level_ge1(Self, Level, MaxLevel);
