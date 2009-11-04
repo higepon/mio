@@ -544,20 +544,20 @@ random_sleep(Times) ->
               true -> ((1 bsl Times) * 1000) div 8
            end,
     T = random:uniform(Tmax),
-%    io:format("sleep ~p msec~n", [T]),
+%   io:format("sleep ~p msec~n", [T]),
     receive after T -> ok end.
 
 lock(Nodes, infinity) ->
     mio_lock:lock(Nodes, infinity);
 lock(Nodes, 10) ->
-%    io:format("mio_node:lock dead lock ~p~n", [Nodes]),
+    io:format("mio_node:lock dead lock ~p~n", [Nodes]),
     false;
 lock(Nodes, Times) ->
     case mio_lock:lock(Nodes) of
         true ->
             true;
         false ->
-%            io:format("mio_node:lock sleeping for ~p~n", [Nodes]),
+            io:format("mio_node:lock sleeping for ~p~n", [Nodes]),
             random_sleep(Times),
             lock(Nodes, Times + 1)
     end.
