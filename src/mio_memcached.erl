@@ -65,9 +65,14 @@ memcached(Port, MaxLevel, BootNode) ->
     end.
 
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
-    {ok, Sock} = gen_tcp:accept(Listen),
-    spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
-    mio_accept(Listen, WriteSerializer, StartNode, MaxLevel).
+    case gen_tcp:accept(Listen) of
+        {ok, Sock} ->
+            spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
+            mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
+        Other ->
+            io:format("accept returned ~w - goodbye!~n",[Other]),
+            ok
+    end.
 
 process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
@@ -99,7 +104,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     StartNode;
                 ["quit"] ->
-                    gen_tcp:close(Sock);
+                    ok = gen_tcp:close(Sock);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n"),
@@ -203,13 +208,13 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, M
 %            io:format("MEM_INSERT_DONE ~p ~p~n", [Key, self()]),
 %%            mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
-            gen_tcp:recv(Sock, 2),
+            {ok, _Data} = gen_tcp:recv(Sock, 2),
             NodeToInsert;
         {error, closed} ->
             ok;
         Error ->
            ?ERRORF("Error: ~p\n", [Error]),
-            gen_tcp:recv(Sock, 2),
+            {ok, _Data} = gen_tcp:recv(Sock, 2),
             Introducer
     end.
 

@@ -33,15 +33,15 @@ stop() ->
 
 
 start(_Type, _StartArgs) ->
-    case application:get_env(mio, debug) of
-        {ok, IsDebugMode} ->
-            if IsDebugMode =:= true ->
-                    [];
-               true ->
-                    error_logger:tty(false)
-            end;
-        _ -> []
-    end,
+%%     case application:get_env(mio, debug) of
+%%         {ok, IsDebugMode} ->
+%%             if IsDebugMode =:= true ->
+%%                     [];
+%%                true ->
+%%                     error_logger:tty(false)
+%%             end;
+%%         _ -> []
+%%     end,
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
