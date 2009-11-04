@@ -38,7 +38,7 @@ set_expire_time_op(Node, ExpireTime) ->
 %%--------------------------------------------------------------------
 insert_op(Introducer, NodeToInsert) ->
     %% Insertion timeout should be infinity since they are serialized and waiting.
-    gen_server:call(NodeToInsert, {insert_op, Introducer}, infinity).
+    gen_server:call(NodeToInsert, {insert_op, Introducer}, 5000).
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -638,7 +638,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
             link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
 
             io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
-            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
+%            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
             unlock([Neighbor, Self, NeighborRight])
     end;
 
@@ -688,7 +688,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
 
             io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
-            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
+%            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
             unlock([Neighbor, Self, NeighborLeft])
     end.
 
@@ -775,7 +775,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_right_op(Self, Level, Buddy, BuddyKey),
                             unlock([Buddy, Self]),
                             io:format("INSERTed C ~p level~p:~p~n", [MyKey, Level, ?LINE]),
-                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             %% Go up to next Level.
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end,
@@ -826,7 +826,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                             unlock([Buddy2, Self]),
                                             io:format("INSERTed D~p level~p:~p~n", [MyKey, Level, ?LINE]),
-                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
                                             %% [NodeToInsert:m] <- [D:m]
@@ -836,7 +836,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             link_right_op(Self, Level, Buddy2, Buddy2Key),
                                             unlock([Buddy2, Self]),
                                             io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
-                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                                     end,
                                     ?CHECK_SANITY(Self, Level)
@@ -905,7 +905,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                             %% Debug info end
 
-                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end
             end
