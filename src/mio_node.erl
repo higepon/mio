@@ -133,7 +133,6 @@ init(Args) ->
     [MyKey, MyValue, MyMembershipVector, ExpireTime] = Args,
     Length = length(MyMembershipVector),
     EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
-    Inserted = lists:duplicate(Length + 1, false),
     {ok, #state{key=MyKey,
                 value=MyValue,
                 membership_vector=MyMembershipVector,
@@ -142,7 +141,7 @@ init(Args) ->
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
                 expire_time=ExpireTime,
-                inserted=Inserted
+                inserted=false
                }}.
 
 %%--------------------------------------------------------------------
@@ -165,6 +164,9 @@ handle_call(get_op, From, State) ->
     spawn(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
+handle_call(get_inserted_op, From, State) ->
+    {reply, State#state.inserted, State};
+
 handle_call({get_right_op, Level}, From, State) ->
     spawn(?MODULE, get_right_op_call, [From, State, Level]),
     {noreply, State};
@@ -172,10 +174,6 @@ handle_call({get_right_op, Level}, From, State) ->
 handle_call({get_left_op, Level}, From, State) ->
     spawn(?MODULE, get_left_op_call, [From, State, Level]),
     {noreply, State};
-
-%% %% todo refactoring
-%% handle_call({get_state_op, Level}, _From, State) ->
-%%     {reply, State};
 
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
@@ -207,6 +205,9 @@ handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),
     spawn(?MODULE, link_left_op_call, [From, State, Self, LeftNode, LeftKey, Level]),
     {noreply, State};
+
+handle_call(set_inserted_op, From, State) ->
+    {reply, ok, State#state{inserted=true}};
 
 handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
     Prev = {right(State, Level), right_key(State, Level)},
@@ -510,6 +511,7 @@ delete_loop_(State, Level) ->
 %%
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% there's no buddy
+    gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     %% link on level = 0
@@ -522,6 +524,7 @@ insert_op_call(From, State, Self, Introducer) ->
             MaxLevel = length(State#state.membership_vector),
             link_on_level_ge1(Self, MaxLevel)
     end,
+    gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok).
 
 %% borrowed from global.erl, todo replace
@@ -850,6 +853,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        true -> []
                     end,
 
+                    BuddyInserted = gen_server:call(Buddy, get_inserted_op),
+
                     %% After locked 3 nodes, check invariants.
                     %% invariant
                     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
@@ -857,12 +862,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
                     {RealBuddyLeft, _RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                     IsSameKey = string:equal(MyKey,RealBuddyRightKey),
-                    if %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
-%%                             %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-%%                             io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
-%%                             unlock([Self, Buddy, BuddyRight]),
-%%                             random_sleep(0),
-%%                             link_on_level_ge1(Self, Level, MaxLevel);
+                    if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
+                            %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
+                            io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
+                            unlock([Self, Buddy, BuddyRight]),
+                            random_sleep(0),
+                            link_on_level_ge1(Self, Level, MaxLevel);
                        (RealBuddyRightKey =/= [] andalso IsSameKey)
                        ->
                             %% other process insert on higher level, so we have nothing to do.

@@ -26,23 +26,25 @@ get_boot_node() ->
     end.
 
 init_start_node(From, MaxLevel, BootNode) ->
-    {StartNode, Serializer} = case BootNode of
-                    [] ->
-                        MVector = mio_mvector:generate(MaxLevel),
-                        {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
-                        {ok, WriteSerializer} = mio_sup:start_write_serializer(),
-                        register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
-                        {Node, WriteSerializer};
-                    _ ->
-                        case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
-                            {badrpc, Reason} ->
-                                throw({"Can't start, introducer node not found", {badrpc, Reason}});
-                            {Introducer, MySerializer} ->
-                                {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
-                                mio_node:insert_op(Introducer, Node),
-                                {Node, MySerializer}
-                        end
-                end,
+    {StartNode, Serializer}
+        = case BootNode of
+              [] ->
+                  MVector = mio_mvector:generate(MaxLevel),
+                  {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
+                  mio_node:insert_op(Node, Node),
+                  {ok, WriteSerializer} = mio_sup:start_write_serializer(),
+                  register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
+                  {Node, WriteSerializer};
+              _ ->
+                  case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
+                      {badrpc, Reason} ->
+                          throw({"Can't start, introducer node not found", {badrpc, Reason}});
+                      {Introducer, MySerializer} ->
+                          {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
+                          mio_node:insert_op(Introducer, Node),
+                          {Node, MySerializer}
+                  end
+          end,
     From ! {ok, StartNode, Serializer}.
 
 %% supervisor calls this to create new memcached.
