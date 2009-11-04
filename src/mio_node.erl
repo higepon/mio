@@ -855,6 +855,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        true -> []
                     end,
 
+                    %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
                     BuddyInserted = gen_server:call(Buddy, get_inserted_op),
 
                     %% After locked 3 nodes, check invariants.
@@ -864,6 +865,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
                     {RealBuddyLeft, _RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                     IsSameKey = string:equal(MyKey,RealBuddyRightKey),
+
                     if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
                             %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
                             io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),

@@ -78,40 +78,39 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
-            NewStartNode =
             case Token of
                 ["get", Key] ->
                     process_get(Sock, WriteSerializer, StartNode, Key),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time, _NoReply] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    StartNode;
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
+                    io:format("CLOSED~n"),
                     ok = gen_tcp:close(Sock);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
-                    ok = gen_tcp:send(Sock, "ERROR\r\n"),
-                    StartNode
-            end,
-            process_command(Sock, WriteSerializer, NewStartNode, MaxLevel);
+                    ok = gen_tcp:send(Sock, "ERROR\r\n")
+            end;
         {error, closed} ->
+            ?ERRORF("error closed~n", []),
             ok;
         Error ->
             ?ERRORF("<~p error: ~p\n", [Sock, Error])

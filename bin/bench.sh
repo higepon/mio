@@ -17,7 +17,7 @@ function bench {
     $1 -m 8 &
     sleep 3
     # don't change m parameter
-    mcb -c set -a 127.0.0.1 -p 11211 -m 1000 -t $3 -n $4 -l 100
+    mcb -c set -a 127.0.0.1 -p 11211 -m 10000 -t $3 -n $4 -l 100
     $2
 }
 
@@ -25,7 +25,7 @@ function bench {
 
 
 # bench_memcached 1 1000
-bench_mio 10 100 # 10 * 100 = N
+bench_mio 20 200 # 10 * 100 = N
 
 # bench_memcached 1 1000
 #bench_mio 10 100 # 10 * 100 = N
