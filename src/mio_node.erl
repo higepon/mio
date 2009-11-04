@@ -19,7 +19,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time}).
+-record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time, inserted}).
 
 %%====================================================================
 %% API
@@ -133,6 +133,7 @@ init(Args) ->
     [MyKey, MyValue, MyMembershipVector, ExpireTime] = Args,
     Length = length(MyMembershipVector),
     EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
+    Inserted = lists:duplicate(Length + 1, false),
     {ok, #state{key=MyKey,
                 value=MyValue,
                 membership_vector=MyMembershipVector,
@@ -140,7 +141,8 @@ init(Args) ->
                 right=EmptyNeighbor,
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
-                expire_time=ExpireTime
+                expire_time=ExpireTime,
+                inserted=Inserted
                }}.
 
 %%--------------------------------------------------------------------
