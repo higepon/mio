@@ -550,7 +550,7 @@ random_sleep(Times) ->
 %%               true -> ((1 bsl Times) * 1000) div 16
 %%            end,
     T = random:uniform(1000) rem 20 + 1,
-    io:format("HERE sleep ~p msec ~n", [T]),
+%%    io:format("HERE sleep ~p msec ~n", [T]),
     receive after T -> ok end.
 
 lock(Nodes, infinity) ->
