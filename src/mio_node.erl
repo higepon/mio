@@ -133,6 +133,7 @@ init(Args) ->
     [MyKey, MyValue, MyMembershipVector, ExpireTime] = Args,
     Length = length(MyMembershipVector),
     EmptyNeighbor = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
+    Insereted = lists:duplicate(Length + 1, false),
     {ok, #state{key=MyKey,
                 value=MyValue,
                 membership_vector=MyMembershipVector,
@@ -141,7 +142,7 @@ init(Args) ->
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
                 expire_time=ExpireTime,
-                inserted=false
+                inserted=Insereted
                }}.
 
 %%--------------------------------------------------------------------
@@ -164,8 +165,8 @@ handle_call(get_op, From, State) ->
     spawn(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
-handle_call(get_inserted_op, From, State) ->
-    {reply, State#state.inserted, State};
+handle_call({get_inserted_op, Level}, _From, State) ->
+    {reply, node_on_level(State#state.inserted, Level), State};
 
 handle_call({get_right_op, Level}, From, State) ->
     spawn(?MODULE, get_right_op_call, [From, State, Level]),
@@ -206,8 +207,12 @@ handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     spawn(?MODULE, link_left_op_call, [From, State, Self, LeftNode, LeftKey, Level]),
     {noreply, State};
 
-handle_call(set_inserted_op, From, State) ->
-    {reply, ok, State#state{inserted=true}};
+handle_call({set_inserted_op, Level}, _From, State) ->
+    {reply, ok, State#state{inserted=set_nth(Level + 1, true, State#state.inserted)}};
+
+handle_call(set_inserted_op, _From, State) ->
+    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}};
+
 
 handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
     Prev = {right(State, Level), right_key(State, Level)},
@@ -511,20 +516,22 @@ delete_loop_(State, Level) ->
 %%
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% there's no buddy
+    %% insertiion done
     gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     %% link on level = 0
     case link_on_level0(From, State, Self, Introducer) of
         no_more ->
+            gen_server:call(Self, {set_inserted_op, 0}),
             ?CHECK_SANITY(Self, 0);
         _ ->
+            gen_server:call(Self, {set_inserted_op, 0}),
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
             MaxLevel = length(State#state.membership_vector),
             link_on_level_ge1(Self, MaxLevel)
     end,
-    gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok).
 
 %% borrowed from global.erl, todo replace
@@ -742,6 +749,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% We have no buddy on this level.
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
+                    gen_server:call(Self, set_inserted_op),
                     ?CHECK_SANITY(Self, Level),
 %                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                     [];
@@ -763,6 +771,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     if IsSameKey ->
 %                    if BuddyLeftKey =:= MyKey ->
 %                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                            gen_server:call(Self, set_inserted_op),
                             [];
                        BuddyLeftKey =/= [] ->
                             %% Retry: another key is inserted
@@ -779,6 +788,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %                            io:format("INSERTed C ~p level~p:~p~n", [MyKey, Level, ?LINE]),
 %                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             %% Go up to next Level.
+                            gen_server:call(Self, {set_inserted_op, Level}),
                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                     end,
                     ?CHECK_SANITY(Self, Level)
@@ -795,6 +805,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         %% So we've done.
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
+                            gen_server:call(Self, set_inserted_op),
                             ?CHECK_SANITY(Self, Level),
 %                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
@@ -806,6 +817,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                 [] ->
                                     %% we have no buddy on this level.
                                     %% So we've done.
+                                    gen_server:call(Self, set_inserted_op),
                                     ?CHECK_SANITY(Self, Level),
 %                                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                     [];
@@ -839,6 +851,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             unlock([Buddy2, Self]),
 %                                            io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+                                            gen_server:call(Self, {set_inserted_op, Level}),
                                             link_on_level_ge1(Self, Level + 1, MaxLevel)
                                     end,
                                     ?CHECK_SANITY(Self, Level)
@@ -856,14 +869,13 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     end,
 
                     %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
-                    BuddyInserted = gen_server:call(Buddy, get_inserted_op),
+                    BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
 
                     %% After locked 3 nodes, check invariants.
                     %% invariant
                     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
                     %%   Buddy->rightKey < MyKey
                     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
-                    {RealBuddyLeft, _RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                     IsSameKey = string:equal(MyKey,RealBuddyRightKey),
 
                     if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
@@ -875,6 +887,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_on_level_ge1(Self, Level, MaxLevel);
                        (RealBuddyRightKey =/= [] andalso IsSameKey)
                        ->
+                            gen_server:call(Self, set_inserted_op),
                             %% other process insert on higher level, so we have nothing to do.
                             ?CHECK_SANITY(Self, Level),
 %                            io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
@@ -905,7 +918,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
                             unlock([Self, Buddy, BuddyRight]),
                             ?CHECK_SANITY(Self, Level),
-
+                            gen_server:call(Self, {set_inserted_op, Level}),
                             %% Debug info start
 %                            io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
 
