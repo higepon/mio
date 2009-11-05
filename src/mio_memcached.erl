@@ -103,7 +103,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
-                    io:format("CLOSED~n"),
+%%                    io:format("CLOSED~n"),
                     ok = gen_tcp:close(Sock);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
@@ -202,9 +202,9 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, M
                              end,
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
 %% serialize or concurrent
-            io:format("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
+%            io:format("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
             mio_node:insert_op(Introducer, NodeToInsert),
-            io:format("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
+%            io:format("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
 %%            mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),

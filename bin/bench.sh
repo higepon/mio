@@ -25,7 +25,7 @@ function bench {
 
 
 # bench_memcached 1 1000
-bench_mio 20 200 # 10 * 100 = N
+bench_mio 10 1000 # 10 * 100 = N
 
 # bench_memcached 1 1000
 #bench_mio 10 100 # 10 * 100 = N
