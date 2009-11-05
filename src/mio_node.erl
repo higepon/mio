@@ -544,7 +544,7 @@ random_sleep(Times) ->
               true -> ((1 bsl Times) * 1000) div 8
            end,
     T = random:uniform(Tmax),
-%   io:format("sleep ~p msec~n", [T]),
+    io:format("sleep ~p msec~n", [T]),
     receive after T -> ok end.
 
 lock(Nodes, infinity) ->
@@ -871,6 +871,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
                             random_sleep(0),
+                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        (RealBuddyRightKey =/= [] andalso IsSameKey)
                        ->
@@ -885,7 +886,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             %% Retry: another key is inserted
                             io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
-%                            random_sleep(0),
+                            random_sleep(0),
+                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
                             % [A:m] -> [NodeToInsert:m]

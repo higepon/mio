@@ -1,5 +1,5 @@
 %%-define(PROFILER_ON, true).
-%-define(DEBUG_ON, true).
+-define(DEBUG_ON, true).
 
 -ifdef (DEBUG_ON).
   -define(CHECK_SANITY(Node, Level), check_sanity(Node, Level, ?MODULE, ?LINE)).
