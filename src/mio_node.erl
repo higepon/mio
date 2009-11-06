@@ -10,7 +10,7 @@
 %% API
 -export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
          get_left_op_call/3,
-         insert_op_call/4, delete_op_call/2,link_right_op_call/6, link_left_op_call/6,
+         insert_op_call/4, delete_op_call/3,link_right_op_call/6, link_left_op_call/6,
          search_op/2, link_right_op/4, link_left_op/4, set_nth/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4]).
@@ -188,7 +188,8 @@ handle_call({insert_op, Introducer}, From, State) ->
     {noreply, State};
 
 handle_call(delete_op, From, State) ->
-    spawn(?MODULE, delete_op_call, [From, State]),
+    Self = self(),
+    spawn(?MODULE, delete_op_call, [From, Self, State]),
     {noreply, State};
 
 handle_call({set_op, NewValue}, _From, State) ->
@@ -481,10 +482,19 @@ search_to_left(From, Self, State, Level, Key) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-delete_op_call(From, State) ->
+delete_op_call(From, Self, State) ->
+    IsLocked = lock([Self]),
+    if not IsLocked ->
+            ?ERRORF("delete_op_call: key = ~p lock failed~n", [State#state.key]),
+            exit(lock_failed);
+       true -> []
+    end,
+
     MaxLevel = length(State#state.membership_vector),
     delete_loop_(State, MaxLevel),
     %% My State will not be changed, since I'm killed soon.
+
+    unlock([Self]),
     gen_server:reply(From, ok).
 
 delete_loop_(State, Level) when Level < 0 ->
