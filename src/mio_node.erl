@@ -491,27 +491,24 @@ delete_op_call(From, Self, State) ->
     end,
 
     MaxLevel = length(State#state.membership_vector),
-    delete_loop_(State, MaxLevel),
+    delete_loop_(Self, MaxLevel),
     %% My State will not be changed, since I'm killed soon.
 
     unlock([Self]),
     gen_server:reply(From, ok).
 
-delete_loop_(State, Level) when Level < 0 ->
-    State;
-delete_loop_(State, Level) ->
-    RightNode = right(State, Level),
-    LeftNode = left(State, Level),
+delete_loop_(_Self, Level) when Level < 0 ->
+    [];
+delete_loop_(Self, Level) ->
+    {RightNode, RightKey} = gen_server:call(Self, {get_right_op, Level}),
+    {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
 
     IsLocked = lock([RightNode, LeftNode]),
     if not IsLocked ->
-            ?ERRORF("delete_loop_: key = ~p lock failed~n", [State#state.key]),
+            ?ERRORF("delete_loop_: key = ~p lock failed~n", [Self]),
             exit(lock_failed);
        true -> []
     end,
-
-    RightKey = right_key(State, Level),
-    LeftKey = left_key(State, Level),
 
     case RightNode of
         [] -> [];
@@ -528,7 +525,7 @@ delete_loop_(State, Level) ->
 
     %% N.B.
     %% We keep the right/left node of Self, since it may be located on search path.
-    delete_loop_(State, Level - 1).
+    delete_loop_(Self, Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
