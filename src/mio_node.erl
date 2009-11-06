@@ -19,7 +19,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time, inserted}).
+-record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time, inserted, deleted}).
 
 %%====================================================================
 %% API
@@ -142,7 +142,8 @@ init(Args) ->
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
                 expire_time=ExpireTime,
-                inserted=Insereted
+                inserted=Insereted,
+                deleted=false
                }}.
 
 %%--------------------------------------------------------------------
@@ -167,6 +168,9 @@ handle_call(get_op, From, State) ->
 
 handle_call({get_inserted_op, Level}, _From, State) ->
     {reply, node_on_level(State#state.inserted, Level), State};
+
+handle_call(get_deleted_op, _From, State) ->
+    {reply, State#state.deleted, State};
 
 handle_call({get_right_op, Level}, From, State) ->
     spawn(?MODULE, get_right_op_call, [From, State, Level]),
