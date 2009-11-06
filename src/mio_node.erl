@@ -502,6 +502,14 @@ delete_loop_(State, Level) when Level < 0 ->
 delete_loop_(State, Level) ->
     RightNode = right(State, Level),
     LeftNode = left(State, Level),
+
+    IsLocked = lock([RightNode, LeftNode]),
+    if not IsLocked ->
+            ?ERRORF("delete_loop_: key = ~p lock failed~n", [State#state.key]),
+            exit(lock_failed);
+       true -> []
+    end,
+
     RightKey = right_key(State, Level),
     LeftKey = left_key(State, Level),
 
@@ -515,7 +523,12 @@ delete_loop_(State, Level) ->
         _ ->
             link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
-    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
+    unlock([RightNode, LeftNode]),
+%%    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
+
+    %% N.B.
+    %% We keep the right/left node of Self, since it may be located on search path.
+    delete_loop_(State, Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
