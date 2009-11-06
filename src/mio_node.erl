@@ -494,12 +494,18 @@ delete_op_call(From, Self, State) ->
        true -> []
     end,
 
-    MaxLevel = length(State#state.membership_vector),
-    delete_loop_(Self, MaxLevel),
-    %% My State will not be changed, since I'm killed soon.
-
-    unlock([Self]),
-    gen_server:reply(From, ok).
+    IsDeleted = gen_server:call(Self, get_deleted_op),
+    if IsDeleted ->
+            %% already deleted.
+            unlock([Self]),
+            gen_server:reply(From, ok);
+       true ->
+            MaxLevel = length(State#state.membership_vector),
+            delete_loop_(Self, MaxLevel),
+            %% My State will not be changed, since I'm killed soon.
+            unlock([Self]),
+            gen_server:reply(From, ok)
+    end.
 
 delete_loop_(_Self, Level) when Level < 0 ->
     [];
