@@ -720,8 +720,6 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
        true -> []
     end,
 
-    %% TODO: check deleted
-
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
@@ -737,24 +735,33 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             unlock([Neighbor, Self, NeighborLeft]),
             link_on_level0(From, State, Self, Introducer);
        true ->
-            %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-            {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
-            case PrevNeighborLeft of
-                [] -> [];
-                _ ->
-                    %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-                    link_right_op(PrevNeighborLeft, 0, Self, MyKey)
-            end,
-            %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-            link_right_op(Self, 0, Neighbor, NeighborKey),
+            IsDeleted =
+                (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
+                orelse
+                (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
+            if IsDeleted ->
+                    unlock([Neighbor, Self, NeighborLeft]),
+                    link_on_level0(From, State, Self, Introducer);
+               true ->
+                    %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
+                    {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
+                    case PrevNeighborLeft of
+                        [] -> [];
+                        _ ->
+                            %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+                            link_right_op(PrevNeighborLeft, 0, Self, MyKey)
+                    end,
+                    %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
+                    link_right_op(Self, 0, Neighbor, NeighborKey),
 
-            %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-            link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
+                    %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
+                    link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
 
-%            io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
-%            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
-            unlock([Neighbor, Self, NeighborLeft]),
-            need_link_on_level_ge1
+                                                %            io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
+                                                %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
+                    unlock([Neighbor, Self, NeighborLeft]),
+                    need_link_on_level_ge1
+            end
     end.
 
 %% link on Level >= 1
