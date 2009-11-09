@@ -507,6 +507,7 @@ delete_op_call(From, Self, State) ->
     IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
+            io:format("<<< Already deleted >>>~n"),
             unlock([Self]),
             gen_server:reply(From, ok);
        true ->
@@ -630,7 +631,7 @@ link_on_level0(From, State, Self, Introducer) ->
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
             if IsDeleted ->
                     %% Retry
-                    io:format("link_on_level0 MyKey=~p NeighborKey=~p Neighbor deleted~n", [MyKey, NeighborKey]),
+                    io:format("<<< link_on_level0 Neighbor deleted >>>~n"),
                     unlock([Neighbor]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
@@ -683,6 +684,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
                 orelse
                 (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
             if IsDeleted ->
+                    io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
                     unlock([Neighbor, Self, NeighborRight]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
@@ -740,6 +742,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                 orelse
                 (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
             if IsDeleted ->
+                    io:format("<<< link_on_level0 Neighbor deleted 3>>>~n"),
                     unlock([Neighbor, Self, NeighborLeft]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
@@ -829,6 +832,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                     IsDeleted = gen_server:call(Buddy, get_deleted_op),
                     if IsDeleted ->
+                            io:format("<<< link_on_levelge1 Neighbor deleted>>>~n"),
                             unlock([Buddy, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
@@ -903,6 +907,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                                     IsDeleted = gen_server:call(Buddy2, get_deleted_op),
                                     if IsDeleted ->
+                                            io:format("<<< link_on_levelge1 Neighbor deleted2>>>~n"),
                                             unlock([Buddy2, Self]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
@@ -984,6 +989,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                 orelse
                                 (BuddyRight =/= [] andalso gen_server:call(BuddyRight, get_deleted_op)),
                             if IsDeleted ->
+                                    io:format("<<< link_on_levelge1 Neighbor deleted3>>>~n"),
                                     unlock([Self, Buddy, BuddyRight]),
                                     link_on_level_ge1(Self, Level, MaxLevel);
                                true ->
