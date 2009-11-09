@@ -56,8 +56,9 @@ delete_op(Node) ->
     gen_server:call(Node, delete_op),
 
     %% Since the node to delete may be still referenced,
-    %% We wait 1 minitues .
-    terminate_node(Node, 60000),
+    %% We wait 1 minitue .
+    OneMinute = 60000,
+    terminate_node(Node, OneMinute),
     ok.
 
 terminate_node(Node, After) ->

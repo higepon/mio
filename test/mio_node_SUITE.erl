@@ -265,15 +265,15 @@ delete_op(_Config) ->
     [[{_, key7, _, _}]] = mio_node:dump_op(Node7, 1),
 
     %% Node3 should be teminated
-    receive
-        {'DOWN', Ref, process, Node3, Reason} ->
-            io:format("process is down, reason: ~p.~n",
-                      [Reason]);
-        Any ->
-            throw(Any)
-    after 1000 ->
-            throw("timeout.~n")
-    end,
+%%     receive
+%%         {'DOWN', Ref, process, Node3, Reason} ->
+%%             io:format("process is down, reason: ~p.~n",
+%%                       [Reason]);
+%%         Any ->
+%%             throw(Any)
+%%     after 1000 ->
+%%             throw("timeout.~n")
+%%     end,
     ok.
 
 insert_op_self(_Config) ->
