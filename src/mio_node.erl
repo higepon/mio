@@ -504,17 +504,21 @@ delete_op_call(From, Self, State) ->
        true -> []
     end,
 
+    io:format("Locked ~p 8 ~n", [[Self]]),
+
     IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
             io:format("<<< Already deleted >>>~n"),
             unlock([Self]),
+            io:format("UnLocked ~p 8 ~n", [[Self]]),
             gen_server:reply(From, ok);
        true ->
             MaxLevel = length(State#state.membership_vector),
             delete_loop_(Self, MaxLevel),
             %% My State will not be changed, since I'm killed soon.
             unlock([Self]),
+            io:format("UnLocked ~p 8 ~n", [[Self]]),
             gen_server:reply(From, ok)
     end.
 
@@ -531,6 +535,9 @@ delete_loop_(Self, Level) ->
        true -> []
     end,
 
+    io:format("Locked ~p 8 ~n", [[RightNode, LeftNode]]),
+
+    ?CHECK_SANITY(Self, Level),
     case RightNode of
         [] -> [];
         _ ->
@@ -541,7 +548,9 @@ delete_loop_(Self, Level) ->
         _ ->
             link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
+    ?CHECK_SANITY(Self, Level),
     unlock([RightNode, LeftNode]),
+    io:format("UnLocked ~p 8 ~n", [[RightNode, LeftNode]]),
 %%    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
 
     %% N.B.
@@ -591,20 +600,20 @@ random_sleep(Times) ->
 %%               true -> ((1 bsl Times) * 1000) div 16
 %%            end,
     T = random:uniform(1000) rem 20 + 1,
-%%    io:format("HERE sleep ~p msec ~n", [T]),
+    io:format("HERE sleep ~p msec ~n", [T]),
     receive after T -> ok end.
 
 lock(Nodes, infinity) ->
     mio_lock:lock(Nodes, infinity);
-lock(Nodes, 10) ->
-%    io:format("mio_node:lock dead lock ~p~n", [Nodes]),
+lock(Nodes, 50) ->
+    io:format("mio_node:lock dead lock ~p~n", [Nodes]),
     false;
 lock(Nodes, Times) ->
     case mio_lock:lock(Nodes) of
         true ->
             true;
         false ->
-%            io:format("mio_node:lock sleeping for ~p~n", [Nodes]),
+            io:format("Lock NG Sleeping ~p~n", [Nodes]),
             random_sleep(Times),
             lock(Nodes, Times + 1)
     end.
@@ -618,7 +627,7 @@ unlock(Nodes) ->
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
-%    io:format("link_on_level0 MyKey=~p NeighborKey=~p ~n", [MyKey, NeighborKey]),
+    io:format("link_on_level0 MyKey=~p NeighborKey=~p ~n", [MyKey, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -627,18 +636,21 @@ link_on_level0(From, State, Self, Introducer) ->
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
             lock([Neighbor], infinity),
+            io:format("Locked MyKey=~p ~p 1 ~n", [MyKey, [Neighbor]]),
 
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
             if IsDeleted ->
                     %% Retry
                     io:format("<<< link_on_level0 Neighbor deleted >>>~n"),
                     unlock([Neighbor]),
+                    io:format("UnLocked MyKey=~p ~p 1 ~n", [MyKey, [Neighbor]]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% overwrite the value
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
 
                     unlock([Neighbor]),
+                    io:format("UnLocked MyKey=~p ~p 1 ~n", [MyKey, [Neighbor]]),
                     %% tell the callee, link_on_level_ge1 is not necessary
                     no_more
             end;
@@ -651,7 +663,7 @@ link_on_level0(From, State, Self, Introducer) ->
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
-%    io:format("start link_on_level0! Self=~p self=~p~n", [Self, self()]),
+    io:format("start link_on_level0! Self=~p self=~p~n", [Self, self()]),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
     IsLocked = lock([Neighbor, Self, NeighborRight]),
@@ -661,6 +673,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
        true -> []
     end,
 
+    io:format("Locked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
     %% TODO: check deleted
 
     %% After locked 3 nodes, check invariants.
@@ -675,8 +688,9 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
        (NeighborRight =/= RealNeighborRight)
        ->
             %% Retry: another key is inserted
-%            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
+            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
             unlock([Neighbor, Self, NeighborRight]),
+            io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
             link_on_level0(From, State, Self, Introducer);
        true ->
             IsDeleted =
@@ -686,6 +700,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
             if IsDeleted ->
                     io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
                     unlock([Neighbor, Self, NeighborRight]),
+                    io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
@@ -704,6 +719,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
                                                 %            io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
                     unlock([Neighbor, Self, NeighborRight]),
+                    io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
                     need_link_on_level_ge1
             end
     end;
@@ -712,7 +728,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
-%    io:format("start link_on_level0 Self=~p self=~p~n", [Self, self()]),
+    io:format("start link_on_level0 Self=~p self=~p~n", [Self, self()]),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
     IsLocked = lock([Neighbor, Self, NeighborLeft]),
@@ -721,6 +737,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             exit(lock_failed);
        true -> []
     end,
+    io:format("Locked MyKey=~p ~p 3 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
@@ -733,8 +750,9 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
-%            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
+            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
             unlock([Neighbor, Self, NeighborLeft]),
+            io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
             link_on_level0(From, State, Self, Introducer);
        true ->
             IsDeleted =
@@ -744,6 +762,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             if IsDeleted ->
                     io:format("<<< link_on_level0 Neighbor deleted 3>>>~n"),
                     unlock([Neighbor, Self, NeighborLeft]),
+                    io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
@@ -763,6 +782,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                                                 %            io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
                     unlock([Neighbor, Self, NeighborLeft]),
+                    io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
                     need_link_on_level_ge1
             end
     end.
@@ -806,7 +826,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% This should never happen.
             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
             %% since insert to self is returned immediately on insert_op.
-%            io:format("Before assert self=~p ~p ~p~n", [self(), MyKey, Level]),
+            io:format("Before assert self=~p ~p ~p~n", [self(), MyKey, Level]),
             ?ASSERT_NOT_NIL(RightNodeOnLower),
             {ok, Buddy, BuddyKey, _, _} = buddy_op(RightNodeOnLower, MyMV, right, Level),
             case Buddy of
@@ -817,7 +837,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                     %% So we've done.
                     gen_server:call(Self, set_inserted_op),
                     ?CHECK_SANITY(Self, Level),
-%                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                     [];
                 %% [NodeToInsert] <-> [Buddy]
                 _ ->
@@ -829,11 +849,13 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             exit(lock_failed);
                        true -> []
                     end,
+                    io:format("Locked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
 
                     IsDeleted = gen_server:call(Buddy, get_deleted_op),
                     if IsDeleted ->
                             io:format("<<< link_on_levelge1 Neighbor deleted>>>~n"),
-                            unlock([Buddy, Self]),
+                            unlock([Self, Buddy]),
+                            io:format("UnLocked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true ->
                             %% check invariants
@@ -842,13 +864,14 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             IsSameKey = string:equal(BuddyLeftKey, MyKey),
                             if IsSameKey ->
                                                 %                    if BuddyLeftKey =:= MyKey ->
-                                                %                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                     gen_server:call(Self, set_inserted_op),
                                     [];
                                BuddyLeftKey =/= [] ->
                                     %% Retry: another key is inserted
-                                                %                            io:format("** RETRY link_on_levelge1[2] ~p~p**~n", [MyKey, BuddyLeftKey]),
+                                    io:format("** RETRY link_on_levelge1[2] ~p~p**~n", [MyKey, BuddyLeftKey]),
                                     unlock([Buddy, Self]),
+                                    io:format("UnLocked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
                                     link_on_level_ge1(Self, Level, MaxLevel);
                                true ->
                                     %% [NodeToInsert] <- [Buddy]
@@ -857,6 +880,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     %% [NodeToInsert] -> [Buddy]
                                     link_right_op(Self, Level, Buddy, BuddyKey),
                                     unlock([Buddy, Self]),
+                                    io:format("UnLocked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
                                                 %                            io:format("INSERTed C ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                                 %                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                     %% Go up to next Level.
@@ -880,7 +904,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         [] ->
                             gen_server:call(Self, set_inserted_op),
                             ?CHECK_SANITY(Self, Level),
-%                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                            io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
@@ -892,7 +916,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                     %% So we've done.
                                     gen_server:call(Self, set_inserted_op),
                                     ?CHECK_SANITY(Self, Level),
-%                                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                                    io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                     [];
                                 %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                                 _ ->
@@ -904,11 +928,13 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             exit(lock_failed);
                                        true -> []
                                     end,
+                                    io:format("Locked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
 
                                     IsDeleted = gen_server:call(Buddy2, get_deleted_op),
                                     if IsDeleted ->
                                             io:format("<<< link_on_levelge1 Neighbor deleted2>>>~n"),
-                                            unlock([Buddy2, Self]),
+                                            unlock([Self, Buddy2]),
+                                            io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
                                             link_on_level_ge1(Self, Level, MaxLevel);
                                        true ->
 
@@ -917,7 +943,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
                                             if Buddy2LeftKey =/= [] ->
                                                     %% Retry: another key is inserted
-                                                %                                            io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
+                                                    io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
                                                     unlock([Buddy2, Self]),
                                                 %                                            io:format("INSERTed D~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                                 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
@@ -929,6 +955,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                                     %% [NodeToInsert:m] -> [D:m]
                                                     link_right_op(Self, Level, Buddy2, Buddy2Key),
                                                     unlock([Buddy2, Self]),
+                                                    io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
                                                 %                                            io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                                 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                                     gen_server:call(Self, {set_inserted_op, Level}),
@@ -949,6 +976,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        true -> []
                     end,
 
+                    io:format("Locked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
+
                     %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
                     BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
 
@@ -961,8 +990,9 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                     if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
                             %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-%                            io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
+                            io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
+                            io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                             random_sleep(0),
 %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
@@ -971,15 +1001,18 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             gen_server:call(Self, set_inserted_op),
                             %% other process insert on higher level, so we have nothing to do.
                             ?CHECK_SANITY(Self, Level),
-%                            io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+                            io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                        (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
                        orelse
                        (RealBuddyRight =/= BuddyRight)
                        ->
                             %% Retry: another key is inserted
-%                            io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
+                            io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
+                            io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
+                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level - 1)]),
                             random_sleep(0),
 %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
@@ -991,6 +1024,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             if IsDeleted ->
                                     io:format("<<< link_on_levelge1 Neighbor deleted3>>>~n"),
                                     unlock([Self, Buddy, BuddyRight]),
+                                    io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                                     link_on_level_ge1(Self, Level, MaxLevel);
                                true ->
 
@@ -1008,10 +1042,11 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                                 % [NodeToInsert:m] -> [D:m]
                                     link_right_op(Self, Level, BuddyRight, BuddyRightKey),
                                     unlock([Self, Buddy, BuddyRight]),
+                                    io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                                     ?CHECK_SANITY(Self, Level),
                                     gen_server:call(Self, {set_inserted_op, Level}),
                                     %% Debug info start
-                                                %                            io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
+                                    io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
 
                                     %% Debug info end
 

@@ -94,8 +94,9 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
+                    io:format("MEM_DELETE_START ~p ~p~n", [Key, self()]),
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    io:format("MEM_DELETE_DONE ~p~n", [Key]),
+                    io:format("MEM_DELETE_DONE ~p ~p~n", [Key, self()]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
@@ -104,14 +105,14 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
-%%                    io:format("CLOSED~n"),
+                    io:format("CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
             end;
         {error, closed} ->
-            ?ERRORF("error closed~n", []),
+            ?ERRORF("error closed ~p~n", [self()]),
             ok;
         Error ->
             ?ERRORF("<~p error: ~p\n", [Sock, Error])
