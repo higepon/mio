@@ -54,8 +54,17 @@ delete_op(Introducer, Key) ->
 
 delete_op(Node) ->
     gen_server:call(Node, delete_op),
-    mio_sup:terminate_node(Node),
+
+    %% Since the node to delete may be still referenced,
+    %% We wait 1 minitues .
+    terminate_node(Node, 60000),
     ok.
+
+terminate_node(Node, After) ->
+    spawn(fun() ->
+                  receive after After -> ok end,
+                  mio_sup:terminate_node(Node)
+          end).
 
 %%--------------------------------------------------------------------
 %%  range search operation
@@ -534,7 +543,7 @@ delete_loop_(Self, Level) ->
 %%    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
 
     %% N.B.
-    %% We keep the right/left node of Self, since it may be located on search path.
+    %% We keep the right/left node of Self, since it may be still located on search path.
     delete_loop_(Self, Level - 1).
 
 %%--------------------------------------------------------------------
