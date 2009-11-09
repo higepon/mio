@@ -625,14 +625,22 @@ link_on_level0(From, State, Self, Introducer) ->
             MyValue = State#state.value,
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
-            lock([Neighbor], infinity), % TODO: check deleted
+            lock([Neighbor], infinity),
 
-            %% overwrite the value
-            ok = gen_server:call(Neighbor, {set_op, MyValue}),
+            IsDeleted = gen_server:call(Neighbor, get_deleted_op),
+            if IsDeleted ->
+                    %% Retry
+                    io:format("link_on_level0 MyKey=~p NeighborKey=~p Neighbor deleted~n", [MyKey, NeighborKey]),
+                    unlock([Neighbor]),
+                    link_on_level0(From, State, Self, Introducer);
+               true ->
+                    %% overwrite the value
+                    ok = gen_server:call(Neighbor, {set_op, MyValue}),
 
-            unlock([Neighbor]),
-            %% tell the callee, link_on_level_ge1 is not necessary
-            no_more;
+                    unlock([Neighbor]),
+                    %% tell the callee, link_on_level_ge1 is not necessary
+                    no_more
+            end;
         %% insert!
         true ->
             link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer)
