@@ -863,9 +863,9 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             {_, BuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
                             IsSameKey = string:equal(BuddyLeftKey, MyKey),
                             if IsSameKey ->
-                                                %                    if BuddyLeftKey =:= MyKey ->
                                     io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                     gen_server:call(Self, set_inserted_op),
+                                    unlock([Buddy, Self]),
                                     [];
                                BuddyLeftKey =/= [] ->
                                     %% Retry: another key is inserted
@@ -879,12 +879,13 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                                     %% [NodeToInsert] -> [Buddy]
                                     link_right_op(Self, Level, Buddy, BuddyKey),
+                                    gen_server:call(Self, {set_inserted_op, Level}),
                                     unlock([Buddy, Self]),
                                     io:format("UnLocked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
                                                 %                            io:format("INSERTed C ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                                 %                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                                     %% Go up to next Level.
-                                    gen_server:call(Self, {set_inserted_op, Level}),
+
                                     link_on_level_ge1(Self, Level + 1, MaxLevel)
                             end
                     end,
@@ -954,11 +955,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                                                     %% [NodeToInsert:m] -> [D:m]
                                                     link_right_op(Self, Level, Buddy2, Buddy2Key),
+                                                    gen_server:call(Self, {set_inserted_op, Level}),
                                                     unlock([Buddy2, Self]),
                                                     io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
                                                 %                                            io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
                                                 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
-                                                    gen_server:call(Self, {set_inserted_op, Level}),
+
                                                     link_on_level_ge1(Self, Level + 1, MaxLevel)
                                             end
                                     end,
@@ -999,6 +1001,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                        (RealBuddyRightKey =/= [] andalso IsSameKey)
                        ->
                             gen_server:call(Self, set_inserted_op),
+                            unlock([Self, Buddy, BuddyRight]),
+                            io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                             %% other process insert on higher level, so we have nothing to do.
                             ?CHECK_SANITY(Self, Level),
                             io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
@@ -1041,10 +1045,11 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
                                                 % [NodeToInsert:m] -> [D:m]
                                     link_right_op(Self, Level, BuddyRight, BuddyRightKey),
+                                    gen_server:call(Self, {set_inserted_op, Level}),
                                     unlock([Self, Buddy, BuddyRight]),
                                     io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                                     ?CHECK_SANITY(Self, Level),
-                                    gen_server:call(Self, {set_inserted_op, Level}),
+
                                     %% Debug info start
                                     io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
 
