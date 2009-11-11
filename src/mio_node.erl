@@ -1,4 +1,4 @@
-%%% Description : Skip Graphde
+ %%% Description : Skip Graphde
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
@@ -53,7 +53,7 @@ delete_op(Introducer, Key) ->
     end.
 
 delete_op(Node) ->
-    gen_server:call(Node, delete_op),
+    gen_server:call(Node, delete_op, 30000), %% todo proper timeout value
 
     %% Since the node to delete may be still referenced,
     %% We wait 1 minitue .
@@ -216,6 +216,9 @@ handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
+
+handle_call(set_deleted_op, _From, State) ->
+    {reply, ok, State#state{deleted=true}};
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
     Self = self(),
@@ -517,39 +520,49 @@ delete_op_call(From, Self, State) ->
             MaxLevel = length(State#state.membership_vector),
             delete_loop_(Self, MaxLevel),
             %% My State will not be changed, since I'm killed soon.
+            gen_server:call(Self, set_deleted_op),
             unlock([Self]),
             io:format("UnLocked ~p 8 ~n", [[Self]]),
             gen_server:reply(From, ok)
     end.
 
-delete_loop_(_Self, Level) when Level < 0 ->
+delete_loop_(Self, Level) when Level < 0 ->
+    io:format("delete_loop_<<1>> ~p ~n", [[Self, Level]]),
     [];
 delete_loop_(Self, Level) ->
+    io:format("delete_loop_<<1>> ~p ~n", [[Self, Level]]),
     {RightNode, RightKey} = gen_server:call(Self, {get_right_op, Level}),
     {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
-
+    io:format("delete_loop_<<2>> ~p ~n", [[Self, Level]]),
     IsLocked = lock([RightNode, LeftNode]),
     if not IsLocked ->
             ?ERRORF("delete_loop_: key = ~p lock failed~n", [Self]),
             exit(lock_failed);
        true -> []
     end,
-
+    io:format("delete_loop_<<3>> ~p ~n", [[Self, Level]]),
     io:format("Locked ~p 8 ~n", [[RightNode, LeftNode]]),
 
     ?CHECK_SANITY(Self, Level),
+    io:format("delete_loop_<<4>> ~p ~n", [[Self, Level]]),
     case RightNode of
         [] -> [];
         _ ->
             link_left_no_redirect_op(RightNode, Level, LeftNode, LeftKey)
     end,
+    io:format("delete_loop_<<5>> ~p ~n", [[Self, Level]]),
+    io:format("delete_loop_ ~p ~n 2", [Self]),
     case LeftNode of
         [] -> [];
         _ ->
             link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
     end,
+    io:format("delete_loop_<<6>> ~p ~n", [[Self, Level]]),
+    io:format("delete_loop_ ~p ~n 3", [Self]),
     ?CHECK_SANITY(Self, Level),
+    io:format("delete_loop_<<7>> ~p ~n", [[Self, Level]]),
     unlock([RightNode, LeftNode]),
+    io:format("delete_loop_<<8>> ~p ~n", [[Self, Level]]),
     io:format("UnLocked ~p 8 ~n", [[RightNode, LeftNode]]),
 %%    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
 
@@ -929,7 +942,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             exit(lock_failed);
                                        true -> []
                                     end,
-                                    io:format("Locked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
+                                    io:format("Locked MyKey=~p ~p 6 ~n", [[MyKey, Buddy2Key], [Self, Buddy2]]),
 
                                     IsDeleted = gen_server:call(Buddy2, get_deleted_op),
                                     if IsDeleted ->
