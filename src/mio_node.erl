@@ -8,18 +8,21 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
-         get_left_op_call/3,
-         insert_op_call/4, delete_op_call/3,link_right_op_call/6, link_left_op_call/6,
-         search_op/2, link_right_op/4, link_left_op/4, set_nth/3,
-         set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2, node_on_level/2,
-         delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4]).
+-export([start_link/1,
+         search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
+         get_left_op_call/3, insert_op_call/4, delete_op_call/3, link_right_op_call/6,
+         link_left_op_call/6, search_op/2, link_right_op/4, link_left_op/4,
+         set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
+         delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
+         set_nth/3,node_on_level/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {key, value, membership_vector, left, right, left_keys, right_keys, expire_time, inserted, deleted}).
+-record(state, {key, value, membership_vector,
+                left, right, left_keys, right_keys,
+                expire_time, inserted, deleted}).
 
 %%====================================================================
 %% API
@@ -45,18 +48,18 @@ insert_op(Introducer, NodeToInsert) ->
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _, _} = search_op(Introducer, Key),
-    IsSameKey = string:equal(FoundKey,Key),
-    if IsSameKey ->
+    case string:equal(FoundKey, Key) of
+        true ->
             delete_op(FoundNode),
             ok;
-       true -> ng
+        false -> ng
     end.
 
 delete_op(Node) ->
     gen_server:call(Node, delete_op, 30000), %% todo proper timeout value
 
     %% Since the node to delete may be still referenced,
-    %% We wait 1 minitue .
+    %% We wait 1 minitue.
     OneMinute = 60000,
     terminate_node(Node, OneMinute),
     ok.
@@ -190,12 +193,12 @@ handle_call({get_left_op, Level}, From, State) ->
     spawn(?MODULE, get_left_op_call, [From, State, Level]),
     {noreply, State};
 
-
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
     spawn(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
+%% Write Operations start
 handle_call({insert_op, Introducer}, From, State) ->
     Self = self(),
     spawn(?MODULE, insert_op_call, [From, State, Self, Introducer]),
@@ -296,20 +299,21 @@ handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, S
                   State#state.key >= Key2),
     {noreply, State}.
 
+range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) when Limit =:= 0 ->
+    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) when IsOutOfRange ->
+    case NextNodeFunc(State, 0) of
+        [] ->
+            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
+        NextNode ->
+            gen_server:cast(NextNode,
+                            {Op, ReturnToMe, Key1, Key2, Accum, Limit})
+    end;
 range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyExpireTime = State#state.expire_time,
-    if Limit =:= 0 ->
-            ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-       IsOutOfRange ->
-            case NextNodeFunc(State, 0) of
-                [] ->
-                    ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-                NextNode ->
-                    gen_server:cast(NextNode,
-                                    {Op, ReturnToMe, Key1, Key2, Accum, Limit})
-            end;
+    if
        Key1 < MyKey andalso MyKey < Key2 ->
             case NextNodeFunc(State, 0) of
                 [] ->
@@ -383,7 +387,7 @@ set_left(State, Level, Node, Key) ->
     NewState#state{left=set_nth(Level + 1, Node, NewState#state.left)}.
 
 %%--------------------------------------------------------------------
-%%% Implementation of call
+%%% Implementation of genserver:call
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
