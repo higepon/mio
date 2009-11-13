@@ -1,4 +1,4 @@
- %%% Description : Skip Graphde
+%%% Description : Skip Graphde
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
@@ -202,8 +202,10 @@ handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
 
 handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
-    Prev = {right(State, Level), right_key(State, Level)},
-    {reply, Prev, set_right(State, Level, RightNode, RightKey)};
+    {reply, ok, set_right(State, Level, RightNode, RightKey)};
+
+handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
+    {reply, ok, set_left(State, Level, LeftNode, LeftKey)};
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
@@ -211,9 +213,6 @@ handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
 handle_call(set_deleted_op, _From, State) ->
     {reply, ok, State#state{deleted=true}};
 
-handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
-    Prev = {left(State, Level), left_key(State, Level)},
-    {reply, Prev, set_left(State, Level, LeftNode, LeftKey)};
 
 handle_call({set_inserted_op, Level}, _From, State) ->
     {reply, ok, State#state{inserted=set_nth(Level + 1, true, State#state.inserted)}};
@@ -692,17 +691,17 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-                    {PrevNeighborRight, PrevNeighborRightKey} = link_right_op(Neighbor, 0, Self, MyKey),
-                    case PrevNeighborRight of
+                    link_right_op(Neighbor, 0, Self, MyKey),
+                    case RealNeighborRight of
                         [] -> [];
                         _ ->
                             %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-                            link_left_op(PrevNeighborRight, 0, Self, MyKey)
+                            link_left_op(RealNeighborRight, 0, Self, MyKey)
                     end,
                     %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
                     link_left_op(Self, 0, Neighbor, NeighborKey),
                     %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-                    link_right_op(Self, 0, PrevNeighborRight, PrevNeighborRightKey),
+                    link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
 
                                                 %            io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
@@ -754,18 +753,18 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-                    {PrevNeighborLeft, PrevNeighborLeftKey} = link_left_op(Neighbor, 0, Self, MyKey),
-                    case PrevNeighborLeft of
+                    link_left_op(Neighbor, 0, Self, MyKey),
+                    case RealNeighborLeft of
                         [] -> [];
                         _ ->
                             %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-                            link_right_op(PrevNeighborLeft, 0, Self, MyKey)
+                            link_right_op(RealNeighborLeft, 0, Self, MyKey)
                     end,
                     %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
                     link_right_op(Self, 0, Neighbor, NeighborKey),
 
                     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-                    link_left_op(Self, 0, PrevNeighborLeft, PrevNeighborLeftKey),
+                    link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
 
                                                 %            io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
