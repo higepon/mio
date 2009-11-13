@@ -10,8 +10,8 @@
 %% API
 -export([start_link/1,
          search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
-         get_left_op_call/3, insert_op_call/4, delete_op_call/3, link_right_op_call/6,
-         link_left_op_call/6, search_op/2, link_right_op/4, link_left_op/4,
+         get_left_op_call/3, insert_op_call/4, delete_op_call/3,
+         search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
          set_nth/3,node_on_level/2]).
@@ -114,22 +114,11 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
-
-%% For concurrent node joins, link_right_op checks consistency of SkipGraph.
-%% If found inconsistent state, link_right_op will be redirect to the next node.
-%% But for now, since we serialize all insert/delete requests, we don't redirect.
 link_right_op(Node, Level, Right, RightKey) ->
     gen_server:call(Node, {link_right_op, Level, Right, RightKey}).
 
 link_left_op(Node, Level, Left, LeftKey) ->
     gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
-
-%% For delete operation, no redirect is required.
-link_right_no_redirect_op(Node, Level, Right, RightKey) ->
-    gen_server:call(Node, {link_right_no_redirect_op, Level, Right, RightKey}).
-
-link_left_no_redirect_op(Node, Level, Left, LeftKey) ->
-    gen_server:call(Node, {link_left_no_redirect_op, Level, Left, LeftKey}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -213,9 +202,8 @@ handle_call({set_op, NewValue}, _From, State) ->
     set_op_call(State, NewValue);
 
 handle_call({link_right_op, Level, RightNode, RightKey}, From, State) ->
-    Self = self(),
-    spawn(?MODULE, link_right_op_call, [From, State, Self, RightNode, RightKey, Level]),
-    {noreply, State};
+    Prev = {right(State, Level), right_key(State, Level)},
+    {reply, Prev, set_right(State, Level, RightNode, RightKey)};
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
@@ -224,31 +212,14 @@ handle_call(set_deleted_op, _From, State) ->
     {reply, ok, State#state{deleted=true}};
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, From, State) ->
-    Self = self(),
-    spawn(?MODULE, link_left_op_call, [From, State, Self, LeftNode, LeftKey, Level]),
-    {noreply, State};
+    Prev = {left(State, Level), left_key(State, Level)},
+    {reply, Prev, set_left(State, Level, LeftNode, LeftKey)};
 
 handle_call({set_inserted_op, Level}, _From, State) ->
     {reply, ok, State#state{inserted=set_nth(Level + 1, true, State#state.inserted)}};
 
 handle_call(set_inserted_op, _From, State) ->
-    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}};
-
-
-handle_call({link_right_no_redirect_op, Level, RightNode, RightKey}, _From, State) ->
-    Prev = {right(State, Level), right_key(State, Level)},
-    {reply, Prev, set_right(State, Level, RightNode, RightKey)};
-handle_call({link_left_no_redirect_op, Level, LeftNode, LeftKey}, _From, State) ->
-    Prev = {left(State, Level), left_key(State, Level)},
-    {reply, Prev, set_left(State, Level, LeftNode, LeftKey)}.
-
-link_right_op_call(From, _State, Self, RightNode, RightKey, Level) ->
-    Prev = link_right_no_redirect_op(Self, Level, RightNode, RightKey),
-    gen_server:reply(From, Prev).
-
-link_left_op_call(From, _State, Self, LeftNode, LeftKey, Level) ->
-    Prev = link_left_no_redirect_op(Self, Level, LeftNode, LeftKey),
-    gen_server:reply(From, Prev).
+    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -552,14 +523,14 @@ delete_loop_(Self, Level) ->
     case RightNode of
         [] -> [];
         _ ->
-            link_left_no_redirect_op(RightNode, Level, LeftNode, LeftKey)
+            link_left_op(RightNode, Level, LeftNode, LeftKey)
     end,
     io:format("delete_loop_<<5>> ~p ~n", [[Self, Level]]),
     io:format("delete_loop_ ~p ~n 2", [Self]),
     case LeftNode of
         [] -> [];
         _ ->
-            link_right_no_redirect_op(LeftNode, Level, RightNode, RightKey)
+            link_right_op(LeftNode, Level, RightNode, RightKey)
     end,
     io:format("delete_loop_<<6>> ~p ~n", [[Self, Level]]),
     io:format("delete_loop_ ~p ~n 3", [Self]),
