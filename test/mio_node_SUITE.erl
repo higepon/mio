@@ -181,8 +181,8 @@ search_level2_3(_Config) ->
     ok.
 
 test_set_nth(_Config) ->
-    [1, 3] = mio_node:set_nth(2, 3, [1, 2]),
-    [0, 2] = mio_node:set_nth(1, 0, [1, 2]),
+    [1, 3] = mio_util:lists_set_nth(2, 3, [1, 2]),
+    [0, 2] = mio_util:lists_set_nth(1, 0, [1, 2]),
 
     Level = 1,
     Level0Nodes = [{key3, value3, [0, 1]}, {key5, value5, [1, 1]}, {key7, value7, [1, 0]}, {key8, value8, [0, 0]}, {key9, value9, [1, 0]}],
