@@ -806,6 +806,15 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         RightNodeOnLower2 ->
+                            link_on_level_ge1_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower2)
+                    end;
+                %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
+                _ ->
+                    link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
+            end
+    end.
+
+link_on_level_ge1_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower2) ->
                             {ok, Buddy2, Buddy2Key, _, _} = buddy_op(RightNodeOnLower2, MyMV, right, Level),
                             case Buddy2 of
                                 %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n]
@@ -862,103 +871,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                                             end
                                     end,
                                     ?CHECK_SANITY(Self, Level)
-                            end
-                    end;
-                %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-                _ ->
-%%                     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
-%%                     IsLocked3 = lock([Self, Buddy, BuddyRight]),
-%%                     if not IsLocked3 ->
-%%                             %% todo retry
-%%                             ?ERRORF("link_on_levelge: key = ~p lock failed", [MyKey]),
-%%                             exit(lock_failed);
-%%                        true -> []
-%%                     end,
+                            end.
 
-%%                     io:format("Locked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-
-%%                     %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
-%%                     BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
-
-%%                     %% After locked 3 nodes, check invariants.
-%%                     %% invariant
-%%                     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%                     %%   Buddy->rightKey < MyKey
-%%                     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
-%%                     IsSameKey = string:equal(MyKey,RealBuddyRightKey),
-
-%%                     if not BuddyInserted -> %% RealBuddyRight =:= [] andalso RealBuddyLeft =:= [] ->
-%%                             %% Retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-%%                             io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
-%%                             unlock([Self, Buddy, BuddyRight]),
-%%                             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-%%                             mio_util:random_sleep(0),
-%% %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
-%%                             link_on_level_ge1(Self, Level, MaxLevel);
-%%                        (RealBuddyRightKey =/= [] andalso IsSameKey)
-%%                        ->
-%%                             gen_server:call(Self, set_inserted_op),
-%%                             unlock([Self, Buddy, BuddyRight]),
-%%                             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-%%                             %% other process insert on higher level, so we have nothing to do.
-%%                             ?CHECK_SANITY(Self, Level),
-%%                             io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
-%%                             [];
-%%                        (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
-%%                        orelse
-%%                        (RealBuddyRight =/= BuddyRight)
-%%                        ->
-%%                             %% Retry: another key is inserted
-%%                             io:format("** RETRY link_on_levelge[9] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
-%%                             unlock([Self, Buddy, BuddyRight]),
-%%                             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-%%                             io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
-%%                             io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level - 1)]),
-%%                             mio_util:random_sleep(0),
-%% %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
-%%                             link_on_level_ge1(Self, Level, MaxLevel);
-%%                        true->
-%%                             IsDeleted =
-%%                                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
-%%                                 orelse
-%%                                 (BuddyRight =/= [] andalso gen_server:call(BuddyRight, get_deleted_op)),
-%%                             if IsDeleted ->
-%%                                     io:format("<<< link_on_levelge1 Neighbor deleted3>>>~n"),
-%%                                     unlock([Self, Buddy, BuddyRight]),
-%%                                     io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-%%                                     link_on_level_ge1(Self, Level, MaxLevel);
-%%                                true ->
-
-%%                                                 % [A:m] -> [NodeToInsert:m]
-%%                                     link_right_op(Buddy, Level, Self, MyKey),
-%%                                     case BuddyRight of
-%%                                         [] -> [];
-%%                                         X ->
-%%                                                 % [NodeToInsert:m] <- [D:m]
-%%                                             link_left_op(X, Level, Self, MyKey)
-%%                                     end,
-%%                                                 % [A:m] <- [NodeToInsert:m]
-%%                                     link_left_op(Self, Level, Buddy, BuddyKey),
-
-%%                                                 % [NodeToInsert:m] -> [D:m]
-%%                                     link_right_op(Self, Level, BuddyRight, BuddyRightKey),
-%%                                     gen_server:call(Self, {set_inserted_op, Level}),
-%%                                     unlock([Self, Buddy, BuddyRight]),
-%%                                     io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-%%                                     ?CHECK_SANITY(Self, Level),
-
-%%                                     %% Debug info start
-%%                                     io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
-
-%%                                     %% Debug info end
-
-%%                                                 %                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
-%%                                     link_on_level_ge1(Self, Level + 1, MaxLevel)
-%%                             end
-%%                     end
-                    link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
-            end
-    end.
 
 link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
