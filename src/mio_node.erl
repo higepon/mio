@@ -571,24 +571,6 @@ insert_op_call(From, State, Self, Introducer) ->
     end,
     gen_server:reply(From, ok).
 
-%% borrowed from global.erl, todo replace
-random_sleep(Times) ->
-    case (Times rem 10) of
-        0 -> erase(random_seed);
-        _ -> ok
-    end,
-    case get(random_seed) of
-        undefined ->
-            {A1, A2, A3} = now(),
-            random:seed(A1, A2, A3 + erlang:phash(node(), 100000));
-        _ -> ok
-    end,
-%%     Tmax = if Times > 7 -> 8000;
-%%               true -> ((1 bsl Times) * 1000) div 16
-%%            end,
-    T = random:uniform(1000) rem 20 + 1,
-    io:format("HERE sleep ~p msec ~n", [T]),
-    receive after T -> ok end.
 
 lock(Nodes, infinity) ->
     mio_lock:lock(Nodes, infinity);
@@ -601,7 +583,7 @@ lock(Nodes, Times) ->
             true;
         false ->
             io:format("Lock NG Sleeping ~p~n", [Nodes]),
-            random_sleep(Times),
+            mio_util:random_sleep(Times),
             lock(Nodes, Times + 1)
     end.
 
@@ -982,7 +964,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             io:format("** RETRY link_on_levelge[88] level=~p ~p ~p~n", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
                             unlock([Self, Buddy, BuddyRight]),
                             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-                            random_sleep(0),
+                            mio_util:random_sleep(0),
 %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        (RealBuddyRightKey =/= [] andalso IsSameKey)
@@ -1004,7 +986,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
                             io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
                             io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level - 1)]),
-                            random_sleep(0),
+                            mio_util:random_sleep(0),
 %                            io:format("wakup MyKey=~p Self=~p~n", [MyKey, Self]),
                             link_on_level_ge1(Self, Level, MaxLevel);
                        true->
