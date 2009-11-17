@@ -26,6 +26,7 @@ start() ->
 stop() ->
     case init:get_argument(target_node) of
         {ok,[[Node]]} ->
+            io:format("node=~p\n", [list_to_atom(Node)]),
             ok = rpc:call(list_to_atom(Node), application, stop, [mio]),
             ok = rpc:call(list_to_atom(Node), init, stop, []);
         X -> ?LOG(X)

@@ -14,7 +14,7 @@
          search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
-         set_nth/3,node_on_level/2]).
+         node_on_level/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -215,7 +215,7 @@ handle_call(set_deleted_op, _From, State) ->
 
 
 handle_call({set_inserted_op, Level}, _From, State) ->
-    {reply, ok, State#state{inserted=set_nth(Level + 1, true, State#state.inserted)}};
+    {reply, ok, State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)}};
 
 handle_call(set_inserted_op, _From, State) ->
     {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
@@ -325,10 +325,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-set_nth(Index, Value, List) ->
-    lists:append([lists:sublist(List, 1, Index - 1),
-                 [Value],
-                 lists:sublist(List, Index + 1, length(List))]).
 
 node_on_level(Nodes, Level) ->
     case Nodes of
@@ -349,12 +345,12 @@ right_key(State, Level) ->
     node_on_level(State#state.right_keys, Level).
 
 set_right(State, Level, Node, Key) ->
-    NewState = State#state{right_keys=set_nth(Level + 1, Key, State#state.right_keys)},
-    NewState#state{right=set_nth(Level + 1, Node, NewState#state.right)}.
+    NewState = State#state{right_keys=mio_util:lists_set_nth(Level + 1, Key, State#state.right_keys)},
+    NewState#state{right=mio_util:lists_set_nth(Level + 1, Node, NewState#state.right)}.
 
 set_left(State, Level, Node, Key) ->
-    NewState = State#state{left_keys=set_nth(Level + 1, Key, State#state.left_keys)},
-    NewState#state{left=set_nth(Level + 1, Node, NewState#state.left)}.
+    NewState = State#state{left_keys=mio_util:lists_set_nth(Level + 1, Key, State#state.left_keys)},
+    NewState#state{left=mio_util:lists_set_nth(Level + 1, Node, NewState#state.left)}.
 
 %%--------------------------------------------------------------------
 %%% Implementation of genserver:call

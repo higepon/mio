@@ -8,7 +8,7 @@
 -module(mio_util).
 
 %% API
--export([random_sleep/1]).
+-export([random_sleep/1, lists_set_nth/3]).
 
 %%====================================================================
 %% API
@@ -31,6 +31,12 @@ random_sleep(Times) ->
     T = random:uniform(1000) rem 20 + 1,
     io:format("HERE sleep ~p msec ~n", [T]),
     receive after T -> ok end.
+
+lists_set_nth(Index, Value, List) ->
+    lists:append([lists:sublist(List, 1, Index - 1),
+                  [Value],
+                  lists:sublist(List, Index + 1, length(List))]).
+
 
 %%====================================================================
 %% Internal functions
