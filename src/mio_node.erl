@@ -470,20 +470,13 @@ search_to_left(From, Self, State, Level, Key) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op_call(From, Self, State) ->
-    IsLocked = lock([Self]),
-    if not IsLocked ->
-            ?ERRORF("delete_op_call: key = ~p lock failed~n", [State#state.key]),
-            exit(lock_failed);
-       true -> []
-    end,
-
-    io:format("Locked ~p 8 ~n", [[Self]]),
+    LockedNodes = lock_or_exit([Self], ?LINE, [State#state.key]),
 
     IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
             io:format("<<< Already deleted >>>~n"),
-            unlock([Self]),
+            unlock(LockedNodes),
             io:format("UnLocked ~p 8 ~n", [[Self]]),
             gen_server:reply(From, ok);
        true ->
@@ -491,51 +484,31 @@ delete_op_call(From, Self, State) ->
             delete_loop_(Self, MaxLevel),
             %% My State will not be changed, since I'm killed soon.
             gen_server:call(Self, set_deleted_op),
-            unlock([Self]),
+            unlock(LockedNodes),
             io:format("UnLocked ~p 8 ~n", [[Self]]),
             gen_server:reply(From, ok)
     end.
 
-delete_loop_(Self, Level) when Level < 0 ->
-    io:format("delete_loop_<<1>> ~p ~n", [[Self, Level]]),
+delete_loop_(_Self, Level) when Level < 0 ->
     [];
 delete_loop_(Self, Level) ->
-    io:format("delete_loop_<<1>> ~p ~n", [[Self, Level]]),
     {RightNode, RightKey} = gen_server:call(Self, {get_right_op, Level}),
     {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
-    io:format("delete_loop_<<2>> ~p ~n", [[Self, Level]]),
-    IsLocked = lock([RightNode, LeftNode]),
-    if not IsLocked ->
-            ?ERRORF("delete_loop_: key = ~p lock failed~n", [Self]),
-            exit(lock_failed);
-       true -> []
-    end,
-    io:format("delete_loop_<<3>> ~p ~n", [[Self, Level]]),
-    io:format("Locked ~p 8 ~n", [[RightNode, LeftNode]]),
+    LockedNodes = lock_or_exit([RightNode, LeftNode], ?LINE, [LeftKey, RightKey]),
 
     ?CHECK_SANITY(Self, Level),
-    io:format("delete_loop_<<4>> ~p ~n", [[Self, Level]]),
     case RightNode of
         [] -> [];
         _ ->
             link_left_op(RightNode, Level, LeftNode, LeftKey)
     end,
-    io:format("delete_loop_<<5>> ~p ~n", [[Self, Level]]),
-    io:format("delete_loop_ ~p ~n 2", [Self]),
     case LeftNode of
         [] -> [];
         _ ->
             link_right_op(LeftNode, Level, RightNode, RightKey)
     end,
-    io:format("delete_loop_<<6>> ~p ~n", [[Self, Level]]),
-    io:format("delete_loop_ ~p ~n 3", [Self]),
     ?CHECK_SANITY(Self, Level),
-    io:format("delete_loop_<<7>> ~p ~n", [[Self, Level]]),
-    unlock([RightNode, LeftNode]),
-    io:format("delete_loop_<<8>> ~p ~n", [[Self, Level]]),
-    io:format("UnLocked ~p 8 ~n", [[RightNode, LeftNode]]),
-%%    delete_loop_(set_left(set_right(State, Level, [], []), Level, [], []), Level - 1).
-
+    unlock(LockedNodes),
     %% N.B.
     %% We keep the right/left node of Self, since it may be still located on search path.
     delete_loop_(Self, Level - 1).
