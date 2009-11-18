@@ -823,22 +823,6 @@ lock_or_exit(Nodes, Line, Info) ->
        true -> Nodes
     end.
 
-link_on_level_ge1_link(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level) ->
-    % [A:m] -> [NodeToInsert:m]
-    link_right_op(Buddy, Level, Self, MyKey),
-    case BuddyRight of
-        [] -> [];
-        X ->
-            % [NodeToInsert:m] <- [D:m]
-            link_left_op(X, Level, Self, MyKey)
-    end,
-    % [A:m] <- [NodeToInsert:m]
-    link_left_op(Self, Level, Buddy, BuddyKey),
-
-    % [NodeToInsert:m] -> [D:m]
-    link_right_op(Self, Level, BuddyRight, BuddyRightKey),
-    gen_server:call(Self, {set_inserted_op, Level}).
-
 %% callee shoudl lock all nodes
 %% Returns
 %%   retry: You should retry link_on_level_ge1 on same level.
@@ -922,7 +906,23 @@ link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRigh
             io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
             [];
         ok ->
-            link_on_level_ge1_link(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level),
+%            link_on_level_ge1_link(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level),
+
+    % [A:m] -> [NodeToInsert:m]
+    link_right_op(Buddy, Level, Self, MyKey),
+    case BuddyRight of
+        [] -> [];
+        X ->
+            % [NodeToInsert:m] <- [D:m]
+            link_left_op(X, Level, Self, MyKey)
+    end,
+    % [A:m] <- [NodeToInsert:m]
+    link_left_op(Self, Level, Buddy, BuddyKey),
+
+    % [NodeToInsert:m] -> [D:m]
+    link_right_op(Self, Level, BuddyRight, BuddyRightKey),
+    gen_server:call(Self, {set_inserted_op, Level}),
+
             unlock(LockedNodes),
             io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
             ?CHECK_SANITY(Self, Level),
