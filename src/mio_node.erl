@@ -754,8 +754,36 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             end
     end.
 
-check_invariant_level0_right_buddy() ->
-    ok.
+%% callee shoudl lock all nodes
+%% Returns
+%%   retry: You should retry link_on_level_ge1 on same level.
+%%   ok: invariant is satified, you can link safely on this level.
+check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft) ->
+    %% After locked 3 nodes, check invariants.
+    %% invariant
+    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+    %%   Neighbor->leftKey < MyKey
+    {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
+
+    if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey)
+       orelse
+       (RealNeighborLeft =/= NeighborLeft)
+       ->
+            %% Retry: another key is inserted
+            io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
+            retry;
+       true ->
+            IsDeleted =
+                (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
+                orelse
+                (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
+            if IsDeleted ->
+                    io:format("<<< link_on_level0 Neighbor deleted 3>>>~n"),
+                    retry;
+               true ->
+                    ok
+            end
+    end.
 
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel) ->
