@@ -589,6 +589,14 @@ lock(Nodes) ->
 unlock(Nodes) ->
     mio_lock:unlock(Nodes).
 
+lock_or_exit(Nodes, Line, Info) ->
+    IsLocked = lock(Nodes),
+    if not IsLocked ->
+            ?ERRORF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
+            exit(lock_failed);
+       true -> Nodes
+    end.
+
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
@@ -744,8 +752,6 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
                     link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
 
-                                                %            io:format("INSERTed B ~p level0 Self=~p~n", [MyKey, Self]),
-                                                %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
                     unlock([Neighbor, Self, NeighborLeft]),
                     io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
                     need_link_on_level_ge1
@@ -788,7 +794,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
-            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
+            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         _ ->
@@ -807,20 +813,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         _ ->
-                            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
+                            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                 _ ->
-                    link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
+                    link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
             end
-    end.
-
-lock_or_exit(Nodes, Line, Info) ->
-    IsLocked = lock(Nodes),
-    if not IsLocked ->
-            ?ERRORF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
-            exit(lock_failed);
-       true -> Nodes
     end.
 
 %% callee shoudl lock all nodes
@@ -889,51 +887,7 @@ check_invariant_ge1_right_buddy(Self, MyKey, Buddy, Level) ->
             end
     end.
 
-link_on_level_ge1_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
-    %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
-    LockedNodes = lock_or_exit([Self, Buddy, BuddyRight], ?LINE, MyKey),
-
-    case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
-        retry ->
-            unlock(LockedNodes),
-            mio_util:random_sleep(0),
-            link_on_level_ge1(Self, Level, MaxLevel);
-        done ->
-            %% mark as inserted
-            gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes),
-            ?CHECK_SANITY(Self, Level),
-            io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
-            [];
-        ok ->
-%            link_on_level_ge1_link(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level),
-
-    % [A:m] -> [NodeToInsert:m]
-    link_right_op(Buddy, Level, Self, MyKey),
-    case BuddyRight of
-        [] -> [];
-        X ->
-            % [NodeToInsert:m] <- [D:m]
-            link_left_op(X, Level, Self, MyKey)
-    end,
-    % [A:m] <- [NodeToInsert:m]
-    link_left_op(Self, Level, Buddy, BuddyKey),
-
-    % [NodeToInsert:m] -> [D:m]
-    link_right_op(Self, Level, BuddyRight, BuddyRightKey),
-    gen_server:call(Self, {set_inserted_op, Level}),
-
-            unlock(LockedNodes),
-            io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
-            ?CHECK_SANITY(Self, Level),
-            %% Debug info start
-            io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
-            link_on_level_ge1(Self, Level + 1, MaxLevel);
-        UnknownInvariant ->
-            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant])
-    end.
-
-link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
+link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
     %% This should never happen.
     %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
     %% since insert to self is returned immediately on insert_op.
@@ -979,6 +933,48 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
             io:format("UnLocked MyKey=~p ~p 5 ~n", [MyKey, [Self, Buddy]]),
             %% Go up to next Level.
             link_on_level_ge1(Self, Level + 1, MaxLevel)
+    end.
+
+link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
+    %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
+    LockedNodes = lock_or_exit([Self, Buddy, BuddyRight], ?LINE, MyKey),
+
+    case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
+        retry ->
+            unlock(LockedNodes),
+            mio_util:random_sleep(0),
+            link_on_level_ge1(Self, Level, MaxLevel);
+        done ->
+            %% mark as inserted
+            gen_server:call(Self, set_inserted_op),
+            unlock(LockedNodes),
+            ?CHECK_SANITY(Self, Level),
+            io:format("INSERTed F Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
+            [];
+        ok ->
+            % [A:m] -> [NodeToInsert:m]
+            link_right_op(Buddy, Level, Self, MyKey),
+            case BuddyRight of
+                [] -> [];
+                X ->
+                    %% [NodeToInsert:m] <- [D:m]
+                    link_left_op(X, Level, Self, MyKey)
+            end,
+            %% [A:m] <- [NodeToInsert:m]
+            link_left_op(Self, Level, Buddy, BuddyKey),
+
+            %% [NodeToInsert:m] -> [D:m]
+            link_right_op(Self, Level, BuddyRight, BuddyRightKey),
+            gen_server:call(Self, {set_inserted_op, Level}),
+
+            unlock(LockedNodes),
+            io:format("UnLocked MyKey=~p ~p 7 ~n", [MyKey, [Self, Buddy, BuddyRight]]),
+            ?CHECK_SANITY(Self, Level),
+            %% Debug info start
+            io:format("INSERTed G ~p level~p:~p BuddyKey ~p BuddyRightKey =~p ~n", [MyKey, Level, ?LINE, BuddyKey, BuddyRightKey]),
+            link_on_level_ge1(Self, Level + 1, MaxLevel);
+        UnknownInvariant ->
+            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant])
     end.
 
 %%--------------------------------------------------------------------
