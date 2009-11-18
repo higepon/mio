@@ -702,14 +702,10 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
     io:format("start link_on_level0 Self=~p self=~p~n", [Self, self()]),
-    %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
-    IsLocked = lock([Neighbor, Self, NeighborLeft]),
-    if not IsLocked ->
-            ?ERRORF("link_on_level0: key = ~p lock failed~n", [MyKey]),
-            exit(lock_failed);
-       true -> []
-    end,
+    %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
+    LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
+
     io:format("Locked MyKey=~p ~p 3 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
 
     %% After locked 3 nodes, check invariants.
@@ -724,7 +720,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
        ->
             %% Retry: another key is inserted
             io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
-            unlock([Neighbor, Self, NeighborLeft]),
+            unlock(LockedNodes),
             io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
             link_on_level0(From, State, Self, Introducer);
        true ->
@@ -734,7 +730,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                 (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
             if IsDeleted ->
                     io:format("<<< link_on_level0 Neighbor deleted 3>>>~n"),
-                    unlock([Neighbor, Self, NeighborLeft]),
+                    unlock(LockedNodes),
                     io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
                     link_on_level0(From, State, Self, Introducer);
                true ->
@@ -752,11 +748,14 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
                     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
                     link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
 
-                    unlock([Neighbor, Self, NeighborLeft]),
+                    unlock(LockedNodes),
                     io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
                     need_link_on_level_ge1
             end
     end.
+
+check_invariant_level0_right_buddy() ->
+    ok.
 
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel) ->
