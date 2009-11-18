@@ -674,47 +674,6 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
             exit(unknown_invariant)
     end;
 
-%%     if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
-%%        orelse
-%%        (NeighborRight =/= RealNeighborRight)
-%%        ->
-%%             %% Retry: another key is inserted
-%%             io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
-%%             unlock(LockedNodes),
-%%             io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-%%             link_on_level0(From, State, Self, Introducer);
-%%        true ->
-%%             IsDeleted =
-%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-%%                 orelse
-%%                 (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
-%%                     unlock(LockedNodes),
-%%                     io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-%%                     link_on_level0(From, State, Self, Introducer);
-%%                true ->
-%%                     %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-%%                     link_right_op(Neighbor, 0, Self, MyKey),
-%%                     case RealNeighborRight of
-%%                         [] -> [];
-%%                         _ ->
-%%                             %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-%%                             link_left_op(RealNeighborRight, 0, Self, MyKey)
-%%                     end,
-%%                     %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-%%                     link_left_op(Self, 0, Neighbor, NeighborKey),
-%%                     %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-%%                     link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
-
-%%                                                 %            io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
-%%                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
-%%                     unlock(LockedNodes),
-%%                     io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-%%                     need_link_on_level_ge1
-%%             end
-%%     end;
-
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
