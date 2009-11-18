@@ -836,42 +836,43 @@ link_on_level_ge1_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower2) -
             [];
         %% [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         _ ->
-            %% Lock 2 nodes [NodeToInsert] and [Buddy]
-            LockedNodes = lock_or_exit([Self, Buddy2], ?LINE, MyKey),
+            link_on_level_ge1_right_buddy(Self, MyKey, Buddy2, Buddy2Key, Level, MaxLevel),
+%%            %% Lock 2 nodes [NodeToInsert] and [Buddy]
+%%             LockedNodes = lock_or_exit([Self, Buddy2], ?LINE, MyKey),
 
-            IsDeleted = gen_server:call(Buddy2, get_deleted_op),
-            if IsDeleted ->
-                    io:format("<<< link_on_levelge1 Neighbor deleted2>>>~n"),
-                    unlock(LockedNodes),
-                    io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
-                    link_on_level_ge1(Self, Level, MaxLevel);
-               true ->
+%%             IsDeleted = gen_server:call(Buddy2, get_deleted_op),
+%%             if IsDeleted ->
+%%                     io:format("<<< link_on_levelge1 Neighbor deleted2>>>~n"),
+%%                     unlock(LockedNodes),
+%%                     io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
+%%                     link_on_level_ge1(Self, Level, MaxLevel);
+%%                true ->
 
-                    %% check invariants
-                    %%   Buddy's left is []
-                    {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
-                    if Buddy2LeftKey =/= [] ->
-                            %% Retry: another key is inserted
-                            io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
-                            unlock(LockedNodes),
-                                                %                                            io:format("INSERTed D~p level~p:~p~n", [MyKey, Level, ?LINE]),
-                                                %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
-                            link_on_level_ge1(Self, Level, MaxLevel);
-                       true ->
-                            %% [NodeToInsert:m] <- [D:m]
-                            link_left_op(Buddy2, Level, Self, MyKey),
+%%                     %% check invariants
+%%                     %%   Buddy's left is []
+%%                     {_, Buddy2LeftKey} = gen_server:call(Buddy2, {get_left_op, Level}),
+%%                     if Buddy2LeftKey =/= [] ->
+%%                             %% Retry: another key is inserted
+%%                             io:format("** RETRY link_on_levelge1[4] ~p**~n", [Buddy2LeftKey]),
+%%                             unlock(LockedNodes),
+%%                                                 %                                            io:format("INSERTed D~p level~p:~p~n", [MyKey, Level, ?LINE]),
+%%                                                 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%%                             link_on_level_ge1(Self, Level, MaxLevel);
+%%                        true ->
+%%                             %% [NodeToInsert:m] <- [D:m]
+%%                             link_left_op(Buddy2, Level, Self, MyKey),
 
-                            %% [NodeToInsert:m] -> [D:m]
-                            link_right_op(Self, Level, Buddy2, Buddy2Key),
-                            gen_server:call(Self, {set_inserted_op, Level}),
-                            unlock(LockedNodes),
-                            io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
-                                                %                                            io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
-                                                %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
+%%                             %% [NodeToInsert:m] -> [D:m]
+%%                             link_right_op(Self, Level, Buddy2, Buddy2Key),
+%%                             gen_server:call(Self, {set_inserted_op, Level}),
+%%                             unlock(LockedNodes),
+%%                             io:format("UnLocked MyKey=~p ~p 6 ~n", [MyKey, [Self, Buddy2]]),
+%%                                                 %                                            io:format("INSERTed E~p level~p:~p~n", [MyKey, Level, ?LINE]),
+%%                                                 %                                            io:format("Level=~p : ~p ~n", [Level, dump_op(Self, Level)]),
 
-                            link_on_level_ge1(Self, Level + 1, MaxLevel)
-                    end
-            end,
+%%                             link_on_level_ge1(Self, Level + 1, MaxLevel)
+%%                     end
+%%             end,
             ?CHECK_SANITY(Self, Level)
     end.
 
