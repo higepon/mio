@@ -782,20 +782,20 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
-    LowerLevel = Level - 1,
-    case node_on_level(MyLeft, LowerLevel) of
+    LeftOnLower = node_on_level(MyLeft, Level - 1),
+    RightOnLower = node_on_level(MyRight, Level - 1),
+    case LeftOnLower of
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
-            RightNodeOnLower = node_on_level(MyRight, LowerLevel),
-            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower);
+            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
-        LeftNodeOnLower ->
-            {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftNodeOnLower, MyMV, left, Level),
+        _ ->
+            {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
             case Buddy of
                 [] ->
-                    case node_on_level(MyRight, LowerLevel) of
+                    case RightOnLower of
                         %% We have no buddy on this level.
                         %% On higher Level, we have no buddy also.
                         %% So we've done.
@@ -806,8 +806,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             io:format("INSERT Nomore ~p level~p:~p~n", [MyKey, Level, ?LINE]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-                        RightNodeOnLower2 ->
-                            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower2)
+                        _ ->
+                            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                 _ ->
