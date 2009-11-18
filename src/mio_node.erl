@@ -632,22 +632,14 @@ link_on_level0(From, State, Self, Introducer) ->
             link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer)
     end.
 
-
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
     MyKey = State#state.key,
     io:format("start link_on_level0! Self=~p self=~p~n", [Self, self()]),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
-    IsLocked = lock([Neighbor, Self, NeighborRight]),
-    if not IsLocked ->
-            ?ERRORF("link_on_level0: key = ~p lock failed~n", [MyKey]),
-            exit(lock_failed);
-       true -> []
-    end,
 
-    io:format("Locked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-    %% TODO: check deleted
+    LockedNodes = lock_or_exit([Neighbor, Self, NeighborRight], ?LINE, MyKey),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
@@ -656,47 +648,72 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
     %%   Neighbor->rightKey < MyKey (sanity check)
     {RealNeighborRight, RealNeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
 
-    if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
-       orelse
-       (NeighborRight =/= RealNeighborRight)
-       ->
-            %% Retry: another key is inserted
-            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
-            unlock([Neighbor, Self, NeighborRight]),
-            io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
+    case check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) of
+        retry ->
+            unlock(LockedNodes),
             link_on_level0(From, State, Self, Introducer);
-       true ->
-            IsDeleted =
-                (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-                orelse
-                (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
-            if IsDeleted ->
-                    io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
-                    unlock([Neighbor, Self, NeighborRight]),
-                    io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-                    link_on_level0(From, State, Self, Introducer);
-               true ->
-                    %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-                    link_right_op(Neighbor, 0, Self, MyKey),
-                    case RealNeighborRight of
-                        [] -> [];
-                        _ ->
-                            %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-                            link_left_op(RealNeighborRight, 0, Self, MyKey)
-                    end,
-                    %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-                    link_left_op(Self, 0, Neighbor, NeighborKey),
-                    %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-                    link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
+        ok ->
+            %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
+            link_right_op(Neighbor, 0, Self, MyKey),
+            case RealNeighborRight of
+                [] -> [];
+                _ ->
+                    %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+                    link_left_op(RealNeighborRight, 0, Self, MyKey)
+            end,
+            %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
+            link_left_op(Self, 0, Neighbor, NeighborKey),
+            %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
+            link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
 
-                                                %            io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
-                                                %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
-                    unlock([Neighbor, Self, NeighborRight]),
-                    io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
-                    need_link_on_level_ge1
-            end
+            unlock(LockedNodes),
+            io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
+            need_link_on_level_ge1;
+        UnknownInvariant ->
+            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
+            exit(unknown_invariant)
     end;
 
+%%     if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
+%%        orelse
+%%        (NeighborRight =/= RealNeighborRight)
+%%        ->
+%%             %% Retry: another key is inserted
+%%             io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [State#state.key, Self, self()]),
+%%             unlock(LockedNodes),
+%%             io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
+%%             link_on_level0(From, State, Self, Introducer);
+%%        true ->
+%%             IsDeleted =
+%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
+%%                 orelse
+%%                 (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
+%%             if IsDeleted ->
+%%                     io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
+%%                     unlock(LockedNodes),
+%%                     io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
+%%                     link_on_level0(From, State, Self, Introducer);
+%%                true ->
+%%                     %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
+%%                     link_right_op(Neighbor, 0, Self, MyKey),
+%%                     case RealNeighborRight of
+%%                         [] -> [];
+%%                         _ ->
+%%                             %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+%%                             link_left_op(RealNeighborRight, 0, Self, MyKey)
+%%                     end,
+%%                     %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
+%%                     link_left_op(Self, 0, Neighbor, NeighborKey),
+%%                     %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
+%%                     link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
+
+%%                                                 %            io:format("INSERTed A ~p level0 Self=~p ~n", [MyKey, Self]),
+%%                                                 %            io:format("Level=~p : ~p ~n", [0, dump_op(Self, 0)]),
+%%                     unlock(LockedNodes),
+%%                     io:format("UnLocked MyKey=~p ~p 2 ~n", [MyKey, [Neighbor, Self, NeighborRight]]),
+%%                     need_link_on_level_ge1
+%%             end
+%%     end;
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
@@ -705,6 +722,14 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
+
+    io:format("Locked MyKey=~p ~p 3 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
+
+    %% After locked 3 nodes, check invariants.
+    %% invariant
+    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+    %%   Neighbor->leftKey < MyKey
+    {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
     io:format("Locked MyKey=~p ~p 3 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
 
@@ -743,51 +768,38 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     end.
 
 
-%%     %% After locked 3 nodes, check invariants.
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   Neighbor->leftKey < MyKey
-%%     {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
-%%     if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey)
-%%        orelse
-%%        (RealNeighborLeft =/= NeighborLeft)
-%%        ->
-%%             %% Retry: another key is inserted
-%%             io:format("** RETRY link_on_level0[1] Self=~p self=~p ~p **~n", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
-%%             unlock(LockedNodes),
-%%             io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
-%%             link_on_level0(From, State, Self, Introducer);
-%%        true ->
-%%             IsDeleted =
-%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-%%                 orelse
-%%                 (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     io:format("<<< link_on_level0 Neighbor deleted 3>>>~n"),
-%%                     unlock(LockedNodes),
-%%                     io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
-%%                     link_on_level0(From, State, Self, Introducer);
-%%                true ->
-%%                     %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-%%                     link_left_op(Neighbor, 0, Self, MyKey),
-%%                     case RealNeighborLeft of
-%%                         [] -> [];
-%%                         _ ->
-%%                             %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-%%                             link_right_op(RealNeighborLeft, 0, Self, MyKey)
-%%                     end,
-%%                     %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-%%                     link_right_op(Self, 0, Neighbor, NeighborKey),
+%% callee shoudl lock all nodes
+%% Returns
+%%   retry: You should retry link_on_level_ge1 on same level.
+%%   ok: invariant is satified, you can link safely on this level.
+check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
+    %% After locked 3 nodes, check invariants.
+    %% invariant
+    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+    %%   NeighborRight == RealNeighborRight
+    %%   Neighbor->rightKey < MyKey (sanity check)
+    if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
+       orelse
+       (NeighborRight =/= RealNeighborRight)
+       ->
+            %% Retry: another key is inserted
+            io:format("** RETRY link_on_level0[3] **~p Self=~p self=~p~n", [MyKey, Self, self()]),
+            retry;
+       true ->
+            IsDeleted =
+                (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
+                orelse
+                (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
+            if IsDeleted ->
+                    io:format("<<< link_on_level0 Neighbor deleted >2>>~n"),
+                    retry;
+               true ->
+                    ok
+            end
+    end.
 
-%%                     %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-%%                     link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
 
-%%                     unlock(LockedNodes),
-%%                     io:format("UnLocked MyKey=~p ~p 4 ~n", [MyKey, [Neighbor, Self, NeighborLeft]]),
-%%                     need_link_on_level_ge1
-%%             end
-%%     end.
 
 %% callee shoudl lock all nodes
 %% Returns
