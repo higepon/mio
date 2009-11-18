@@ -788,7 +788,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
             RightNodeOnLower = node_on_level(MyRight, LowerLevel),
-            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyRight, MyKey, MyMV, RightNodeOnLower);
+            link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower);
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         LeftNodeOnLower ->
@@ -823,7 +823,7 @@ lock_or_exit(Nodes, Line, Info) ->
        true -> Nodes
     end.
 
-link_on_level_ge1_no_left(Self, Level, MaxLevel, MyRight, MyKey, MyMV, RightNodeOnLower) ->
+link_on_level_ge1_no_left(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
     %% This should never happen.
     %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
     %% since insert to self is returned immediately on insert_op.
