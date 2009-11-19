@@ -1,6 +1,12 @@
 %%-define(PROFILER_ON, true).
 -define(DEBUG_ON, true).
 
+  -define(INFOF(Msg, Args), error_logger:info_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
+  -define(INFO(Msg), ?INFOF(Msg, [])).
+  -define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
+  -define(ERROR(Msg), ?ERRORF(Msg, [])).
+
+
 -ifdef (DEBUG_ON).
   -define(CHECK_SANITY(Node, Level), check_sanity(Node, Level, ?MODULE, ?LINE)).
   -define(L(), io:format("~p{~p ~p,~p}:~n", [erlang:now(), self(), ?MODULE, ?LINE])).
@@ -34,7 +40,6 @@
   -define(ASSERT_NOT_NIL(X), []).
 -endif.
 
-  -define(ERRORF(X, Data), io:format("{~p ~p,~p}: "++X++"~n", [self(), ?MODULE,?LINE] ++ Data)).
 -ifdef (PROFILER_ON).
   -define(PROFILER_STOP(), fprof:trace([stop]), fprof:profile(), fprof:analyse([totals, {details, true}]), fprof:stop()).
   -define(PROFILER_START(X), fprof:trace([start, {procs, [X]}])).
