@@ -26,10 +26,10 @@ start() ->
 stop() ->
     case init:get_argument(target_node) of
         {ok,[[Node]]} ->
-            io:format("node=~p\n", [list_to_atom(Node)]),
             ok = rpc:call(list_to_atom(Node), application, stop, [mio]),
             ok = rpc:call(list_to_atom(Node), init, stop, []);
-        X -> ?LOG(X)
+        X ->
+            ?ERROR(X)
     end.
 
 
@@ -46,7 +46,7 @@ start(_Type, _StartArgs) ->
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
-    ?LOG(stopped),
+    ?INFO("stopped"),
     ?PROFILER_STOP(),
     ok.
 
