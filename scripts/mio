@@ -66,13 +66,32 @@ mio_maxlevel=${opt_maxlevel:-"$DEFAULT_MAX_LEVEL"}
 mio_verbose=$opt_verbose
 
 
-    erl +K true -name $mio_name \
-        +P 134217727 \
-        -setcookie $mio_cookie \
-        -boot start_sasl -config conf/dev_log +W w \
-        -mio \
-        -noshell \
-        -noinput \
-        -pa ebin mio \
-        -s mio_app start \
-        -mio debug $mio_verbose port $mio_port boot_node $mio_introducer maxlevel $mio_maxlevel
+#   +A 30                   : Sets the number of threads in async thread pool, valid range is 0-1024. Default is 0.
+#   +K true                 : Use the kernel poll functionality
+#   +P 134217727            : Sets the maximum number of concurrent processes.
+#   +W w                    : warning messages are sent as warning.
+#   -noshell                : This flag makes it possible to have the Erlang runtime system as a component in a series of UNIX pipes.
+#   -noinput                : Ensures that the Erlang runtime system never tries to read any input.
+#   -setcookie $mio_cookie  : Sets the magic cookie of the node to Cookie
+#   -config conf/dev_log    : Sets the config file used to configure applications.
+#    -kernel                : Options to kernel application, which are passed to inet module
+
+# config file path
+
+erl +A 30 \
+    +K true \
+    +P 134217727 \
+    +W w \
+    -noshell \
+    -noinput \
+    -setcookie $mio_cookie \
+    -config conf/dev_log \
+    -kernel inet_default_listen_options [{nodelay,true},{sndbuf,16384},{recbuf,4096}] \
+    -kernel inet_default_connect_options [{nodelay,true}] \
+    -name $mio_name \
+    -pa ebin \
+    -s mio_app start \
+    -mio debug $mio_verbose \
+         port $mio_port \
+         boot_node $mio_introducer \
+         maxlevel $mio_maxlevel

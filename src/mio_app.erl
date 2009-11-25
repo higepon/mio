@@ -34,6 +34,7 @@ stop() ->
 
 
 start(_Type, _StartArgs) ->
+    inet:set_op
 %%     case application:get_env(mio, debug) of
 %%         {ok, IsDebugMode} ->
 %%             if IsDebugMode =:= true ->
