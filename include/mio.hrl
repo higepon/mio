@@ -3,7 +3,7 @@
 
   -define(INFOF(Msg, Args), error_logger:info_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
   -define(INFO(Msg), ?INFOF(Msg, [])).
-  -define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
+  -define(ERRORF(Msg, Args), io:format(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
   -define(ERROR(Msg), ?ERRORF(Msg, [])).
 
 

@@ -1,0 +1,56 @@
+#!/bin/sh
+### Copyright (C) 2009 Higepon <higepon@users.sourceforge.jp>.
+### All rights reserved.
+###
+### Redistribution and use in source and binary forms, with or without
+### modification, are permitted provided that the following conditions
+### are met:
+###
+### 1. Redistributions of source code must retain the above copyright
+###    notice, this list of conditions and the following disclaimer.
+### 2. Redistributions in binary form must reproduce the above
+###    copyright notice, this list of conditions and the following
+###    disclaimer in the documentation and/or other materials provided
+###    with the distribution.
+###
+### THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+### OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+### WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+### ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+### DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+### DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+### GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+### INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+### WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+DEFAULT_NODE_NAME=mio1
+DEFAULT_COOKIE_NAME=mio
+
+opt_cookie=
+opt_name=
+while getopts 'n:c:' OPTION
+do
+  case $OPTION in
+  c)    opt_cookie="$OPTARG"
+        ;;
+  n)    opt_name="$OPTARG"
+        ;;
+  ?)    erl -pa ebin -s mio_control usage -s init stop -noinput
+        exit 2
+        ;;
+  esac
+done
+shift $(($OPTIND - 1))
+mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
+mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
+mio_name="${mio_name}@"`hostname -s`".local"
+
+erl -pa ebin \
+    -name mioctrl$$@`hostname -s`.local \
+    -noinput \
+    -s mio_control start \
+    -setcookie $mio_cookie \
+    -nodename $mio_name \
+    -command $@
