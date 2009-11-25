@@ -32,12 +32,12 @@ terminate_node(TargetPid) ->
 
 
 init(_Args) ->
-    error_logger:info_msg("~p init\n", [?MODULE]),
     crypto:start(), % getRandomId uses crypto server
 
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
-    {ok, BootNode} = mio_app:get_env(boot_node, []),
+    {ok, BootNode} = mio_app:get_env(boot_node, false),
+
     %% todo
     %% Make this simple_one_for_one
     ?PROFILER_START(self()),

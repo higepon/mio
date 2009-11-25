@@ -28,7 +28,7 @@ get_boot_node() ->
 init_start_node(From, MaxLevel, BootNode) ->
     {StartNode, Serializer}
         = case BootNode of
-              [] ->
+              false ->
                   MVector = mio_mvector:generate(MaxLevel),
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
                   mio_node:insert_op(Node, Node),
