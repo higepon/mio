@@ -38,6 +38,7 @@
 start() ->
     case init:get_argument(command) of
         {ok, [["stop"|_]|_]} ->
+            io:format("stopping"),
             command_stop(),
             halt();
         _ ->
@@ -83,7 +84,7 @@ call(Node, Module, Func, Args) ->
 
 
 usage() ->
-    io:format("Usage:mioctl [-n <node_name>] [-c <cookie>] <command>
+    io:format("~nUsage:mioctl [-n <node_name>] [-c <cookie>] <command>
 
 Available commands:
 

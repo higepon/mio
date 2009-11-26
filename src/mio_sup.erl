@@ -38,11 +38,28 @@ init(_Args) ->
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
     {ok, BootNode} = mio_app:get_env(boot_node, false),
 
+
+       Opts = [{name, logger},
+               {file, "./elog"},
+               {type, wrap},
+               {format, external},
+               {force_size, true},
+               {size, {1024*1024, 5}}], % 5 files
+       gen_event:add_sup_handler(
+         error_logger,
+         {disk_log_h, logger},
+         disk_log_h:init(fun logger:form_no_progress/1, Opts)),
+
+
+
     %% todo
     %% Make this simple_one_for_one
     ?PROFILER_START(self()),
     {ok, {{one_for_one, 10, 20},
-          [{mio_memcached, %% this is just id of specification, will not be registered by register/2.
+          %% logger should be the first.
+          [{logger, {logger, start_link, []},
+            permanent, 2000, worker, [logger]},
+           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode]},
             permanent, brutal_kill, worker, [mio_memcached]}]}}.
 
