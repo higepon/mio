@@ -90,7 +90,6 @@ erl +A 30 \
     -noshell \
     -noinput \
     -setcookie $mio_cookie \
-    -config conf/dev_log \
     -kernel inet_default_listen_options [{nodelay,true},{sndbuf,16384},{recbuf,4096}] \
     -kernel inet_default_connect_options [{nodelay,true}] \
     -name $mio_name \
@@ -102,3 +101,4 @@ erl +A 30 \
          maxlevel $mio_maxlevel \
          log_dir $mio_log_dir \
          verbose $mio_verbose
+

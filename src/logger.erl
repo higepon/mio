@@ -47,7 +47,7 @@
 -export([m2s/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 %% disk_log_h formatting functions
 -export([form_all/1, form_no_progress/1]).
@@ -72,7 +72,7 @@ init([]) ->
     Type = get_error_logger_mf_type(),
     Mf = get_error_logger_mf(),
     ok = add_error_logger_mf(Mf, Type),
-    {Name, Vsn} = init:script_id(),
+    {_Name, _Vsn} = init:script_id(),
 %%    ?LOG("Starting system [~s-~s]\n", [Name, Vsn]),
     start_tell_started(),
     {ok, []}.
@@ -92,6 +92,9 @@ handle_info(_, S) ->
 terminate(_Reason, _S) ->
     delete_error_logger_mf(),
     ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 set_system_error_logging() ->
     Hs = gen_event:which_handlers(error_logger),

@@ -29,7 +29,12 @@ terminate_node(TargetPid) ->
                               true;
                          true -> false
                       end end, supervisor:which_children(mio_sup)).
-
+%% Logging policy
+%%
+%%   1. tty output is OFF (default).
+%%   2. Log is written in text asccii not in binary.
+%%   3. Not to use SASL.
+%%
 add_disk_logger(LogDir) ->
     Opts = [{name, logger},
             {file, LogDir ++ "/mio.log"},
