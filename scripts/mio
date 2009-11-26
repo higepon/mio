@@ -29,14 +29,16 @@ DEFAULT_NODE_NAME=mio1
 DEFAULT_COOKIE_NAME=mio
 DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
+DEFAULT_LOG_DIR="."
 
 opt_cookie=
 opt_name=
 opt_port=
+opt_log_dir=
 opt_introducer=
 opt_verbose=false
 opt_maxlevel=
-while getopts 'n:p:i:vc:m:' OPTION
+while getopts 'n:p:i:vc:m:l:' OPTION
 do
   case $OPTION in
   m)    opt_maxlevel="$OPTARG"
@@ -47,11 +49,13 @@ do
         ;;
   p)    opt_port="$OPTARG"
         ;;
+  l)    opt_log_dir="$OPTARG"
+        ;;
   v)    opt_verbose=true
         ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
@@ -60,6 +64,7 @@ shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
 mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
 mio_name="${mio_name}@"`hostname -s`".local"
+mio_log_dir=${opt_log_dir:-"$DEFAULT_LOG_DIR"}
 mio_port=${opt_port:-"$DEFAULT_LISTEN_PORT"}
 mio_introducer=${opt_introducer:-"false"}
 mio_maxlevel=${opt_maxlevel:-"$DEFAULT_MAX_LEVEL"}
@@ -94,4 +99,6 @@ erl +A 30 \
     -mio debug $mio_verbose \
          port $mio_port \
          boot_node $mio_introducer \
-         maxlevel $mio_maxlevel
+         maxlevel $mio_maxlevel \
+         log_dir $mio_log_dir \
+         verbose $mio_verbose

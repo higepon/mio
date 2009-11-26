@@ -46,7 +46,7 @@ start(_Type, _StartArgs) ->
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
-    ?LOG("stopped"),
+    ?INFO("mio application stopped"),
     ?PROFILER_STOP(),
     ok.
 

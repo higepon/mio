@@ -30,27 +30,32 @@ terminate_node(TargetPid) ->
                          true -> false
                       end end, supervisor:which_children(mio_sup)).
 
+add_disk_logger(LogDir) ->
+    Opts = [{name, logger},
+            {file, LogDir ++ "/mio.log"},
+            {type, wrap},
+            {format, external},
+            {force_size, true},
+            {size, {10 * 1024*1024, 5}}], % 10MB, 5 files
+    gen_event:add_sup_handler(
+      error_logger,
+      {disk_log_h, logger},
+      disk_log_h:init(fun logger:form_no_progress/1, Opts)).
+
 
 init(_Args) ->
-    crypto:start(), % getRandomId uses crypto server
+    %% getRandomId uses crypto server
+    crypto:start(),
 
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
     {ok, BootNode} = mio_app:get_env(boot_node, false),
+    {ok, LogDir} = mio_app:get_env(log_dir, "."),
+    {ok, Verbose} = mio_app:get_env(verbose, false),
 
-
-       Opts = [{name, logger},
-               {file, "./elog"},
-               {type, wrap},
-               {format, external},
-               {force_size, true},
-               {size, {1024*1024, 5}}], % 5 files
-       gen_event:add_sup_handler(
-         error_logger,
-         {disk_log_h, logger},
-         disk_log_h:init(fun logger:form_no_progress/1, Opts)),
-
-
+    %% However we want to set log Verbose here, we have to wait logger starting up.
+    %% So we set Verbose flag on mio_memcached:start_link
+    add_disk_logger(atom_to_list(LogDir)),
 
     %% todo
     %% Make this simple_one_for_one
@@ -60,7 +65,7 @@ init(_Args) ->
           [{logger, {logger, start_link, []},
             permanent, 2000, worker, [logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Port, MaxLevel, BootNode]},
+            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}}.
 
 getRandomId() ->

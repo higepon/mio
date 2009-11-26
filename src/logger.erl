@@ -73,7 +73,7 @@ init([]) ->
     Mf = get_error_logger_mf(),
     ok = add_error_logger_mf(Mf, Type),
     {Name, Vsn} = init:script_id(),
-    ?LOG("Starting system [~s-~s]\n", [Name, Vsn]),
+%%    ?LOG("Starting system [~s-~s]\n", [Name, Vsn]),
     start_tell_started(),
     {ok, []}.
 

@@ -6,7 +6,7 @@
 %%% Created : 3 Aug 2009 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
--export([start_link/3]). %% supervisor needs this.
+-export([start_link/4]). %% supervisor needs this.
 -export([memcached/3, process_command/4]). %% spawn needs these.
 -export([get_boot_node/0]).
 
@@ -48,9 +48,8 @@ init_start_node(From, MaxLevel, BootNode) ->
     From ! {ok, StartNode, Serializer}.
 
 %% supervisor calls this to create new memcached.
-start_link(Port, MaxLevel, BootNode) ->
-error_logger:tty(false),
-
+start_link(Port, MaxLevel, BootNode, Verbose) ->
+    error_logger:tty(Verbose),
     Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
@@ -72,7 +71,7 @@ mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
             spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
-            io:format("accept returned ~w - goodbye!~n",[Other]),
+            ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
             ok
     end.
 
@@ -96,9 +95,9 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
-                    io:format("MEM_DELETE_START ~p ~p~n", [Key, self()]),
+                    ?INFOF("MEM_DELETE_START ~p ~p~n", [Key, self()]),
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    io:format("MEM_DELETE_DONE ~p ~p~n", [Key, self()]),
+                    ?INFOF("MEM_DELETE_DONE ~p ~p~n", [Key, self()]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
@@ -107,7 +106,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
-                    io:format("CLOSED ~p~n", [self()]),
+                    ?INFOF("CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
@@ -206,9 +205,9 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, M
                              end,
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
 %% serialize or concurrent
-            io:format("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
+            ?INFOF("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
             mio_node:insert_op(Introducer, NodeToInsert),
-            io:format("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
+            ?INFOF("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
 %%            mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),

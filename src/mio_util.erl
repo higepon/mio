@@ -10,6 +10,8 @@
 %% API
 -export([random_sleep/1, lists_set_nth/3]).
 
+-include("mio.hrl").
+
 %%====================================================================
 %% API
 %%====================================================================
@@ -29,7 +31,7 @@ random_sleep(Times) ->
         _ -> ok
     end,
     T = random:uniform(1000) rem 20 + 1,
-    io:format("HERE sleep ~p msec ~n", [T]),
+    ?INFOF("HERE sleep ~p msec ~n", [T]),
     receive after T -> ok end.
 
 lists_set_nth(Index, Value, List) ->
