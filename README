@@ -1,0 +1,9 @@
+* Building and Installing 
+
+  1. Install a recent version of Erlang.
+  2. make install with Environment variables available for configuration.
+     TARGET_DIR: Installation target directory.
+     SBIN_DIR: sbin direcotry.
+
+     e.g. TARGET_DIR=/user/local/mio SBIN_DIR=/usr/sbin/ make install 
+

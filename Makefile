@@ -16,12 +16,20 @@ vcheck: all # verbose
 	@gosh test/memcached_compat.ss;
 	@./bin/stop.sh
 
-############ Run Mio as daemon ############
-run: all
-	$(BASIC_SCRIPT_ENVIRONMENT_SETTINGS) \
-		RABBITMQ_ALLOW_INPUT=true \
-		RABBITMQ_SERVER_START_ARGS="$(RABBITMQ_SERVER_START_ARGS)" \
-		./scripts/rabbitmq-server
+install: all install_dirs
+	@[ -n "$(TARGET_DIR)" ] || (echo "Please set TARGET_DIR. (ex) /usr/local/mio"; false)
+	@[ -n "$(SBIN_DIR)" ] || (echo "Please set SBIN_DIR. (ex) /usr/sbin/"; false)
+	mkdir -p $(TARGET_DIR)
+	cp -rp ebin include $(TARGET_DIR)
+	for script in mio mioctl; do \
+		chmod 0755 scripts/$$scripts; \
+		cp -p scripts/$$script $(TARGET_DIR)/sbin; \
+		[ -e $(SBIN_DIR)/$$script ] || ln -s $(TARGET_DIR)/sbin/$$script $(SBIN_DIR)/$$script; \
+	done
+
+install_dirs:
+	mkdir -p $(SBIN_DIR)
+	mkdir -p $(TARGET_DIR)/sbin
 
 
 
