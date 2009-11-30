@@ -14,3 +14,6 @@ Invoke the mio shell script.
 To shut down the mio just terminate the process. Alternatively, use the mioctl stop command.
 
 You can also start the server in "detached" mode with mio -detached, in which case the server process is backgrounded immediately and nothing is written to the console.
+
+* Logging
+If -l <log_dir> has not been specified, the default is the current directory.

@@ -41,7 +41,9 @@ opt_log_dir=
 opt_introducer=
 opt_verbose=false
 opt_maxlevel=
-while getopts 'n:p:i:vc:m:l:' OPTION
+opt_detached=
+
+while getopts 'dn:p:i:vc:m:l:' OPTION $rest_options
 do
   case $OPTION in
   m)    opt_maxlevel="$OPTARG"
@@ -56,9 +58,11 @@ do
         ;;
   v)    opt_verbose=true
         ;;
+  d)    opt_detached="1"
+        ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
@@ -72,6 +76,7 @@ mio_port=${opt_port:-"$DEFAULT_LISTEN_PORT"}
 mio_introducer=${opt_introducer:-"false"}
 mio_maxlevel=${opt_maxlevel:-"$DEFAULT_MAX_LEVEL"}
 mio_verbose=$opt_verbose
+mio_detached=${opt_detached:+"-detached"}
 
 
 #   +A 30                   : Sets the number of threads in async thread pool, valid range is 0-1024. Default is 0.
@@ -98,6 +103,7 @@ erl +A 30 \
     -name $mio_name \
     -pa ${MIO_EBIN_ROOT} \
     -s mio_app start \
+    ${mio_detached} \
     -mio debug $mio_verbose \
          port $mio_port \
          boot_node $mio_introducer \
