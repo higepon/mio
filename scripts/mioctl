@@ -27,6 +27,8 @@
 
 DEFAULT_NODE_NAME=mio1
 DEFAULT_COOKIE_NAME=mio
+. `dirname $0`/mio-env
+MIO_EBIN_ROOT="${MIO_HOME}/ebin"
 
 opt_cookie=
 opt_name=
@@ -47,7 +49,7 @@ mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
 mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
 mio_name="${mio_name}@"`hostname -s`".local"
 
-erl -pa ebin \
+erl -pa ${MIO_EBIN_ROOT} \
     -name mioctrl$$@`hostname -s`.local \
     -noinput \
     -s mio_control start \

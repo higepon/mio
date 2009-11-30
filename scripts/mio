@@ -31,6 +31,9 @@ DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
 DEFAULT_LOG_DIR=`pwd`
 
+. `dirname $0`/mio-env
+MIO_EBIN_ROOT="${MIO_HOME}/ebin"
+
 opt_cookie=
 opt_name=
 opt_port=
@@ -93,7 +96,7 @@ erl +A 30 \
     -kernel inet_default_listen_options [{nodelay,true},{sndbuf,16384},{recbuf,4096}] \
     -kernel inet_default_connect_options [{nodelay,true}] \
     -name $mio_name \
-    -pa ebin \
+    -pa ${MIO_EBIN_ROOT} \
     -s mio_app start \
     -mio debug $mio_verbose \
          port $mio_port \
