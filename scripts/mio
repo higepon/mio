@@ -29,7 +29,7 @@ DEFAULT_NODE_NAME=mio1
 DEFAULT_COOKIE_NAME=mio
 DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
-DEFAULT_LOG_DIR="."
+DEFAULT_LOG_DIR=`pwd`
 
 opt_cookie=
 opt_name=
@@ -55,7 +55,7 @@ do
         ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
@@ -99,6 +99,6 @@ erl +A 30 \
          port $mio_port \
          boot_node $mio_introducer \
          maxlevel $mio_maxlevel \
-         log_dir $mio_log_dir \
+         log_dir "\"$mio_log_dir\"" \
          verbose $mio_verbose
 

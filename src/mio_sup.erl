@@ -60,7 +60,7 @@ init(_Args) ->
 
     %% However we want to set log Verbose here, we have to wait logger starting up.
     %% So we set Verbose flag on mio_memcached:start_link
-    add_disk_logger(atom_to_list(LogDir)),
+    add_disk_logger(LogDir),
 
     %% todo
     %% Make this simple_one_for_one

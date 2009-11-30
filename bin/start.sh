@@ -40,7 +40,6 @@ if [ -n "$mio_introducer" ]; then
     erl +K true -name $mio_name \
         +P 134217727 \
         -setcookie $mio_cookie \
-        -boot start_sasl -config conf/dev_log +W w \ # todo production_log
         -mio \
         -noshell \
         -noinput \
@@ -51,7 +50,6 @@ else
     erl +K true -name $mio_name \
         +P 134217727 \
         -setcookie $mio_cookie \
-        -boot start_sasl -config conf/dev_log +W w \
         -mio \
         -noshell \
         -noinput \
