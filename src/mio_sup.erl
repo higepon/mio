@@ -31,8 +31,8 @@ terminate_node(TargetPid) ->
                       end end, supervisor:which_children(mio_sup)).
 %% Logging policy
 %%
-%%   1. tty output is OFF (default).
-%%   2. Log is written in text asccii not in binary.
+%%   1. tty output is OFF by default.
+%%   2. Log is written in text asccii format not in binary.
 %%   3. Not to use SASL.
 %%
 add_disk_logger(LogDir) ->
@@ -42,10 +42,19 @@ add_disk_logger(LogDir) ->
             {format, external},
             {force_size, true},
             {size, {10 * 1024*1024, 5}}], % 10MB, 5 files
-    gen_event:add_sup_handler(
-      error_logger,
-      {disk_log_h, logger},
-      disk_log_h:init(fun logger:form_no_progress/1, Opts)).
+    case gen_event:add_sup_handler(
+           error_logger,
+           {disk_log_h, logger},
+           disk_log_h:init(fun logger:form_no_progress/1, Opts)) of
+        ok ->
+            ok;
+        {error, Reason} ->
+            io:format("Error on logger ~p~n", [Reason]),
+            halt(1);
+        Other ->
+            io:format("Error on logger ~p~n", [Other]),
+            halt(1)
+    end.
 
 
 init(_Args) ->
