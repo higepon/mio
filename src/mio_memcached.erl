@@ -58,6 +58,7 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
     Self = self(),
+    io:format("HHHHHHHHHHHHHH[4]~n"),
     spawn(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
     receive
         {ok, StartNode, WriteSerializer} ->

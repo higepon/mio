@@ -8,26 +8,26 @@
 -module(mio_node_SUITE).
 
 -compile(export_all).
--include("mio.hrl").
+-include("../include/mio.hrl").
 
 init_per_suite(Config) ->
     %% config file is specified on runtest's command line option
-    IsVerbose = ct:get_config(isVerbose),
-    if IsVerbose ->
-            error_logger:tty(true);
-       true ->
-            error_logger:tty(false)
-    end,
-    ok = error_logger:logfile({open, "./error.log"}),
-%%     {ok, Pid} = mio_sup:start_link(),
-%%     unlink(Pid),
+%%     IsVerbose = ct:get_config(isVerbose),
+%%     if IsVerbose ->
+%%             error_logger:tty(true);
+%%        true ->
+%%             error_logger:tty(false)
+%%     end,
+%    ok = error_logger:logfile({open, "./error.log"}),
+%%      {ok, Pid} = mio_sup:start_link(),
+%%      unlink(Pid),
     application:start(mio),
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     register(mio_node, NodePid),
     Config.
 
 end_per_suite(_Config) ->
-    application:stop(mio),
+    ok = application:stop(mio),
     ok.
 
 %% Helper

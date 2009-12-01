@@ -77,10 +77,11 @@ init(_Args) ->
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
           [{logger, {logger, start_link, []},
-            permanent, 2000, worker, [logger]},
+            permanent, brutal_kill, worker, [logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}}.
+
 
 getRandomId() ->
     integer_to_list(crypto:rand_uniform(1, 65536 * 65536)).

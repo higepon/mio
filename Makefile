@@ -4,6 +4,7 @@ APP_NAME=mio
 VERSION=0.0.1
 
 SOURCE_DIR=src
+TEST_DIR=test
 EBIN_DIR=ebin
 INCLUDE_DIR=include
 LOG_PREFIX=mio.log
@@ -14,7 +15,8 @@ ERLC_FLAGS=+warn_unused_vars \
            +warn_unused_import \
            +warn_shadow_vars \
            -Wall \
-           -v    \
+           -W \
+           -v \
            +debug_info \
            +bin_opt_info \
            +no_strict_record_tests \
@@ -30,14 +32,16 @@ $(APP): $(SOURCE_DIR)/mio.app
 	cp -p $< $@
 
 $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
-	erlc -pa $(EBIN_DIR) -W $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
+# memo test direcotry needs test/mio.app
 check: all
-	/usr/local/lib/erlang/lib/common_test-1.4.1/priv/bin/run_test -dir . -logdir ./log -cover mio.coverspec -pa $(PWD)/ebin -include $(PWD)/include
-	@./bin/start.sh &
-	@sleep 2
-	@gosh test/memcached_compat.ss
-	@./bin/stop.sh
+# include option for ct:run_test is not recognized.
+	erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}]).' -s init stop -mio verbose false
+# 	@./scripts/mio &
+# 	@sleep 2
+# 	@gosh test/memcached_compat.ss
+# 	@./scripts/mioctl stop
 
 vcheck: all # verbose
 	/usr/local/lib/erlang/lib/common_test-1.4.1/priv/bin/run_test -config test/config.verbose -dir . -logdir ./log  -cover mio.coverspec -pa $(PWD)/ebin -include $(PWD)/include
@@ -77,5 +81,4 @@ distclean: clean
 
 clean:
 	rm -f $(TARGETS) $(TARBALL_NAME).tar.gz
-
-
+	rm -f test/*.beam
