@@ -1,10 +1,36 @@
-all:
-	cd src; $(MAKE)
+TARGETS = $(BEAMS) $(APP)
 
+APP_NAME=mio
 VERSION=0.0.1
-TARBALL_NAME=mio-$(VERSION)
+
+SOURCE_DIR=src
+EBIN_DIR=ebin
+INCLUDE_DIR=include
+SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
+BEAMS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(SOURCES))
+APP=$(EBIN_DIR)/mio.app
+ERLC_FLAGS=+warn_unused_vars \
+           +warn_unused_import \
+           +warn_shadow_vars \
+           -Wall \
+           -v    \
+           +debug_info \
+           +bin_opt_info \
+           +no_strict_record_tests \
+           +native +"{hipe, [o3]}" \
+
+TARBALL_NAME=$(APP_NAME)-$(VERSION)
 DIST_TMP_DIR=tmp
 DIST_TARGET=$(DIST_TMP_DIR)/$(TARBALL_NAME)
+
+
+all: $(TARGETS)
+
+$(APP): $(SOURCE_DIR)/mio.app
+	cp -p $< $@
+
+$(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) -W $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
 check: all
 	/usr/local/lib/erlang/lib/common_test-1.4.1/priv/bin/run_test -dir . -logdir ./log -cover mio.coverspec -pa $(PWD)/ebin -include $(PWD)/include
@@ -19,6 +45,8 @@ vcheck: all # verbose
 	@sleep 1
 	@gosh test/memcached_compat.ss;
 	@./bin/stop.sh
+
+test: check
 
 install: all install_dirs
 	@[ -n "$(TARGET_DIR)" ] || (echo "Please set TARGET_DIR. e.g. /usr/local/mio"; false)

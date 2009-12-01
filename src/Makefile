@@ -25,5 +25,5 @@ $(MODS):
 clean:
 	rm -rf $(EBIN)/*.$(EMULATOR) $(APP_TARGET) $(EBIN)/erl_crash.dump *~
 
-$(APP_TARGET) : mio.app
+$(APP_TARGET) :b
 	cp $< $@
