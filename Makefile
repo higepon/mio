@@ -6,6 +6,7 @@ VERSION=0.0.1
 SOURCE_DIR=src
 EBIN_DIR=ebin
 INCLUDE_DIR=include
+LOG_PREFIX=mio.log
 SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
 BEAMS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(SOURCES))
 APP=$(EBIN_DIR)/mio.app
@@ -22,7 +23,6 @@ ERLC_FLAGS=+warn_unused_vars \
 TARBALL_NAME=$(APP_NAME)-$(VERSION)
 DIST_TMP_DIR=tmp
 DIST_TARGET=$(DIST_TMP_DIR)/$(TARBALL_NAME)
-
 
 all: $(TARGETS)
 
@@ -70,7 +70,12 @@ dist: dist-clean
 	tar -zcf $(TARBALL_NAME).tar.gz $(DIST_TARGET)
 	rm -rf $(DIST_TMP_DIR)
 
-dist-clean: clean
+distclean: clean
+	rm -f $(LOG_PREFIX)*
+	rm -f *.dump
+	find . -regex '.*\(~\|#\|\.swp\|\.dump\)' -exec rm {} \;
 
 clean:
-	cd src; $(MAKE) clean
+	rm -f $(TARGETS) $(TARBALL_NAME).tar.gz
+
+
