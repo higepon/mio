@@ -90,7 +90,6 @@ mio_detached=${opt_detached:+"-detached"}
 #    -kernel                : Options to kernel application, which are passed to inet module
 
 # config file path
-
 erl +A 30 \
     +K true \
     +P 134217727 \

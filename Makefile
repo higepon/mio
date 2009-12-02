@@ -26,6 +26,8 @@ TARBALL_NAME=$(APP_NAME)-$(VERSION)
 DIST_TMP_DIR=tmp
 DIST_TARGET=$(DIST_TMP_DIR)/$(TARBALL_NAME)
 
+ERL_CALL=erl_call -c mio -name mio1@suneo.local -e
+
 all: $(TARGETS)
 
 $(APP): $(SOURCE_DIR)/mio.app
@@ -39,11 +41,14 @@ VERBOSE_TEST ?= false
 # memo test direcotry needs test/mio.app
 check: all
 # include option for ct:run_test is not recognized.
-	erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}]).' -s init stop -mio verbose $(VERBOSE_TEST)
-# 	@./scripts/mio &
-# 	@sleep 2
-# 	@gosh test/memcached_compat.ss
-# 	@./scripts/mioctl stop
+	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
+	@./scripts/mio &
+	@sleep 2
+	@echo 'mio_util:cover_start("./ebin").' | ${ERL_CALL}
+	@gosh test/memcached_compat.ss
+	@echo  'mio_util:report_cover("./log").' | ${ERL_CALL}
+	@./scripts/mioctl stop
+	@echo "passed."
 
 vcheck: all
 	VERBOSE_TEST=true make check
@@ -80,3 +85,4 @@ distclean: clean
 clean:
 	rm -f $(TARGETS) $(TARBALL_NAME).tar.gz
 	rm -f test/*.beam
+	rm -rf log/ct_run*
