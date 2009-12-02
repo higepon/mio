@@ -36,6 +36,8 @@ terminate_node(TargetPid) ->
 %%   3. Not to use SASL.
 %%
 add_disk_logger(LogDir) ->
+    %% N.B. disk_logger requires tty logger installed.
+    error_logger:tty(true),
     Opts = [{name, logger},
             {file, LogDir ++ "/mio.log"},
             {type, wrap},
@@ -54,7 +56,7 @@ add_disk_logger(LogDir) ->
         Other ->
             io:format("Error on logger ~p~n", [Other]),
             halt(1)
-    end.
+   end.
 
 
 init(_Args) ->
@@ -76,7 +78,8 @@ init(_Args) ->
     ?PROFILER_START(self()),
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
-          [{logger, {logger, start_link, []},
+          [
+           {logger, {logger, start_link, []},
             permanent, brutal_kill, worker, [logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},

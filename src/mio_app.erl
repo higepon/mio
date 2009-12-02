@@ -21,15 +21,13 @@
 -include("mio.hrl").
 
 start() ->
-            io:format("************** ~n", []),
     case application:start(mio) of
         ok ->
-            io:format("************** ~n", []),
             ok;
         {error, Reason} ->
-            io:format("**************  FATAL application start failed ~p~n", [Reason]);
+            io:format("FATAL application start failed ~p~n", [Reason]);
         Other ->
-            io:format("**************  FATAL application start failed ~p~n", [Other])
+            io:format("FATAL application start failed ~p~n", [Other])
     end.
 
 
@@ -44,7 +42,6 @@ stop() ->
 
 
 start(_Type, _StartArgs) ->
-    io:format("*********app:start/2 ~n", []),
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
