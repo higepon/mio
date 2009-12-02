@@ -14,7 +14,7 @@ init_per_suite(Config) ->
     Config.
 
 end_per_suite(_Config) ->
-    ok =application:stop(mio),
+    ok = application:stop(mio),
     ok.
 
 global_lock(_Config) ->

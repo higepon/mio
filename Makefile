@@ -34,21 +34,19 @@ $(APP): $(SOURCE_DIR)/mio.app
 $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
 	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
+VERBOSE_TEST ?= false
+
 # memo test direcotry needs test/mio.app
 check: all
 # include option for ct:run_test is not recognized.
-	erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}]).' -s init stop -mio verbose false
+	erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}]).' -s init stop -mio verbose $(VERBOSE_TEST)
 # 	@./scripts/mio &
 # 	@sleep 2
 # 	@gosh test/memcached_compat.ss
 # 	@./scripts/mioctl stop
 
-vcheck: all # verbose
-	/usr/local/lib/erlang/lib/common_test-1.4.1/priv/bin/run_test -config test/config.verbose -dir . -logdir ./log  -cover mio.coverspec -pa $(PWD)/ebin -include $(PWD)/include
-	@./bin/start.sh &
-	@sleep 1
-	@gosh test/memcached_compat.ss;
-	@./bin/stop.sh
+vcheck: all
+	VERBOSE_TEST=true make check
 
 test: check
 
