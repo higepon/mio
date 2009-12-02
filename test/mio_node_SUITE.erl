@@ -11,19 +11,9 @@
 -include("../include/mio.hrl").
 
 init_per_suite(Config) ->
-    %% config file is specified on runtest's command line option
-%%     IsVerbose = ct:get_config(isVerbose),
-%%     if IsVerbose ->
-%%             error_logger:tty(true);
-%%        true ->
-%%             error_logger:tty(false)
-%%     end,
-%    ok = error_logger:logfile({open, "./error.log"}),
-%%      {ok, Pid} = mio_sup:start_link(),
-%%      unlink(Pid),
-    application:start(mio),
+    ok = application:start(mio),
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    register(mio_node, NodePid),
+    true = register(mio_node, NodePid),
     Config.
 
 end_per_suite(_Config) ->
@@ -259,7 +249,7 @@ delete_op(_Config) ->
     [[{_, key3, _, _}], [{_, key7, _, _}]] = mio_node:dump_op(Node3, 1),
 
     %% delete key3!, introducer == self
-    Ref = erlang:monitor(process, Node3),
+%%    Ref = erlang:monitor(process, Node3),
     ok = mio_node:delete_op(Node3, key3),
     [{_, key7, _, _}] = mio_node:dump_op(Node7, 0),
     [[{_, key7, _, _}]] = mio_node:dump_op(Node7, 1),
@@ -511,7 +501,7 @@ overwrite_value2(_Config) ->
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([1, 1])),
 
-    {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
+    {ok, _NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node3, Node9),
     ok = mio_node:insert_op(Node3, Node7),
@@ -525,7 +515,7 @@ overwrite_value3(_Config) ->
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     {ok, Node9} = mio_sup:start_node(key9, value9, mio_mvector:make([0, 1])),
 
-    {ok, NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
+    {ok, _NewNode3} = mio_sup:start_node(key3, new_value3, mio_mvector:make([0, 0])),
     ok = mio_node:insert_op(Node3, Node3),
     ok = mio_node:insert_op(Node3, Node9),
     ok = mio_node:insert_op(Node3, Node7),

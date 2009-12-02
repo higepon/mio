@@ -10,11 +10,11 @@
 -compile(export_all).
 
 init_per_suite(Config) ->
-    application:start(mio),
+    ok = application:start(mio),
     Config.
 
 end_per_suite(_Config) ->
-    application:stop(mio),
+    ok =application:stop(mio),
     ok.
 
 global_lock(_Config) ->

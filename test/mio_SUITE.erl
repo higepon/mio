@@ -11,19 +11,11 @@
 -include("../include/mio.hrl").
 
 init_per_suite(Config) ->
-%%     %% config file is specified on runtest's command line option
-%%     IsVerbose = ct:get_config(isVerbose),
-%%     if IsVerbose ->
-%%             error_logger:tty(true);
-%%        true ->
-%%             error_logger:tty(false)
-%%     end,
-    io:format("config=~p~n", [Config]),
     ok = application:start(mio),
     Config.
 
 end_per_suite(_Config) ->
-    application:stop(mio),
+    ok = application:stop(mio),
     ok.
 
 set_and_get(_Config) ->
