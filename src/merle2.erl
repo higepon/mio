@@ -266,6 +266,7 @@ handle_call({version}, _From, Socket) ->
 
 handle_call({verbosity, {Args}}, _From, Socket) ->
     Reply = send_generic_cmd(Socket, iolist_to_binary([<<"verbosity ">>, Args])),
+
     {reply, Reply, Socket};
 
 handle_call({flushall}, _From, Socket) ->
