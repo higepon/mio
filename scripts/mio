@@ -43,7 +43,7 @@ opt_verbose=false
 opt_maxlevel=
 opt_detached=
 
-while getopts 'dn:p:i:vc:m:l:' OPTION $rest_options
+while getopts 'dn:p:i:vc:m:l:' OPTION
 do
   case $OPTION in
   m)    opt_maxlevel="$OPTARG"
