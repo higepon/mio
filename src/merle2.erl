@@ -120,7 +120,6 @@ getskey(Key) ->
 %% @doc delete a key
 delete(Key) ->
 	delete(Key, "0").
-
 delete(Key, Time) when is_atom(Key) ->
 	delete(atom_to_list(Key), Time);
 delete(Key, Time) when is_integer(Time) ->
