@@ -79,7 +79,7 @@ mio_verbose=$opt_verbose
 mio_detached=${opt_detached:+"-detached"}
 
 
-#   +A 30                   : Sets the number of threads in async thread pool, valid range is 0-1024. Default is 0.
+#   +A 30                   : Sets the number of threads in async thread pool, valid range is 0-1024. Default is 0. => disable, this uses much memory.
 #   +K true                 : Use the kernel poll functionality
 #   +P 134217727            : Sets the maximum number of concurrent processes.
 #   +W w                    : warning messages are sent as warning.
@@ -90,8 +90,7 @@ mio_detached=${opt_detached:+"-detached"}
 #    -kernel                : Options to kernel application, which are passed to inet module
 
 # config file path
-erl +A 30 \
-    +K true \
+erl +K true \
     +P 134217727 \
     +W w \
     -noshell \
