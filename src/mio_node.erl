@@ -568,7 +568,7 @@ lock_or_exit(Nodes, Line, Info) ->
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
-    ?INFOF("link_on_level0: MyKey=~p NeighborKey=~p", [MyKey, NeighborKey]),
+%%    ?INFOF("link_on_level0: MyKey=~p NeighborKey=~p", [MyKey, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -641,7 +641,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
-    ?INFOF("link_on_level0: Self=~p self=~p~n", [Self, self()]),
+%    ?INFOF("link_on_level0: Self=~p self=~p~n", [Self, self()]),
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
@@ -795,7 +795,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         [] ->
                             gen_server:call(Self, set_inserted_op),
                             ?CHECK_SANITY(Self, Level),
-                            ?INFOF("link_on_level_ge1: INSERT Nomore MyKey=~p Level~p", [MyKey, Level]),
+%%                            ?INFOF("link_on_level_ge1: INSERT Nomore MyKey=~p Level~p", [MyKey, Level]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         _ ->
@@ -952,7 +952,7 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
             unlock(LockedNodes),
             ?CHECK_SANITY(Self, Level),
             %% Debug info start
-            ?INFOF("Insereted<~p> Level~p BuddyKey ~p BuddyRightKey=~p", [MyKey, Level, BuddyKey, BuddyRightKey]),
+%%            ?INFOF("Insereted<~p> Level~p BuddyKey ~p BuddyRightKey=~p", [MyKey, Level, BuddyKey, BuddyRightKey]),
             link_on_level_ge1(Self, Level + 1, MaxLevel);
         UnknownInvariant ->
             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),

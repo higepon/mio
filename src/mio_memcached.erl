@@ -91,7 +91,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
+                    _InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
@@ -205,9 +205,9 @@ process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, M
                              end,
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
 %% serialize or concurrent
-            ?INFOF("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
+%%            ?INFOF("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
             mio_node:insert_op(Introducer, NodeToInsert),
-            ?INFOF("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
+%%            ?INFOF("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
 %%            mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
