@@ -9,6 +9,7 @@
 
 %% API
 -export([start_link/1,
+         stats_op/2,
          search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
          get_left_op_call/3, insert_op_call/4, delete_op_call/3,
          search_op/2, link_right_op/4, link_left_op/4,
@@ -63,6 +64,14 @@ delete_op(Node) ->
     OneMinute = 60000,
     terminate_node(Node, OneMinute),
     ok.
+
+stats_op(Node, MaxLevel) ->
+    case check_sanity(Node, 0, stats, 0) of
+        ok -> "STAT check_sanity OK";
+        Other ->
+            io_lib:format("STAT check_sanity NG Broken : ~p", [Other])
+    end.
+
 
 terminate_node(Node, After) ->
     spawn(fun() ->
@@ -974,12 +983,18 @@ check_sanity_to_right(Node, Level, Module, Line) ->
     {Key, _, _, _, _} = gen_server:call(Node, get_op),
     {Right, RightKey} = gen_server:call(Node, {get_right_op, Level}),
 
-    %% Key < RightKey (if Right exists)
+    %% Should be Key < RightKey (if Right exists)
     case Right of
-        [] -> [];
+        [] -> ok;
         _ ->
-            assert(Key < RightKey, "Key < RightKey", Module, Line),
-            check_sanity_to_right(Right, Level, Module, Line)
+            if
+                not(Key < RightKey) ->
+                    Reason = io_lib:format("check_sanity_to_right failed: Node=~p Key=~p RightKey=~p~n", [Node, Key, RightKey]),
+                    ?ERROR(Reason),
+                    {error, Reason};
+                true ->
+                    check_sanity_to_right(Right, Level, Module, Line)
+            end
     end.
 
 check_sanity_to_left(Node, Level, Module, Line) ->
@@ -988,15 +1003,30 @@ check_sanity_to_left(Node, Level, Module, Line) ->
 
     %% Key < LeftKey (if Left exists)
     case Left of
-        [] -> [];
+        [] -> ok;
         _ ->
-            assert(LeftKey < Key, "LeftKey < Key", Module, Line),
-            check_sanity_to_left(Left, Level, Module, Line)
+            if
+                not(LeftKey < Key) ->
+                    Reason = io_lib:format("check_sanity_to_left failed: Node=~p Key=~p LeftKey=~p~n", [Node, Key, LeftKey]),
+                    ?ERROR(Reason),
+                    {error, Reason};
+                true ->
+                    check_sanity_to_left(Left, Level, Module, Line)
+            end
     end.
 
 check_sanity(Node, Level, Module, Line) ->
-    check_sanity_to_left(Node, Level, Module, Line),
-    check_sanity_to_right(Node, Level, Module, Line).
+    case check_sanity_to_left(Node, Level, Module, Line) of
+        ok ->
+            case check_sanity_to_right(Node, Level, Module, Line) of
+                ok ->
+                    ok;
+                Other -> Other
+            end;
+        Other2 ->
+            Other2
+    end.
+
 
 %%--------------------------------------------------------------------
 %%  dump operation

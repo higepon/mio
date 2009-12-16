@@ -108,6 +108,8 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                 ["quit"] ->
                     ?INFOF("CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
+                ["stats"] ->
+                    process_stats(Sock, StartNode, MaxLevel);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -118,6 +120,12 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
         Error ->
             ?ERRORF("<~p error: ~p\n", [Sock, Error])
     end.
+
+process_stats(Sock, Node, MaxLevel) ->
+    Stats = mio_node:stats_op(Node, MaxLevel),
+    ok = gen_tcp:send(Sock, Stats),
+    ok = gen_tcp:send(Sock, "\r\n").
+
 
 process_delete(Sock, WriteSerializer, StartNode, Key) ->
     case mio_write_serializer:delete_op(WriteSerializer, StartNode, Key) of
