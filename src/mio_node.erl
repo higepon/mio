@@ -65,9 +65,14 @@ delete_op(Node) ->
     terminate_node(Node, OneMinute),
     ok.
 
+
+
 stats_op(Node, MaxLevel) ->
-    case check_sanity(Node, 0, stats, 0) of
-        ok -> "STAT check_sanity OK";
+    case mio_util:do_times_with_index(0, MaxLevel,
+                             fun(Level) ->
+                                     check_sanity(Node, Level, stats, 0)
+                             end) of
+        ok -> "OK";
         Other ->
             io_lib:format("STAT check_sanity NG Broken : ~p", [Other])
     end.

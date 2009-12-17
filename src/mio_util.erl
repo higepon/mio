@@ -8,7 +8,7 @@
 -module(mio_util).
 
 %% API
--export([random_sleep/1, lists_set_nth/3, cover_start/1, report_cover/1]).
+-export([random_sleep/1, lists_set_nth/3, cover_start/1, report_cover/1, do_times_with_index/3]).
 
 -include("mio.hrl").
 
@@ -60,6 +60,17 @@ report_cover(TargeDir) ->
       %%cover:modules()
       [mio_node, mio_memcached]),
     cover:stop().
+
+
+do_times_with_index(Start, End, _Fun) when Start > End ->
+    ok;
+do_times_with_index(Start, End, Fun) ->
+    case apply(Fun, [Start]) of
+        ok ->
+            do_times_with_index(Start + 1, End, Fun);
+        Other ->
+            Other
+    end.
 
 %%====================================================================
 %% Internal functions
