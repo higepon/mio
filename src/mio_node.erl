@@ -67,15 +67,23 @@ delete_op(Node) ->
 
 
 stats_op(Node, MaxLevel) ->
+    [stats_curr_items(Node),
+     stats_status(Node, MaxLevel)].
+
+stats_curr_items(Node) ->
+    {"curr_items", integer_to_list(length(dump_op(Node, 0)))}.
+
+stats_status(Node, MaxLevel) ->
     case mio_util:do_times_with_index(0, MaxLevel,
                              fun(Level) ->
                                      ?INFOF("check_sanity Level~p~n", [Level]),
                                      check_sanity(Node, Level, stats, 0)
                              end) of
-        ok -> "OK";
+        ok -> {"mio_status", "OK"};
         Other ->
-            io_lib:format("STAT check_sanity NG Broken : ~p", [Other])
+            {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
     end.
+
 
 
 terminate_node(Node, After) ->

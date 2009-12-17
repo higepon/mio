@@ -122,8 +122,12 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
 
 process_stats(Sock, Node, MaxLevel) ->
     Stats = mio_node:stats_op(Node, MaxLevel),
-    ok = gen_tcp:send(Sock, io_lib:format("STAT mio_status ~s\r\nEND\r\n", [Stats])).
-
+    io:format("Stats=~p", [Stats]),
+    lists:foreach(fun({Key, Value}) ->
+                    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\n", [Key, Value]))
+            end,
+            Stats),
+    ok = gen_tcp:send(Sock, "END\r\n").
 
 process_delete(Sock, WriteSerializer, StartNode, Key) ->
     case mio_write_serializer:delete_op(WriteSerializer, StartNode, Key) of
