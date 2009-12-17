@@ -115,7 +115,6 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
             end;
         {error, closed} ->
-            ?ERRORF("error closed ~p~n", [self()]),
             ok;
         Error ->
             ?ERRORF("<~p error: ~p\n", [Sock, Error])
