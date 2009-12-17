@@ -69,7 +69,7 @@ delete_op(Node) ->
 stats_op(Node, MaxLevel) ->
     case mio_util:do_times_with_index(0, MaxLevel,
                              fun(Level) ->
-                                     ?INFOF("check_sanity Level~d~n", [Level]),
+                                     ?INFOF("check_sanity Level~p~n", [Level]),
                                      check_sanity(Node, Level, stats, 0)
                              end) of
         ok -> "OK";
