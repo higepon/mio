@@ -542,18 +542,22 @@ delete_loop_(Self, Level) ->
 %%   These issued op should not be circular.
 %%
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
+    ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     %% there's no buddy
     %% insertiion done
     gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
+    ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     %% link on level = 0
     case link_on_level0(From, State, Self, Introducer) of
         no_more ->
             gen_server:call(Self, {set_inserted_op, 0}),
             ?CHECK_SANITY(Self, 0);
         _ ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             gen_server:call(Self, {set_inserted_op, 0}),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
             MaxLevel = length(State#state.membership_vector),
@@ -799,18 +803,22 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
     case LeftOnLower of
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         _ ->
             {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             case Buddy of
                 [] ->
                     case RightOnLower of
@@ -820,15 +828,18 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
                             gen_server:call(Self, set_inserted_op),
+                            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
                             ?CHECK_SANITY(Self, Level),
 %%                            ?INFOF("link_on_level_ge1: INSERT Nomore MyKey=~p Level~p", [MyKey, Level]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         _ ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
                             link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                 _ ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
                     link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
             end
     end.
@@ -945,16 +956,20 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
 
 link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     LockedNodes = lock_or_exit([Self, Buddy, BuddyRight], ?LINE, MyKey),
-
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
     case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
         retry ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             unlock(LockedNodes),
             mio_util:random_sleep(0),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             %% mark as inserted
             gen_server:call(Self, set_inserted_op),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             unlock(LockedNodes),
             ?CHECK_SANITY(Self, Level),
             ?INFOF("Insert Nomore ~p level~p", [MyKey, Level]),
@@ -962,6 +977,7 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
         ok ->
             % [A:m] -> [NodeToInsert:m]
             link_right_op(Buddy, Level, Self, MyKey),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             case BuddyRight of
                 [] -> [];
                 X ->
@@ -969,13 +985,17 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
                     link_left_op(X, Level, Self, MyKey)
             end,
             %% [A:m] <- [NodeToInsert:m]
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             link_left_op(Self, Level, Buddy, BuddyKey),
-
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
+            erlang:garbage_collect(Self),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             %% [NodeToInsert:m] -> [D:m]
             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
             gen_server:call(Self, {set_inserted_op, Level}),
-
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             unlock(LockedNodes),
+            ?INFOF("mem=~p stack=~p words heap=~p ~p", [process_info(Self, memory), process_info(Self, total_heap_size), process_info(Self, stack_size), ?LINE]),
             ?CHECK_SANITY(Self, Level),
             %% Debug info start
 %%            ?INFOF("Insereted<~p> Level~p BuddyKey ~p BuddyRightKey=~p", [MyKey, Level, BuddyKey, BuddyRightKey]),
