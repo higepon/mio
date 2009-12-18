@@ -1,3 +1,4 @@
+
 %%% Description : Skip Graphde
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
@@ -67,7 +68,8 @@ delete_op(Node) ->
 
 
 stats_op(Node, MaxLevel) ->
-    [stats_curr_items(Node),
+     %% stats_curr_items(Node),
+    [
      stats_status(Node, MaxLevel)].
 
 stats_curr_items(Node) ->
@@ -214,6 +216,8 @@ handle_call({insert_op, Introducer}, From, State) ->
     Self = self(),
     spawn(?MODULE, insert_op_call, [From, State, Self, Introducer]),
     {noreply, State};
+
+%% {noreply, State, hibernate};
 
 handle_call(delete_op, From, State) ->
     Self = self(),
@@ -1013,7 +1017,7 @@ check_sanity_to_right(Node, Level, Module, Line) ->
 check_sanity_to_left(Node, Level, Module, Line) ->
     {Key, _, _, _, _} = gen_server:call(Node, get_op),
     {Left, LeftKey} = gen_server:call(Node, {get_left_op, Level}),
-
+    ?INFOF("mem=~p stack=~p words heap=~p", [process_info(Node, memory), process_info(Node, total_heap_size), process_info(Node, stack_size)]),
     %% Key < LeftKey (if Left exists)
     case Left of
         [] -> ok;

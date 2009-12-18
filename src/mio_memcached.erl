@@ -31,7 +31,16 @@ init_start_node(From, MaxLevel, BootNode) ->
               false ->
                   MVector = mio_mvector:generate(MaxLevel),
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
+                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+
+                  {ok, Node2} = mio_sup:start_node("dummy2", list_to_binary("dummy"), MVector),
                   mio_node:insert_op(Node, Node),
+                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+
+                  mio_node:insert_op(Node, Node2),
+                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+
+
                   {ok, WriteSerializer} = mio_sup:start_write_serializer(),
                   register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
                   {Node, WriteSerializer};
@@ -201,7 +210,7 @@ process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, Limit) -
     ok = gen_tcp:send(Sock, P).
 
 %% See expiry format definition on process_get
-process_set(Sock, WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
+process_set(Sock, _WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             MVector = mio_mvector:generate(MaxLevel),
