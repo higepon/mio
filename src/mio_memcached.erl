@@ -170,6 +170,9 @@ check_expired(ExpireDate) ->
 process_get(Sock, WriteSerializer, StartNode, Key) ->
     {Node, FoundKey, Value, ExpireDate} = mio_node:search_op(StartNode, Key),
     {Expired, NeedEnqueue} = check_expired(ExpireDate),
+%%     ?INFOF("Aget mem=~p ", [process_info(Node, memory)]),
+%% %%    erlang:garbage_collect(Node),
+%% %%    ?INFOF("Bget mem=~p ", [process_info(Node, memory)]),
     if Key =:= FoundKey andalso not Expired ->
             ok = gen_tcp:send(Sock, io_lib:format(
                                       "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
@@ -177,6 +180,11 @@ process_get(Sock, WriteSerializer, StartNode, Key) ->
        true ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end,
+    ?INFOF("Aget mem=~p ", [process_info(Node, memory)]),
+   erlang:garbage_collect(Node),
+   ?INFOF("Bget mem=~p ", [process_info(Node, memory)]),
+
+
     %% enqueue to the delete queue
     if NeedEnqueue ->
             enqueue_to_delete(WriteSerializer, Node);
