@@ -103,7 +103,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, raw}]),
                     InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
 
-                    %% process_set increses process memory size and nerver shrink.
+                    %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
                     erlang:garbage_collect(InsertedNode),
 

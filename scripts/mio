@@ -81,7 +81,7 @@ mio_detached=${opt_detached:+"-detached"}
 
 #   +A 30                   : Sets the number of threads in async thread pool, valid range is 0-1024. Default is 0. => disable, this uses much memory.
 #   +K true                 : Use the kernel poll functionality
-#   +P 134217727            : Sets the maximum number of concurrent processes.
+#   +P 134217727            : Sets the maximum number of concurrent processes. We used to set max value, but it reserves 1GB memory! So we decrese it. 5KB/Process 
 #   +W w                    : warning messages are sent as warning.
 #   -noshell                : This flag makes it possible to have the Erlang runtime system as a component in a series of UNIX pipes.
 #   -noinput                : Ensures that the Erlang runtime system never tries to read any input.
@@ -91,7 +91,7 @@ mio_detached=${opt_detached:+"-detached"}
 
 # config file path
 erl +K true \
-    +P 134217727 \
+    +P 10000000 \
     +W w \
     -noshell \
     -noinput \
