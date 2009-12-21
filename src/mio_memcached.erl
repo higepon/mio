@@ -33,12 +33,13 @@ init_start_node(From, MaxLevel, BootNode) ->
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
                   ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
 
-                  {ok, Node2} = mio_sup:start_node("dummy2", list_to_binary("dummy"), MVector),
-                  mio_node:insert_op(Node, Node),
-                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+%%                   {ok, Node2} = mio_sup:start_node("dummy2", list_to_binary("dummy"), MVector),
+%%                   mio_node:insert_op(Node, Node),
+%%                   ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
 
-                  mio_node:insert_op(Node, Node2),
-                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+%%                  mio_node:insert_op(Node, Node2),
+%%                  erlang:garbage_collect(Node),
+
 
 
                   {ok, WriteSerializer} = mio_sup:start_write_serializer(),
@@ -100,7 +101,12 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    _InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
+                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
+
+                    %% process_set increses process memory size and nerver shrink.
+                    %% We have to collect them here.
+                    erlang:garbage_collect(InsertedNode),
+
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
