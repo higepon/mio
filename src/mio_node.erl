@@ -615,7 +615,6 @@ link_on_level0(From, State, Self, Introducer) ->
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
             lock([Neighbor], infinity),
-
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
             if IsDeleted ->
                     %% Retry
