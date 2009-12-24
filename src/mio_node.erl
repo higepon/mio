@@ -560,17 +560,29 @@ insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     %% link on level = 0
+    S = erlang:now(),
     case link_on_level0(From, State, Self, Introducer) of
         no_more ->
             gen_server:call(Self, {set_inserted_op, 0}),
+            E1 = erlang:now(),
+            ?INFOF("whole0=~p~n", [timer:now_diff(E1, S)]),
+
             ?CHECK_SANITY(Self, 0);
         _ ->
             gen_server:call(Self, {set_inserted_op, 0}),
+            E1 = erlang:now(),
+            ?INFOF("whole0=~p~n", [timer:now_diff(E1, S)]),
+
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
             MaxLevel = length(State#state.membership_vector),
-            link_on_level_ge1(Self, MaxLevel)
+            link_on_level_ge1(Self, MaxLevel),
+            E2 = erlang:now(),
+            ?INFOF("whole1=~p~n", [timer:now_diff(E2, E1)])
+
     end,
+    E = erlang:now(),
+    ?INFOF("whole=~p~n", [timer:now_diff(E, S)]),
     gen_server:reply(From, ok).
 
 
@@ -605,7 +617,11 @@ lock_or_exit(Nodes, Line, Info) ->
 
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
+    S = erlang:now(),
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
+    E = erlang:now(),
+    ?INFOF("search=~p~n", [timer:now_diff(E, S)]),
+
 %%    ?INFOF("link_on_level0: MyKey=~p NeighborKey=~p", [MyKey, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
@@ -677,11 +693,18 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
+    S = erlang:now(),
+
     MyKey = State#state.key,
 %    ?INFOF("link_on_level0: Self=~p self=~p~n", [Self, self()]),
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
+
+    E1 = erlang:now(),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
+
+    E2 = erlang:now(),
+    ?INFOF("lock=~p~n", [timer:now_diff(E2, E1)]),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
