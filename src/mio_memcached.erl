@@ -124,6 +124,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     ?INFOF("CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
+                    ?INFO("stats"),
                     process_stats(Sock, StartNode, MaxLevel);
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),

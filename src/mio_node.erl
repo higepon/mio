@@ -69,6 +69,7 @@ delete_op(Node) ->
 
 stats_op(Node, MaxLevel) ->
      %% stats_curr_items(Node),
+    ?INFOF("hige=~p", [dump_op(Node, 0, MaxLevel)]),
     [
      stats_status(Node, MaxLevel)].
 
@@ -78,7 +79,7 @@ stats_curr_items(Node) ->
 stats_status(Node, MaxLevel) ->
     case mio_util:do_times_with_index(0, MaxLevel,
                              fun(Level) ->
-                                     ?INFOF("check_sanity Level~p~n", [Level]),
+%%                                     ?INFOF("check_sanity Level~p~n", [Level]),
                                      check_sanity(Node, Level, stats, 0)
                              end) of
         ok -> {"mio_status", "OK"};
@@ -844,7 +845,11 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         _ ->
+            E1 = erlang:now(),
             {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
+            E2 = erlang:now(),
+            ?INFOF("buddy_op=~p~n", [timer:now_diff(E2, E1)]),
+            E3 = erlang:now(),
             case Buddy of
                 [] ->
                     case RightOnLower of
@@ -856,9 +861,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                             gen_server:call(Self, set_inserted_op),
                             ?CHECK_SANITY(Self, Level),
 %%                            ?INFOF("link_on_level_ge1: INSERT Nomore MyKey=~p Level~p", [MyKey, Level]),
+                            E4 = erlang:now(),
+                            ?INFOF("logging=~p inserted_op~p~n", [timer:now_diff(E3, E2), timer:now_diff(E4, E3)]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         _ ->
+                            ?INFO(""),
                             link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
@@ -874,6 +882,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %%   ok: invariant is satified, you can link safely on this level.
 check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
     %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
+    E1 = erlang:now(),
+
     BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
 
     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
@@ -905,6 +915,9 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
                     retry;
                true ->
+            E2 = erlang:now(),
+            ?INFOF("buddy_left=~p~n", [timer:now_diff(E2, E1)]),
+
                     ok
             end
     end.
@@ -932,6 +945,8 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     end.
 
 link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
+            E1 = erlang:now(),
+
     %% This should never happen.
     %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
     %% since insert to self is returned immediately on insert_op.
@@ -945,10 +960,15 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
             %% So we've done.
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
+            E2 = erlang:now(),
+            ?INFOF("buddy_op=~p~n", [timer:now_diff(E2, E1)]),
+
             ?INFOF("INSERT Nomore ~p level~p", [MyKey, Level]),
             [];
         %% [NodeToInsert] <-> [Buddy]
         _ ->
+            E2 = erlang:now(),
+            ?INFOF("buddy_op=~p~n", [timer:now_diff(E2, E1)]),
             link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
             ?CHECK_SANITY(Self, Level)
     end.
@@ -956,7 +976,14 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
+
+    E1 = erlang:now(),
+
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
+
+    E2 = erlang:now(),
+    ?INFOF("lock=~p~n", [timer:now_diff(E2, E1)]),
+
 
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
         retry ->
@@ -1079,11 +1106,25 @@ check_sanity(Node, Level, Module, Line) ->
 %%--------------------------------------------------------------------
 %%  dump operation
 %%--------------------------------------------------------------------
+dump_op(_StartNode, Current, MaxLevel) when Current > MaxLevel ->
+    [];
+dump_op(StartNode, Current, MaxLevel) ->
+    CurrentDump = dump_op(StartNode, Current),
+    ?INFOF("current =~p", [Current]),
+    D = lists:map(fun(Nodes) ->
+                      [{_Pid, _Key, _Value, MV} | _More] = Nodes,
+                      {mio_mvector:get(MV, Current), length(Nodes)}
+                  end,
+                  CurrentDump),
+    ?INFOF("D=~p", [D]),
+    dump_op(StartNode, Current + 1, MaxLevel).
+
+
 dump_op(StartNode, Level) ->
     Level0Nodes = enum_nodes_(StartNode, 0),
     case Level of
         0 ->
-            Level0Nodes;
+            [Level0Nodes];
         _ ->
             StartNodes= lists:map(fun({Node, _}) -> Node end, lists:usort(fun({_, A}, {_, B}) -> mio_mvector:gt(Level, B, A) end,
                                                                           lists:map(fun({Node, _, _, MV}) -> {Node, MV} end,
