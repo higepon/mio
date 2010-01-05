@@ -834,6 +834,7 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
+    S = erlang:now(),
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
@@ -841,7 +842,10 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
-            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
+            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower),
+            E = erlang:now(),
+            ?INFOF("to_right=~p~n", [timer:now_diff(E, S)]);
+
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         _ ->
@@ -945,7 +949,7 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     end.
 
 link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
-            E1 = erlang:now(),
+    E1 = erlang:now(),
 
     %% This should never happen.
     %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
@@ -970,6 +974,8 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
             E2 = erlang:now(),
             ?INFOF("buddy_op=~p~n", [timer:now_diff(E2, E1)]),
             link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
+            E3 = erlang:now(),
+            ?INFOF("right_buddy_op=~p~n", [timer:now_diff(E3, E2)]),
             ?CHECK_SANITY(Self, Level)
     end.
 
