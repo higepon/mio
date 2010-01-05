@@ -39,7 +39,7 @@
 -behaviour(gen_server).
 
 %% API
--export([info_msg/2, error_msg/2, warn_msg/2]).
+-export([start_link/0, info_msg/2, error_msg/2, warn_msg/2, is_verbose/0, set_verbose/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -52,18 +52,27 @@
 %%====================================================================
 %% API
 %%====================================================================
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
 info_msg(Format, Args) ->
-    gen_server:call(?SERVER, {info_msg, Format, Args}).
+    gen_server:call(?MODULE, {info_msg, Format, Args}).
 
 
 error_msg(Format, Args) ->
-    gen_server:call(?SERVER, {warn_msg, Format, Args}).
+    gen_server:call(?MODULE, {warn_msg, Format, Args}).
 
 
 warn_msg(Format, Args) ->
-    gen_server:call(?SERVER, {warn_msg, Format, Args}).
+    gen_server:call(?MODULE, {warn_msg, Format, Args}).
+
+is_verbose() ->
+    gen_server:call(?MODULE, is_verbose).
 
 
+set_verbose(IsVerbose) ->
+    gen_server:call(?MODULE, {set_verbose, IsVerbose}).
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
 %%                                      {reply, Reply, State, Timeout} |
@@ -73,8 +82,7 @@ warn_msg(Format, Args) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({info_msg, Format, Args}, _From, IsVerbose) ->
-    From = self(),
+handle_call({info_msg, Format, Args}, From, IsVerbose) ->
     spawn(fun() ->
                   case IsVerbose of
                       true ->
@@ -87,8 +95,7 @@ handle_call({info_msg, Format, Args}, _From, IsVerbose) ->
     {noreply, IsVerbose};
 
 
-handle_call({error_msg, Format, Args}, _From, IsVerbose) ->
-    From = self(),
+handle_call({error_msg, Format, Args}, From, IsVerbose) ->
     spawn(fun() ->
                   case IsVerbose of
                       true ->
@@ -101,8 +108,7 @@ handle_call({error_msg, Format, Args}, _From, IsVerbose) ->
     {noreply, IsVerbose};
 
 
-handle_call({warn_msg, Format, Args}, _From, IsVerbose) ->
-    From = self(),
+handle_call({warn_msg, Format, Args}, From, IsVerbose) ->
     spawn(fun() ->
                   case IsVerbose of
                       true ->
@@ -113,6 +119,10 @@ handle_call({warn_msg, Format, Args}, _From, IsVerbose) ->
                   gen_server:reply(From, ok)
           end),
     {noreply, IsVerbose};
+
+
+handle_call(is_verbose, _From, IsVerbose) ->
+    {reply, IsVerbose, IsVerbose};
 
 
 handle_call({set_verbose, IsVerbose}, _From, _IsVerbose) ->
@@ -155,7 +165,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, _IsVerbose) ->
     io:format("terminate ~p~n", [self()]).
-
 
 init([]) ->
     {ok, true}.

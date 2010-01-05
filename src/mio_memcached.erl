@@ -137,7 +137,10 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
     end.
 
 process_stats(Sock, Node, MaxLevel) ->
-    Stats = mio_node:stats_op(Node, MaxLevel),
+    IsVerbose = not mio_logger:is_verbose(),
+    mio_logger:set_verbose(IsVerbose),
+    io:format("logger verbose = ~p~n", [IsVerbose]),
+    Stats = [], %% mio_node:stats_op(Node, MaxLevel),
     io:format("Stats=~p", [Stats]),
     lists:foreach(fun({Key, Value}) ->
                     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\n", [Key, Value]))
