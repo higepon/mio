@@ -33,14 +33,7 @@ init_start_node(From, MaxLevel, BootNode) ->
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
                   ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
 
-%%                   {ok, Node2} = mio_sup:start_node("dummy2", list_to_binary("dummy"), MVector),
-%%                   mio_node:insert_op(Node, Node),
-%%                   ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
-
-%%                  mio_node:insert_op(Node, Node2),
-%%                  erlang:garbage_collect(Node),
-
-
+                   mio_node:insert_op(Node, Node),
 
                   {ok, WriteSerializer} = mio_sup:start_write_serializer(),
                   register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
