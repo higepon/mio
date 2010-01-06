@@ -61,6 +61,19 @@ range_search(_Config) ->
     {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"]),
     ok = memcached:disconnect(Conn).
 
+range_search_alphabet(_Config) ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "Higepon", "Hello"),
+    ok = memcached:set(Conn, "John", "Japan"),
+    ok = memcached:set(Conn, "Paul", "World"),
+    {ok, [{"Higepon","Hello"}, {"John","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "C", "K", "10", "asc"]),
+    {ok, [{"John","Japan"}, {"Higepon","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "C", "K", "10", "desc"]),
+    {ok, [{"Higepon","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "C", "K", "1", "asc"]),
+    {ok, [{"John","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "C", "K", "1", "desc"]),
+    {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "C", "K", "0", "asc"]),
+    ok = memcached:disconnect(Conn).
+
+
 range_search_expiration(_Config) ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
@@ -79,5 +92,7 @@ all() ->
      set_and_get_alphabet_key,
      delete,
      expiration,
+     range_search,
+     range_search_alphabet,
      range_search_expiration
     ].
