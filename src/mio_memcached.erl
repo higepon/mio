@@ -184,10 +184,7 @@ process_get(Sock, WriteSerializer, StartNode, Key) ->
        true ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end,
-    ?INFOF("Aget mem=~p ", [process_info(Node, memory)]),
-   erlang:garbage_collect(Node),
-   ?INFOF("Bget mem=~p ", [process_info(Node, memory)]),
-
+    erlang:garbage_collect(Node),
 
     %% enqueue to the delete queue
     if NeedEnqueue ->
