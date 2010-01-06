@@ -42,13 +42,13 @@ VERBOSE_TEST ?= false
 check: all
 # include option for ct:run_test is not recognized.
 	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
-	@./scripts/mio &
-	@sleep 2
-	@echo 'mio_util:cover_start("./ebin").' | ${ERL_CALL}
-	@gosh test/memcached_compat.ss
-	@echo  'mio_util:report_cover("./log").' | ${ERL_CALL}
-	@./scripts/mioctl stop
-	@echo "passed."
+# 	@./scripts/mio &
+# 	@sleep 2
+# 	@echo 'mio_util:cover_start("./ebin").' | ${ERL_CALL}
+# 	@gosh test/memcached_compat.ss
+# 	@echo  'mio_util:report_cover("./log").' | ${ERL_CALL}
+# 	@./scripts/mioctl stop
+# 	@echo "passed."
 
 vcheck: all
 	VERBOSE_TEST=true make check
