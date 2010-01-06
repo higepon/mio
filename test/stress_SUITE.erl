@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% File    : strss_test_SUITE.erl
+%%% File    : strss_SUITE.erl
 %%% Author  : higepon <higepon@users.sourceforge.jp>
-%%% Description :
+%%% Description : Stress test.
 %%%
 %%% Created : 6 Aug 2010 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
@@ -12,6 +12,9 @@
 
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
+
+suite() ->
+    [{timetrap,{seconds,3}}].
 
 init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
@@ -28,8 +31,17 @@ test_simple(_Config) ->
     {ok, "myvalue"} = memcached:get(Conn, "1235"),
     ok = memcached:disconnect(Conn).
 
+
+test_die(_Config) ->
+    spawn_link(fun() ->
+                  exit(died_error)
+          end),
+    ok.
+    
+
 %% Tests end.
 all() ->
     [
-     test_simple
+     test_simple,
+     test_die
     ].
