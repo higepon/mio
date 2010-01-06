@@ -13,14 +13,13 @@
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
 
-init_per_suite(Config) ->
+init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
     ok = application:start(mio),
     Config.
 
-end_per_suite(_Config) ->
-    ok = application:stop(mio),
-    ok.
+end_per_testcase(_Name, _Config) ->
+    ok = application:stop(mio).
 
 %% Tests start.
 test_simple(_Config) ->

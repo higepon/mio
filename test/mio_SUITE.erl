@@ -12,20 +12,26 @@
 -define(MEMCACHED_PORT, 11211).
 -define(MEMCACHED_HOST, "127.0.0.1").
 
-init_per_suite(Config) ->
+init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
     ok = application:start(mio),
     Config.
 
-end_per_suite(_Config) ->
-    ok = application:stop(mio),
-    ok.
+end_per_testcase(_Name, _Config) ->
+    ok = application:stop(mio).
 
 set_and_get(_Config) ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1234", "myvalue"),
     {ok, "myvalue"} = memcached:get(Conn, "1234"),
     ok = memcached:disconnect(Conn).
+
+set_and_get_alphabet_key(_Config) ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "mykey", "myvalue"),
+    {ok, "myvalue"} = memcached:get(Conn, "mykey"),
+    ok = memcached:disconnect(Conn).
+
 
 delete(_Config) ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
@@ -70,6 +76,7 @@ range_search_expiration(_Config) ->
 all() ->
     [
      set_and_get,
+     set_and_get_alphabet_key,
      delete,
      expiration,
      range_search_expiration
