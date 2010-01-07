@@ -10,8 +10,13 @@
 -compile(export_all).
 -include("../include/mio.hrl").
 
+-define(MEMCACHED_PORT, 11211).
+-define(MEMCACHED_HOST, "127.0.0.1").
+
 init_per_suite(Config) ->
     ok = application:start(mio),
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     true = register(mio_node, NodePid),
     Config.

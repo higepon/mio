@@ -15,6 +15,7 @@
 init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
     ok = application:start(mio),
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     Config.
 
 end_per_testcase(_Name, _Config) ->

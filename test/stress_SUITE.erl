@@ -19,7 +19,7 @@ suite() ->
 init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
     ok = application:start(mio),
-    ok = wait_mio_startup(10),
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     Config.
 
 end_per_testcase(_Name, _Config) ->
@@ -38,7 +38,7 @@ test_simple(_Config) ->
     {ok, "myvalue"} = memcached:get(Conn, "1235"),
     ok = memcached:disconnect(Conn).
 
-test_die(_Config) ->
+test_parallel_one(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
               ok = memcached:set(Conn, "10", "hoge"),
@@ -46,7 +46,7 @@ test_die(_Config) ->
               ok
       end,
       30,
-      2).
+      100).
 
 %% Tests end.
 all() ->
@@ -56,30 +56,14 @@ all() ->
     ].
 
 groups() ->
-    [{set_one_key_parallel, [{repeat, 3}], [test_die]}].
+    [{set_one_key_parallel, [{repeat, 3}], [test_parallel_one]}].
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 memcached_n_procs_m_times(Fun, N, M) ->
     mio_util:do_workers(N, fun(_Index) ->
-              io:format("hige<0>~p", [self()]),
-                                   {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-              io:format("hige<3>~p", [self()]),
-                                   mio_util:do_times(M, Fun, [Conn]),
-              io:format("hige<4>~p", [self()]),
-                                   ok = memcached:disconnect(Conn)
+                             {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+                              mio_util:do_times(M, Fun, [Conn]),
+                              ok = memcached:disconnect(Conn)
                 end).
-wait_mio_startup(0) ->
-    {error, mio_not_started};
-wait_mio_startup(N) ->
-    case gen_tcp:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT, []) of
-        {ok, Socket} ->
-            gen_tcp:close(Socket),
-            ok;
-        {error, econnrefused} ->
-            timer:sleep(100),
-            wait_mio_startup(N - 1);
-        Other ->
-            Other
-    end.

@@ -16,7 +16,7 @@
 -export([start/0, stop/0]).
 
 %% Utility
--export([get_env/1, get_env/2]).
+-export([get_env/1, get_env/2, wait_startup/2]).
 
 -include("mio.hrl").
 
@@ -48,6 +48,23 @@ stop(_State) ->
     ?INFO("mio application stopped"),
     ?PROFILER_STOP(),
     ok.
+
+wait_startup(Host, Port) ->
+    wait_startup(10, Host, Port).
+wait_startup(0, Host, Port) ->
+    {error, mio_not_started};
+wait_startup(N, Host, Port) ->
+    case gen_tcp:connect(Host, Port, []) of
+        {ok, Socket} ->
+            gen_tcp:close(Socket),
+            ok;
+        {error, econnrefused} ->
+            timer:sleep(100),
+            wait_startup(N - 1, Host, Port);
+        Other ->
+            Other
+    end.
+
 
 get_env(Key) ->
     case application:get_env(mio, Key) of
