@@ -49,6 +49,20 @@ test_parallel_one(_Config) ->
       30,
       100).
 
+test_parallel_one_delete(_Config) ->
+    memcached_n_procs_m_times(
+      fun(Conn) ->
+              case memcached:delete(Conn, "10") of
+                  ok -> ok;
+                  {error, not_found} -> ok;
+                  Other -> exit(Other)
+              end,
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok
+      end,
+      30,
+      100).
+
 test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
