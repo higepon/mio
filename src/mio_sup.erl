@@ -18,7 +18,7 @@ start_node(Key, Value, MembershipVector, Expire) ->
 
 start_write_serializer() ->
     {ok, _} = supervisor:start_child(mio_sup,
-                                     {mio_write_serializer,
+                                     {getRandomId(),
                                       {mio_write_serializer, start_link, []},
                                       temporary, brutal_kill, worker, [mio_write_serializer]}).
 

@@ -8,7 +8,7 @@
 -module(mio_util).
 
 %% API
--export([random_sleep/1, lists_set_nth/3, cover_start/1, report_cover/1, do_times_with_index/3]).
+-export([random_sleep/1, lists_set_nth/3, cover_start/1, report_cover/1, do_times_with_index/3, do_workers/2, do_workers/3, do_times/2, do_times/3]).
 
 -include("mio.hrl").
 
@@ -71,6 +71,40 @@ do_times_with_index(Start, End, Fun) ->
         Other ->
             Other
     end.
+
+do_times(N, Fun) ->
+    do_times(N, Fun, []).
+do_times(0, _Fun, _Args) ->
+    ok;
+do_times(N, Fun, Args) ->
+    ok = apply(Fun, Args),
+    do_times(N - 1, Fun, Args).
+
+do_workers(N, Fun) ->
+    do_workers(N, Fun, []).
+do_workers(N, Fun, Args) ->
+    do_workers(N, N, Fun, Args).
+do_workers(Max, 0, _Fun, _Args) ->
+    wait_workers(Max, done),
+    ok;
+do_workers(Max, N, Fun, Args) ->
+    Self = self(),
+    spawn_link(fun() ->
+                  ok = apply(Fun, [Max - N | Args]),
+                  Self ! done
+          end),
+    do_workers(Max, N - 1, Fun, Args).
+
+wait_workers(0, _Msg) ->
+    ok;
+wait_workers(Concurrency, Msg) ->
+    receive
+        Msg -> []
+    after 1000 * 60 * 5->
+          io:format("timeout~n")
+    end,
+    wait_workers(Concurrency - 1, Msg).
+
 
 %%====================================================================
 %% Internal functions
