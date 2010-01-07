@@ -12,6 +12,7 @@
 
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
+-define(REPEAT_COUNT, 1).
 
 suite() ->
     [{timetrap,{seconds,3}}].
@@ -48,6 +49,34 @@ test_parallel_one(_Config) ->
       30,
       100).
 
+test_parallel_two(_Config) ->
+    memcached_n_procs_m_times(
+      fun(Conn) ->
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "11", "hige"),
+              {ok, "hoge"} = memcached:get(Conn, "10"),
+              {ok, "hige"} = memcached:get(Conn, "11"),
+              ok
+      end,
+      30,
+      100).
+
+test_parallel_three(_Config) ->
+    memcached_n_procs_m_times(
+      fun(Conn) ->
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "11", "hige"),
+              ok = memcached:set(Conn, "12", "hage"),
+              {ok, "hoge"} = memcached:get(Conn, "10"),
+              {ok, "hige"} = memcached:get(Conn, "11"),
+              {ok, "hage"} = memcached:get(Conn, "12"),
+              ok
+      end,
+      30,
+      100).
+
+
+
 %% Tests end.
 all() ->
     [
@@ -56,7 +85,7 @@ all() ->
     ].
 
 groups() ->
-    [{set_one_key_parallel, [{repeat, 3}], [test_parallel_one]}].
+    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [test_parallel_one, test_parallel_two, test_parallel_three]}].
 
 %%====================================================================
 %% Internal functions
