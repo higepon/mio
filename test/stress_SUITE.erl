@@ -89,6 +89,21 @@ test_parallel_three(_Config) ->
       30,
       100).
 
+test_parallel_four(_Config) ->
+    memcached_n_procs_m_times(
+      fun(Conn) ->
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "11", "hige"),
+              ok = memcached:set(Conn, "12", "hage"),
+              ok = memcached:set(Conn, "13", "hege"),
+              {ok, "hoge"} = memcached:get(Conn, "10"),
+              {ok, "hige"} = memcached:get(Conn, "11"),
+              {ok, "hage"} = memcached:get(Conn, "12"),
+              {ok, "hege"} = memcached:get(Conn, "13"),
+              ok
+      end,
+      30,
+      100).
 
 
 %% Tests end.
@@ -99,7 +114,7 @@ all() ->
     ].
 
 groups() ->
-    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [test_parallel_one, test_parallel_two, test_parallel_three]}].
+    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [test_parallel_one, test_parallel_two, test_parallel_three, test_parallel_four]}].
 
 %%====================================================================
 %% Internal functions
