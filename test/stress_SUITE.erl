@@ -12,10 +12,12 @@
 
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
--define(REPEAT_COUNT, 500).
+-define(REPEAT_COUNT, 2).
+-define(NUMBER_OF_PROCESSES, 30).
+-define(NUMBER_OF_COMMANDS, 10).
 
-suite() ->
-    [{timetrap,{seconds,3}}].
+%% suite() ->
+%%     [{timetrap,{seconds,3}}].
 
 init_per_testcase(_Name, Config) ->
     application:set_env(mio, port, ?MEMCACHED_PORT),
@@ -46,8 +48,8 @@ test_parallel_one(_Config) ->
               {ok, "hoge"} = memcached:get(Conn, "10"),
               ok
       end,
-      30,
-      100).
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
 
 test_parallel_one_delete(_Config) ->
     memcached_n_procs_m_times(
@@ -60,8 +62,8 @@ test_parallel_one_delete(_Config) ->
               ok = memcached:set(Conn, "10", "hoge"),
               ok
       end,
-      30,
-      100).
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
 
 test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
@@ -72,8 +74,8 @@ test_parallel_two(_Config) ->
               {ok, "hige"} = memcached:get(Conn, "11"),
               ok
       end,
-      30,
-      100).
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
 
 test_parallel_three(_Config) ->
     memcached_n_procs_m_times(
@@ -86,24 +88,39 @@ test_parallel_three(_Config) ->
               {ok, "hage"} = memcached:get(Conn, "12"),
               ok
       end,
-      30,
-      100).
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
 
 test_parallel_four(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-              ok = memcached:set(Conn, "10", "hoge"),
-              ok = memcached:set(Conn, "11", "hige"),
-              ok = memcached:set(Conn, "12", "hage"),
-              ok = memcached:set(Conn, "13", "hege"),
+              Ret0 = memcached:set(Conn, "10", "hoge"),
+              Ret1 = memcached:set(Conn, "11", "hige"),
+              Ret2 = memcached:set(Conn, "12", "hage"),
+              Ret3 = memcached:set(Conn, "13", "hege"),
+              io:format("set ~p ~p ~p ~p ~p~n", [Conn, Ret0, Ret1, Ret2, Ret3]),
+              Ret0 = ok,
+              Ret1 = ok,
+              Ret2 = ok,
+              Ret3 = ok,
+
               {ok, "hoge"} = memcached:get(Conn, "10"),
               {ok, "hige"} = memcached:get(Conn, "11"),
               {ok, "hage"} = memcached:get(Conn, "12"),
               {ok, "hege"} = memcached:get(Conn, "13"),
+
+%%               memcached:set(Conn, "10", "hoge"),
+%%               ok = memcached:set(Conn, "11", "hige"),
+%%               ok = memcached:set(Conn, "12", "hage"),
+%%               ok = memcached:set(Conn, "13", "hege"),
+%%               {ok, "hoge"} = memcached:get(Conn, "10"),
+%%               {ok, "hige"} = memcached:get(Conn, "11"),
+%%               {ok, "hage"} = memcached:get(Conn, "12"),
+%%               {ok, "hege"} = memcached:get(Conn, "13"),
               ok
       end,
-      30,
-      100).
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
 
 
 %% Tests end.
@@ -114,7 +131,10 @@ all() ->
     ].
 
 groups() ->
-    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [test_parallel_one, test_parallel_two, test_parallel_three, test_parallel_four]}].
+    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [%% test_parallel_one,
+%%                                                         test_parallel_two,
+%%                                                        test_parallel_three,
+                                                        test_parallel_four]}].
 
 %%====================================================================
 %% Internal functions
@@ -122,6 +142,7 @@ groups() ->
 memcached_n_procs_m_times(Fun, N, M) ->
     mio_util:do_workers(N, fun(_Index) ->
                              {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+io:format("connect ~p~n", [Conn]),
                               mio_util:do_times(M, Fun, [Conn]),
                               ok = memcached:disconnect(Conn)
                 end).

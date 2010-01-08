@@ -31,12 +31,12 @@ init_start_node(From, MaxLevel, BootNode) ->
               false ->
                   MVector = mio_mvector:generate(MaxLevel),
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
-                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
+%%                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
 
                    mio_node:insert_op(Node, Node),
 
                   {ok, WriteSerializer} = mio_sup:start_write_serializer(),
-                  register(boot_node_loop, spawn(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
+                  register(boot_node_loop, spawn_link(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
                   {Node, WriteSerializer};
               _ ->
                   case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
@@ -71,7 +71,7 @@ memcached(Port, MaxLevel, BootNode) ->
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
+            spawn_link(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
             ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
@@ -114,7 +114,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
-                    ?INFOF("CLOSED ~p~n", [self()]),
+                    ?INFOF("QUIT CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
                     ?INFO("stats"),
@@ -193,7 +193,7 @@ process_values([]) ->
 
 enqueue_to_delete(WriteSerializer, Node) ->
     mio_node:set_expire_time_op(Node, -1),
-    spawn(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
+    spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
 
 filter_expired(WriteSerializer, Values) ->
     lists:filter(fun({Node, _, _, ExpireDate}) ->

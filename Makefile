@@ -86,3 +86,4 @@ clean:
 	rm -f $(TARGETS) $(TARBALL_NAME).tar.gz
 	rm -f test/*.beam
 	rm -rf log/ct_run*
+	rm -rf log/mio.log.*
