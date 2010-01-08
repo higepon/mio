@@ -12,7 +12,7 @@
 
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
--define(REPEAT_COUNT, 1).
+-define(REPEAT_COUNT, 500).
 
 suite() ->
     [{timetrap,{seconds,3}}].
