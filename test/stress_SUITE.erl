@@ -44,11 +44,8 @@ test_simple(_Config) ->
 test_parallel_one(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-              Ret1 = memcached:set(Conn, "10", "hoge"),
-              Ret2 = memcached:get(Conn, "10"),
-              io:format("Conn=~p Ret1=~p Ret2=~p~n", [Conn, Ret1, Ret2]),
-              ok = Ret1,
-              {ok, "hoge"} = Ret2,
+              ok = memcached:set(Conn, "10", "hoge"),
+              {ok, "hoge"} = memcached:get(Conn, "10"),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -72,18 +69,11 @@ test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
 
-              Ret1 = memcached:set(Conn, "10", "hoge"),
-              Ret2 = memcached:set(Conn, "11", "hige"),
-              io:format("Conn=~p Ret1=~p Ret2=~p~n", [Conn, Ret1, Ret2]),
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "11", "hige"),
 
-              ok = Ret1,
-              ok = Ret2,
-              Ret3 = memcached:get(Conn, "10"),
-              Ret4 = memcached:get(Conn, "11"),
-              io:format("Conn=~p Ret3=~p Ret4=~p~n", [Conn, Ret3, Ret4]),
-
-              {ok, "hoge"} = Ret3,
-              {ok, "hige"} = Ret4,
+              {ok, "hoge"} = memcached:get(Conn, "10"),
+              {ok, "hige"} = memcached:get(Conn, "11"),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -106,29 +96,14 @@ test_parallel_three(_Config) ->
 test_parallel_four(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-              Ret0 = memcached:set(Conn, "10", "hoge"),
-              Ret1 = memcached:set(Conn, "11", "hige"),
-              Ret2 = memcached:set(Conn, "12", "hage"),
-              Ret3 = memcached:set(Conn, "13", "hege"),
-              io:format("set ~p ~p ~p ~p ~p~n", [Conn, Ret0, Ret1, Ret2, Ret3]),
-              Ret0 = ok,
-              Ret1 = ok,
-              Ret2 = ok,
-              Ret3 = ok,
-
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "11", "hige"),
+              ok = memcached:set(Conn, "12", "hage"),
+              ok = memcached:set(Conn, "13", "hege"),
               {ok, "hoge"} = memcached:get(Conn, "10"),
               {ok, "hige"} = memcached:get(Conn, "11"),
               {ok, "hage"} = memcached:get(Conn, "12"),
               {ok, "hege"} = memcached:get(Conn, "13"),
-
-%%               memcached:set(Conn, "10", "hoge"),
-%%               ok = memcached:set(Conn, "11", "hige"),
-%%               ok = memcached:set(Conn, "12", "hage"),
-%%               ok = memcached:set(Conn, "13", "hege"),
-%%               {ok, "hoge"} = memcached:get(Conn, "10"),
-%%               {ok, "hige"} = memcached:get(Conn, "11"),
-%%               {ok, "hage"} = memcached:get(Conn, "12"),
-%%               {ok, "hege"} = memcached:get(Conn, "13"),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -138,14 +113,14 @@ test_parallel_four(_Config) ->
 %% Tests end.
 all() ->
     [
-%%     test_simple,
+     test_simple,
      {group, set_one_key_parallel}
     ].
 
 groups() ->
     [{set_one_key_parallel,
 %%      [{repeat, ?REPEAT_COUNT}],
-      [repeat_until_any_fail, forever],
+      [{repeat_until_any_fail, forever}],
       [test_parallel_one,
        test_parallel_two,
        test_parallel_three,
