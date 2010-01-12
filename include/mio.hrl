@@ -39,3 +39,4 @@
   -define(PROFILER_STOP(), []).
   -define(PROFILER_START(X), []).
 -endif.
+-define(SOMAXCONN, 128).

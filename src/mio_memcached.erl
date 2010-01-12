@@ -65,7 +65,7 @@ memcached(Port, MaxLevel, BootNode) ->
     receive
         {ok, StartNode, WriteSerializer} ->
             %% backlog value is same as on memcached
-            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]),
+            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, ?SOMAXCONN}]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel)
     end.
 
