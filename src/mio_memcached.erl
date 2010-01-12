@@ -64,18 +64,30 @@ memcached(Port, MaxLevel, BootNode) ->
     spawn(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
     receive
         {ok, StartNode, WriteSerializer} ->
-            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}]),
+            %% backlog value is same as on memcached
+            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel)
     end.
 
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
+%    process_flag(trap_exit, true),
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
             spawn_link(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
+%%             receive
+                   
+%%                     X ->
+%%                     io:format("X=~p", [X])
+%%             after 10 ->
+%%                     []
+%%             end,
+
+
+
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
             ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
-            ok
+            exit(Other)
     end.
 
 process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
@@ -95,11 +107,9 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
-
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
                     erlang:garbage_collect(InsertedNode),
-
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->

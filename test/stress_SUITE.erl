@@ -44,8 +44,11 @@ test_simple(_Config) ->
 test_parallel_one(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-              ok = memcached:set(Conn, "10", "hoge"),
-              {ok, "hoge"} = memcached:get(Conn, "10"),
+              Ret1 = memcached:set(Conn, "10", "hoge"),
+              Ret2 = memcached:get(Conn, "10"),
+              io:format("Conn=~p Ret1=~p Ret2=~p~n", [Conn, Ret1, Ret2]),
+              ok = Ret1,
+              {ok, "hoge"} = Ret2,
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -68,10 +71,19 @@ test_parallel_one_delete(_Config) ->
 test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-              ok = memcached:set(Conn, "10", "hoge"),
-              ok = memcached:set(Conn, "11", "hige"),
-              {ok, "hoge"} = memcached:get(Conn, "10"),
-              {ok, "hige"} = memcached:get(Conn, "11"),
+
+              Ret1 = memcached:set(Conn, "10", "hoge"),
+              Ret2 = memcached:set(Conn, "11", "hige"),
+              io:format("Conn=~p Ret1=~p Ret2=~p~n", [Conn, Ret1, Ret2]),
+
+              ok = Ret1,
+              ok = Ret2,
+              Ret3 = memcached:get(Conn, "10"),
+              Ret4 = memcached:get(Conn, "11"),
+              io:format("Conn=~p Ret3=~p Ret4=~p~n", [Conn, Ret3, Ret4]),
+
+              {ok, "hoge"} = Ret3,
+              {ok, "hige"} = Ret4,
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -126,15 +138,18 @@ test_parallel_four(_Config) ->
 %% Tests end.
 all() ->
     [
-     test_simple,
+%%     test_simple,
      {group, set_one_key_parallel}
     ].
 
 groups() ->
-    [{set_one_key_parallel, [{repeat, ?REPEAT_COUNT}], [%% test_parallel_one,
-%%                                                         test_parallel_two,
-%%                                                        test_parallel_three,
-                                                        test_parallel_four]}].
+    [{set_one_key_parallel,
+%%      [{repeat, ?REPEAT_COUNT}],
+      [repeat_until_any_fail, forever],
+      [test_parallel_one,
+       test_parallel_two,
+       test_parallel_three,
+       test_parallel_four]}].
 
 %%====================================================================
 %% Internal functions
@@ -142,7 +157,8 @@ groups() ->
 memcached_n_procs_m_times(Fun, N, M) ->
     mio_util:do_workers(N, fun(_Index) ->
                              {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-io:format("connect ~p~n", [Conn]),
-                              mio_util:do_times(M, Fun, [Conn]),
-                              ok = memcached:disconnect(Conn)
-                end).
+                                   io:format("connect ~p~n", [Conn]),
+                                   mio_util:do_times(M, Fun, [Conn]),
+                                   io:format("close: ~p", [Conn]),
+                                   ok = memcached:disconnect(Conn)
+                           end).
