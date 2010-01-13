@@ -31,7 +31,6 @@ init_start_node(From, MaxLevel, BootNode) ->
               false ->
                   MVector = mio_mvector:generate(MaxLevel),
                   {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
-%%                  ?INFOF("default process size = ~p ~p", [process_info(Node, memory), c:memory()]),
 
                    mio_node:insert_op(Node, Node),
 
@@ -65,25 +64,14 @@ memcached(Port, MaxLevel, BootNode) ->
     receive
         {ok, StartNode, WriteSerializer} ->
             %% backlog value is same as on memcached
-            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, ?SOMAXCONN}]),
+            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel)
     end.
 
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
-%    process_flag(trap_exit, true),
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
             spawn_link(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
-%%             receive
-                   
-%%                     X ->
-%%                     io:format("X=~p", [X])
-%%             after 10 ->
-%%                     []
-%%             end,
-
-
-
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
             ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
@@ -177,9 +165,6 @@ check_expired(ExpireDate) ->
 process_get(Sock, WriteSerializer, StartNode, Key) ->
     {Node, FoundKey, Value, ExpireDate} = mio_node:search_op(StartNode, Key),
     {Expired, NeedEnqueue} = check_expired(ExpireDate),
-%%     ?INFOF("Aget mem=~p ", [process_info(Node, memory)]),
-%% %%    erlang:garbage_collect(Node),
-%% %%    ?INFOF("Bget mem=~p ", [process_info(Node, memory)]),
     if Key =:= FoundKey andalso not Expired ->
             ok = gen_tcp:send(Sock, io_lib:format(
                                       "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
@@ -242,9 +227,7 @@ process_set(Sock, _WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, 
                              end,
             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
 %% serialize or concurrent
-%%            ?INFOF("MEM_INSERT ~p ~p~n", [Key, NodeToInsert]),
             mio_node:insert_op(Introducer, NodeToInsert),
-%%            ?INFOF("MEM_INSERT_DONE ~p ~p~n", [Key, NodeToInsert]),
 %%            mio_write_serializer:insert_op(WriteSerializer, Introducer, NodeToInsert),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
