@@ -34,20 +34,25 @@ init_per_group(_Name, Config) ->
 end_per_group(_Name, _Config) ->
     ok.
 
+check_stats(Conn) ->
+    {ok, [{"mio_status","OK"}]} = memcached:stats(Conn).
+
 %% Tests start.
 test_simple(_Config) ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1235", "myvalue"),
-    {ok, [{"mio_status","OK"}]} = memcached:stats(Conn),
+    check_stats(Conn),
     {ok, "myvalue"} = memcached:get(Conn, "1235"),
-    {ok, [{"mio_status","OK"}]} = memcached:stats(Conn),
+    check_stats(Conn),
     ok = memcached:disconnect(Conn).
 
 test_parallel_one(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
               ok = memcached:set(Conn, "10", "hoge"),
+              check_stats(Conn),
               {ok, "hoge"} = memcached:get(Conn, "10"),
+              check_stats(Conn),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -57,11 +62,16 @@ test_parallel_one_delete(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
               case memcached:delete(Conn, "10") of
-                  ok -> ok;
-                  {error, not_found} -> ok;
+                  ok ->
+                      check_stats(Conn),
+                      ok;
+                  {error, not_found} ->
+                      check_stats(Conn),
+                      ok;
                   Other -> exit(Other)
               end,
               ok = memcached:set(Conn, "10", "hoge"),
+              check_stats(Conn),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -70,12 +80,15 @@ test_parallel_one_delete(_Config) ->
 test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
-
               ok = memcached:set(Conn, "10", "hoge"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "11", "hige"),
+              check_stats(Conn),
 
               {ok, "hoge"} = memcached:get(Conn, "10"),
+              check_stats(Conn),
               {ok, "hige"} = memcached:get(Conn, "11"),
+              check_stats(Conn),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -85,11 +98,17 @@ test_parallel_three(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
               ok = memcached:set(Conn, "10", "hoge"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "11", "hige"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "12", "hage"),
+              check_stats(Conn),
               {ok, "hoge"} = memcached:get(Conn, "10"),
+              check_stats(Conn),
               {ok, "hige"} = memcached:get(Conn, "11"),
+              check_stats(Conn),
               {ok, "hage"} = memcached:get(Conn, "12"),
+              check_stats(Conn),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
@@ -99,13 +118,21 @@ test_parallel_four(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
               ok = memcached:set(Conn, "10", "hoge"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "11", "hige"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "12", "hage"),
+              check_stats(Conn),
               ok = memcached:set(Conn, "13", "hege"),
+              check_stats(Conn),
               {ok, "hoge"} = memcached:get(Conn, "10"),
+              check_stats(Conn),
               {ok, "hige"} = memcached:get(Conn, "11"),
+              check_stats(Conn),
               {ok, "hage"} = memcached:get(Conn, "12"),
+              check_stats(Conn),
               {ok, "hege"} = memcached:get(Conn, "13"),
+              check_stats(Conn),
               ok
       end,
       ?NUMBER_OF_PROCESSES,
