@@ -14,7 +14,7 @@
 -define(MEMCACHED_HOST, "127.0.0.1").
 -define(REPEAT_COUNT, 2).
 -define(NUMBER_OF_PROCESSES, 30).
--define(NUMBER_OF_COMMANDS, 10).
+-define(NUMBER_OF_COMMANDS, 100).
 
 %% suite() ->
 %%     [{timetrap,{seconds,3}}].
@@ -113,7 +113,7 @@ test_parallel_four(_Config) ->
 %% Tests end.
 all() ->
     [
-     test_simple,
+%     test_simple
      {group, set_one_key_parallel}
     ].
 
@@ -121,10 +121,11 @@ groups() ->
     [{set_one_key_parallel,
 %%      [{repeat, ?REPEAT_COUNT}],
       [{repeat_until_any_fail, forever}],
-      [test_parallel_one,
-       test_parallel_two,
-       test_parallel_three,
-       test_parallel_four]}].
+      [test_parallel_one
+%%        test_parallel_two,
+%%        test_parallel_three,
+%%        test_parallel_four
+      ]}].
 
 %%====================================================================
 %% Internal functions
