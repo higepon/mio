@@ -64,7 +64,7 @@ init(_Args) ->
     crypto:start(),
 
     {ok, Port} = mio_app:get_env(port, 11211),
-    {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
+    {ok, MaxLevel} = mio_app:get_env(maxlevel, 10),
     {ok, BootNode} = mio_app:get_env(boot_node, false),
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),
