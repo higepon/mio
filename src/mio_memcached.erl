@@ -101,9 +101,7 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     inet:setopts(Sock,[{packet, line}]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
-                    ?INFOF("MEM_DELETE_START ~p ~p~n", [Key, self()]),
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    ?INFOF("MEM_DELETE_DONE ~p ~p~n", [Key, self()]),
                     process_command(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
@@ -115,8 +113,9 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     ?INFOF("QUIT CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
-                    ?INFO("stats"),
-                    process_stats(Sock, StartNode, MaxLevel);
+                    process_stats(Sock, StartNode, MaxLevel),
+                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -128,16 +127,11 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
     end.
 
 process_stats(Sock, Node, MaxLevel) ->
-    IsVerbose = not mio_logger:is_verbose(),
-    mio_logger:set_verbose(IsVerbose),
-    io:format("logger verbose = ~p~n", [IsVerbose]),
-    Stats = [], %% mio_node:stats_op(Node, MaxLevel),
-    io:format("Stats=~p", [Stats]),
-    lists:foreach(fun({Key, Value}) ->
-                    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\n", [Key, Value]))
-            end,
-            Stats),
-    ok = gen_tcp:send(Sock, "END\r\n").
+%%     IsVerbose = not mio_logger:is_verbose(),
+%%     mio_logger:set_verbose(IsVerbose),
+%%    io:format("logger verbose = ~p~n", [IsVerbose]),
+    {Key, Value} = mio_node:stats_op(Node, MaxLevel),
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [Key, Value])).
 
 process_delete(Sock, WriteSerializer, StartNode, Key) ->
     case mio_write_serializer:delete_op(WriteSerializer, StartNode, Key) of

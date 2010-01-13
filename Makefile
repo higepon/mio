@@ -38,17 +38,12 @@ $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
 
 VERBOSE_TEST ?= false
 
-# memo test direcotry needs test/mio.app
 check: all
 # include option for ct:run_test is not recognized.
 	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
-# 	@./scripts/mio &
-# 	@sleep 2
-# 	@echo 'mio_util:cover_start("./ebin").' | ${ERL_CALL}
-# 	@gosh test/memcached_compat.ss
-# 	@echo  'mio_util:report_cover("./log").' | ${ERL_CALL}
-# 	@./scripts/mioctl stop
-# 	@echo "passed."
+
+check_one: all
+	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {suite, [$(TEST_NAME)_SUITE]}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
 
 vcheck: all
 	VERBOSE_TEST=true make check

@@ -68,13 +68,10 @@ delete_op(Node) ->
 
 
 stats_op(Node, MaxLevel) ->
-     %% stats_curr_items(Node),
-    ?INFOF("hige=~p", [dump_op(Node, 0, MaxLevel)]),
-    [
-     stats_status(Node, MaxLevel)].
+    stats_status(Node, MaxLevel).
 
-stats_curr_items(Node) ->
-    {"curr_items", integer_to_list(length(dump_op(Node, 0)))}.
+%% stats_curr_items(Node) ->
+%%     {"curr_items", integer_to_list(length(dump_op(Node, 0)))}.
 
 stats_status(Node, MaxLevel) ->
     case mio_util:do_times_with_index(0, MaxLevel,
@@ -90,7 +87,7 @@ stats_status(Node, MaxLevel) ->
 
 
 terminate_node(Node, After) ->
-    spawn(fun() ->
+    spawn_link(fun() ->
                   receive after After -> ok end,
                   mio_sup:terminate_node(Node)
           end).
@@ -186,11 +183,11 @@ init(Args) ->
 %% Read Only Operations start
 handle_call({search_op, Key, Level}, From, State) ->
     Self = self(),
-    spawn(?MODULE, search_op_call, [From, State, Self, Key, Level]),
+    spawn_link(?MODULE, search_op_call, [From, State, Self, Key, Level]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->
-    spawn(?MODULE, get_op_call, [From, State]),
+    spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
 handle_call({get_inserted_op, Level}, _From, State) ->
@@ -200,29 +197,29 @@ handle_call(get_deleted_op, _From, State) ->
     {reply, State#state.deleted, State};
 
 handle_call({get_right_op, Level}, From, State) ->
-    spawn(?MODULE, get_right_op_call, [From, State, Level]),
+    spawn_link(?MODULE, get_right_op_call, [From, State, Level]),
     {noreply, State};
 
 handle_call({get_left_op, Level}, From, State) ->
-    spawn(?MODULE, get_left_op_call, [From, State, Level]),
+    spawn_link(?MODULE, get_left_op_call, [From, State, Level]),
     {noreply, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
-    spawn(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
+    spawn_link(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
 %% Write Operations start
 handle_call({insert_op, Introducer}, From, State) ->
     Self = self(),
-    spawn(?MODULE, insert_op_call, [From, State, Self, Introducer]),
+    spawn_link(?MODULE, insert_op_call, [From, State, Self, Introducer]),
     {noreply, State};
 
 %% {noreply, State, hibernate};
 
 handle_call(delete_op, From, State) ->
     Self = self(),
-    spawn(?MODULE, delete_op_call, [From, Self, State]),
+    spawn_link(?MODULE, delete_op_call, [From, Self, State]),
     {noreply, State};
 
 handle_call({set_op, NewValue}, _From, State) ->

@@ -38,7 +38,9 @@ end_per_group(_Name, _Config) ->
 test_simple(_Config) ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1235", "myvalue"),
+    {ok, [{"mio_status","OK"}]} = memcached:stats(Conn),
     {ok, "myvalue"} = memcached:get(Conn, "1235"),
+    {ok, [{"mio_status","OK"}]} = memcached:stats(Conn),
     ok = memcached:disconnect(Conn).
 
 test_parallel_one(_Config) ->
