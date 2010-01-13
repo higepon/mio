@@ -162,8 +162,6 @@ groups() ->
 memcached_n_procs_m_times(Fun, N, M) ->
     mio_util:do_workers(N, fun(_Index) ->
                              {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-                                   io:format("connect ~p~n", [Conn]),
                                    mio_util:do_times(M, Fun, [Conn]),
-                                   io:format("close: ~p", [Conn]),
                                    ok = memcached:disconnect(Conn)
                            end).
