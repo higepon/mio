@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/4]). %% supervisor needs this.
--export([memcached/3, process_command/4]). %% spawn needs these.
+-export([memcached/3, process_request/4]). %% spawn needs these.
 -export([get_boot_node/0]).
 
 -include("mio.hrl").
@@ -60,7 +60,7 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
     Self = self(),
-    spawn(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
+    spawn_link(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
     receive
         {ok, StartNode, WriteSerializer} ->
             %% backlog value is same as on memcached
@@ -71,27 +71,27 @@ memcached(Port, MaxLevel, BootNode) ->
 mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_command, [Sock, WriteSerializer, StartNode, MaxLevel]),
+            spawn_link(?MODULE, process_request, [Sock, WriteSerializer, StartNode, MaxLevel]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
             ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
             exit(Other)
     end.
 
-process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
+process_request(Sock, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
             case Token of
                 ["get", Key] ->
                     process_get(Sock, WriteSerializer, StartNode, Key),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
@@ -99,22 +99,22 @@ process_command(Sock, WriteSerializer, StartNode, MaxLevel) ->
                     %% We have to collect them here.
                     erlang:garbage_collect(InsertedNode),
                     inet:setopts(Sock,[{packet, line}]),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["delete", Key, _Time, _NoReply] ->
                     process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
                 ["quit"] ->
                     ?INFOF("QUIT CLOSED ~p~n", [self()]),
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
                     process_stats(Sock, StartNode, MaxLevel),
-                    process_command(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
 
                 X ->
                     ?ERRORF("<~p error: ~p\n", [Sock, X]),
