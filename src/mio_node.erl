@@ -514,7 +514,7 @@ delete_op_call(From, Self, State) ->
        true ->
             MaxLevel = length(State#state.membership_vector),
             delete_loop_(Self, MaxLevel),
-            %% My State will not be changed, since I'm killed soon.
+            %% My State will not be changed, since I will be killed soon.
             gen_server:call(Self, set_deleted_op),
             unlock(LockedNodes),
             gen_server:reply(From, ok)
@@ -527,10 +527,13 @@ delete_loop_(Self, Level) ->
     {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
     LockedNodes = lock_or_exit([RightNode, LeftNode], ?LINE, [LeftKey, RightKey]),
 
+    ?INFOF("Level=~p {~p ~p}", [Level, LeftKey, RightKey]),
+
     ?CHECK_SANITY(Self, Level),
     case RightNode of
         [] -> [];
         _ ->
+            ?INFOF("Level=~p, DELETE set RIGHT.LEFT <= ~p", [Level, LeftNode]),
             link_left_op(RightNode, Level, LeftNode, LeftKey)
     end,
     case LeftNode of
@@ -616,7 +619,7 @@ link_on_level0(From, State, Self, Introducer) ->
 %%    S0 = erlang:now(),
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 %%    S1 = erlang:now(),
-
+    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -630,9 +633,11 @@ link_on_level0(From, State, Self, Introducer) ->
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
 %%            S4 = erlang:now(),
             if IsDeleted ->
+
                     %% Retry
-                    ?INFO("link_on_level0: Neighbor deleted"),
+                    ?INFOF("link_on_level0: Neighbor deleted ", []),
                     unlock([Neighbor]),
+                    mio_util:random_sleep(0),
                     link_on_level0(From, State, Self, Introducer);
                true ->
 %%                    S5 = erlang:now(),
