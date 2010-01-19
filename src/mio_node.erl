@@ -270,7 +270,7 @@ handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyMVector = State#state.membership_vector,
-    case right(State, Level) of
+    case right_node(State, Level) of
         [] ->
             ReturnToMe ! {dump_side_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
         RightPid ->
@@ -281,7 +281,7 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyMVector = State#state.membership_vector,
-    case left(State, Level) of
+    case left_node(State, Level) of
         [] ->
             ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
@@ -294,14 +294,14 @@ handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
 handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
                   range_search_asc_op_cast,
-                  fun(MyState, Level) -> right(MyState, Level) end,
+                  fun(MyState, Level) -> right_node(MyState, Level) end,
                   State#state.key =< Key1),
     {noreply, State};
 
 handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
                   range_search_desc_op_cast,
-                  fun(MyState, Level) -> left(MyState, Level) end,
+                  fun(MyState, Level) -> left_node(MyState, Level) end,
                   State#state.key >= Key2),
     {noreply, State}.
 
@@ -368,10 +368,10 @@ node_on_level(Nodes, Level) ->
         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
     end.
 
-left(State, Level) ->
+left_node(State, Level) ->
     node_on_level(State#state.left, Level).
 
-right(State, Level) ->
+right_node(State, Level) ->
     node_on_level(State#state.right, Level).
 
 left_key(State, Level) ->
@@ -394,12 +394,12 @@ set_left(State, Level, Node, Key) ->
 get_op_call(From, State) ->
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
 get_right_op_call(From, State, Level) ->
-    RightNode = right(State, Level),
+    RightNode = right_node(State, Level),
     RightKey = right_key(State, Level),
     gen_server:reply(From, {RightNode, RightKey}).
 
 get_left_op_call(From, State, Level) ->
-    LeftNode = left(State, Level),
+    LeftNode = left_node(State, Level),
     LeftKey = left_key(State, Level),
     gen_server:reply(From, {LeftNode, LeftKey}).
 
@@ -412,19 +412,19 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
         Found ->
             MyKey = State#state.key,
             MyRightKey = right_key(State, Level),
-            MyRight = right(State, Level),
+            MyRight = right_node(State, Level),
             gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
         true ->
             case Direction of
                 right ->
-                    case right(State, Level - 1) of %% N.B. should be on LowerLevel
+                    case right_node(State, Level - 1) of %% N.B. should be on LowerLevel
                         [] ->
                             gen_server:reply(From, {ok, [], [], [], []});
                         RightNode ->
                             gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
                     end;
                 _ ->
-                    case left(State, Level - 1) of
+                    case left_node(State, Level - 1) of
                         [] ->
                             gen_server:reply(From, {ok, [], [], [], []});
                         LeftNode ->
@@ -465,7 +465,7 @@ search_to_right(From, Self, State, Level, _Key) when Level < 0 ->
     gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
 
 search_to_right(From, Self, State, Level, Key) ->
-    case right(State, Level) of
+    case right_node(State, Level) of
         [] ->
             search_to_right(From, Self, State, Level - 1, Key);
         NextNode ->
@@ -486,7 +486,7 @@ search_to_left(From, Self, State, Level, _Key) when Level < 0 ->
     gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
 
 search_to_left(From, Self, State, Level, Key) ->
-    case left(State, Level) of
+    case left_node(State, Level) of
         [] ->
             search_to_left(From, Self, State, Level - 1, Key);
         NextNode ->
