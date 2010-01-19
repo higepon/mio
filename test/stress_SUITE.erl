@@ -13,7 +13,7 @@
 -define(MEMCACHED_PORT, 11411).
 -define(MEMCACHED_HOST, "127.0.0.1").
 -define(REPEAT_COUNT, 2).
--define(NUMBER_OF_PROCESSES, 3).
+-define(NUMBER_OF_PROCESSES, 30).
 -define(NUMBER_OF_COMMANDS, 10).
 
 %% suite() ->

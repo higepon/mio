@@ -516,6 +516,8 @@ delete_op_call(From, Self, State) ->
             delete_loop_(Self, MaxLevel),
             %% My State will not be changed, since I will be killed soon.
             gen_server:call(Self, set_deleted_op),
+
+            ?INFOF("********* DELETED ~p ", [Self]),
             unlock(LockedNodes),
             gen_server:reply(From, ok)
     end.
@@ -561,27 +563,24 @@ insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     %% link on level = 0
-%%    S0 = erlang:now(),
+    MyKey = State#state.key,
+
+    %% At first, we lock the Self not to be deleted.
+    LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
+
     case link_on_level0(From, State, Self, Introducer) of
         no_more ->
-%%            S1= erlang:now(),
             gen_server:call(Self, {set_inserted_op, 0}),
-%%            S2 = erlang:now(),
-%%            ?INFOF("insert_op_call<1>=~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1)]),
             ?CHECK_SANITY(Self, 0);
         _ ->
-%%            S1= erlang:now(),
             gen_server:call(Self, {set_inserted_op, 0}),
-%%            S2 = erlang:now(),
 
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
             MaxLevel = length(State#state.membership_vector),
-%%            S3 = erlang:now(),
             link_on_level_ge1(Self, MaxLevel)
-%%            S4 = erlang:now(),
-%%            ?INFOF("insert_op_call<2>=~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3)])
     end,
+    unlock(LockedNodes),
     gen_server:reply(From, ok).
 
 
@@ -619,6 +618,7 @@ link_on_level0(From, State, Self, Introducer) ->
 %%    S0 = erlang:now(),
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 %%    S1 = erlang:now(),
+
     ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
@@ -663,7 +663,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
 
-    LockedNodes = lock_or_exit([Neighbor, Self, NeighborRight], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Neighbor, NeighborRight], ?LINE, MyKey),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
@@ -704,7 +704,7 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
 %%    S1 = erlang:now(),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
-    LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Neighbor, NeighborLeft], ?LINE, MyKey),
 
 %%    S2 = erlang:now(),
 
@@ -984,7 +984,7 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
 %%    S0 = erlang:now(),
-    LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Buddy], ?LINE, MyKey),
 %%    S1 = erlang:now(),
 
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
@@ -1017,7 +1017,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
 
 link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
-    LockedNodes = lock_or_exit([Self, Buddy, BuddyRight], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Buddy, BuddyRight], ?LINE, MyKey),
     case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
         retry ->
             unlock(LockedNodes),
