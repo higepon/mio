@@ -544,17 +544,11 @@ delete_loop_(Self, Level) ->
 %%--------------------------------------------------------------------
 %%  Insert operation
 %%--------------------------------------------------------------------
-%%   N.B.
-%%   insert_op may issue other xxx_op, for example link_right_op.
-%%   These issued op should not be circular.
-%%
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
-    %% there's no buddy
-    %% insertiion done
+    %% I am alone.
     gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
-    %% link on level = 0
     MyKey = State#state.key,
 
     %% At first, we lock the Self not to be deleted.
@@ -607,9 +601,7 @@ lock_or_exit(Nodes, Line, Info) ->
 
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
-%%    S0 = erlang:now(),
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
-%%    S1 = erlang:now(),
 
     ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
@@ -619,11 +611,8 @@ link_on_level0(From, State, Self, Introducer) ->
             MyValue = State#state.value,
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
-%%            S2 = erlang:now(),
             lock([Neighbor], infinity),
-%%            S3 = erlang:now(),
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
-%%            S4 = erlang:now(),
             if IsDeleted ->
 
                     %% Retry
@@ -632,24 +621,21 @@ link_on_level0(From, State, Self, Introducer) ->
                     mio_util:random_sleep(0),
                     link_on_level0(From, State, Self, Introducer);
                true ->
-%%                    S5 = erlang:now(),
                     %% overwrite the value
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
-%%                    S6 = erlang:now(),
                     unlock([Neighbor]),
-%%                    S7 = erlang:now(),
-%%                    ?INFOF("link_on_level0<1>=~p ~p ~p ~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3), timer:now_diff(S5, S4), timer:now_diff(S6, S5), timer:now_diff(S7, S6)]),
                     %% tell the callee, link_on_level_ge1 is not necessary
                     no_more
             end;
         %% insert!
         true ->
-%%            ?INFOF("link_on_level0<2>=~p ~n", [timer:now_diff(S1, S0)]),
-            link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer)
+            do_link_on_level0(From, State, Self, Neighbor, NeighborKey,
+                              Introducer)
     end.
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
+do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
+        NeighborKey < State#state.key ->
     MyKey = State#state.key,
 
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
@@ -690,15 +676,11 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Neighb
     end;
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
-%%    S0 = erlang:now(),
+do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     MyKey = State#state.key,
     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
-%%    S1 = erlang:now(),
     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
     LockedNodes = lock_or_exit([Neighbor, NeighborLeft], ?LINE, MyKey),
-
-%%    S2 = erlang:now(),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
@@ -706,42 +688,31 @@ link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     %%   Neighbor->leftKey < MyKey
     {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
-%%    S3 = erlang:now(),
-
     case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
         retry ->
             unlock(LockedNodes),
             link_on_level0(From, State, Self, Introducer);
         ok ->
-%%            S4 = erlang:now(),
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
             link_left_op(Neighbor, 0, Self, MyKey),
-%%            S5 = erlang:now(),
             case RealNeighborLeft of
                 [] -> [];
                 _ ->
                     %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
                     link_right_op(RealNeighborLeft, 0, Self, MyKey)
             end,
-%%            S6 = erlang:now(),
             %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
             link_right_op(Self, 0, Neighbor, NeighborKey),
-%%            S7 = erlang:now(),
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
             link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
-%%            S8 = erlang:now(),
             unlock(LockedNodes),
-%%            S9 = erlang:now(),
-%%            ?INFOF("link_on_level0<3>=~p ~p ~p ~p ~p ~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3), timer:now_diff(S5, S4), timer:now_diff(S6, S5), timer:now_diff(S7, S6), timer:now_diff(S8, S7), timer:now_diff(S9, S8)]),
             need_link_on_level_ge1;
         UnknownInvariant ->
             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
             exit(unknown_invariant)
     end.
 
-
-
-%% callee shoudl lock all nodes
+%% callee should lock all nodes
 %% Returns
 %%   retry: You should retry link_on_level_ge1 on same level.
 %%   ok: invariant is satified, you can link safely on this level.
