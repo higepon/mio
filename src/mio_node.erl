@@ -136,9 +136,13 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
+link_right_op([], _Level, _Right, _RightKey) ->
+    ok;
 link_right_op(Node, Level, Right, RightKey) ->
     gen_server:call(Node, {link_right_op, Level, Right, RightKey}).
 
+link_left_op([], _Level, _Left, _LeftKey) ->
+    ok;
 link_left_op(Node, Level, Left, LeftKey) ->
     gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
 
@@ -532,12 +536,7 @@ delete_loop_(Self, Level) ->
     ?INFOF("Level=~p {~p ~p}", [Level, LeftKey, RightKey]),
 
     ?CHECK_SANITY(Self, Level),
-    case RightNode of
-        [] -> [];
-        _ ->
-            ?INFOF("Level=~p, DELETE set RIGHT.LEFT <= ~p", [Level, LeftNode]),
-            link_left_op(RightNode, Level, LeftNode, LeftKey)
-    end,
+    link_left_op(RightNode, Level, LeftNode, LeftKey),
     case LeftNode of
         [] -> [];
         _ ->
