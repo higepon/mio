@@ -508,11 +508,9 @@ search_to_left(From, Self, State, Level, Key) ->
 %%--------------------------------------------------------------------
 delete_op_call(From, Self, State) ->
     LockedNodes = lock_or_exit([Self], ?LINE, [State#state.key]),
-
     IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
-            ?INFO("delete_op_call: Already deleted"),
             unlock(LockedNodes),
             gen_server:reply(From, ok);
        true ->
@@ -521,7 +519,6 @@ delete_op_call(From, Self, State) ->
             %% My State will not be changed, since I will be killed soon.
             gen_server:call(Self, set_deleted_op),
 
-            ?INFOF("********* DELETED ~p ", [Self]),
             unlock(LockedNodes),
             gen_server:reply(From, ok)
     end.
@@ -533,15 +530,11 @@ delete_loop_(Self, Level) ->
     {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
     LockedNodes = lock_or_exit([RightNode, LeftNode], ?LINE, [LeftKey, RightKey]),
 
-    ?INFOF("Level=~p {~p ~p}", [Level, LeftKey, RightKey]),
-
     ?CHECK_SANITY(Self, Level),
-    link_left_op(RightNode, Level, LeftNode, LeftKey),
-    case LeftNode of
-        [] -> [];
-        _ ->
-            link_right_op(LeftNode, Level, RightNode, RightKey)
-    end,
+
+    ok = link_left_op(RightNode, Level, LeftNode, LeftKey),
+    ok = link_right_op(LeftNode, Level, RightNode, RightKey),
+
     ?CHECK_SANITY(Self, Level),
     unlock(LockedNodes),
     %% N.B.
