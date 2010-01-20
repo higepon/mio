@@ -1,3 +1,32 @@
+%%    Copyright (c) 2009-2010  Taro Minowa(Higepon) <higepon@users.sourceforge.jp>
+%%
+%%    Redistribution and use in source and binary forms, with or without
+%%    modification, are permitted provided that the following conditions
+%%    are met:
+%%
+%%    1. Redistributions of source code must retain the above copyright
+%%       notice, this list of conditions and the following disclaimer.
+%%
+%%    2. Redistributions in binary form must reproduce the above copyright
+%%       notice, this list of conditions and the following disclaimer in the
+%%       documentation and/or other materials provided with the distribution.
+%%
+%%    3. Neither the name of the authors nor the names of its contributors
+%%       may be used to endorse or promote products derived from this
+%%       software without specific prior written permission.
+%%
+%%    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+%%    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+%%    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+%%    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+%%    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+%%    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+%%    TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+%%    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+%%    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+%%    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 %%%-------------------------------------------------------------------
 %%% File    : mio_util.erl
 %%% Author  : higepon <higepon@users.sourceforge.jp>
@@ -8,17 +37,14 @@
 -module(mio_util).
 
 %% API
--export([random_sleep/1, lists_set_nth/3, cover_start/1, report_cover/1, do_times_with_index/3, do_workers/2, do_workers/3, do_times/2, do_times/3]).
+-export([random_sleep/1, lists_set_nth/3, do_times_with_index/3, do_workers/2, do_workers/3,
+         do_times/2, do_times/3]).
 
 -include("mio.hrl").
 
 %%====================================================================
 %% API
 %%====================================================================
-%%--------------------------------------------------------------------
-%% Function:
-%% Description:
-%%--------------------------------------------------------------------
 random_sleep(Times) ->
     case (Times rem 10) of
         0 -> erase(random_seed);
@@ -39,29 +65,6 @@ lists_set_nth(Index, Value, List) ->
                   [Value],
                   lists:sublist(List, Index + 1, length(List))]).
 
-cover_start(EbinDir) ->
-    {ok, _Pid} = cover:start(),
-    case cover:compile_beam_directory(EbinDir) of
-        {error, Reason} ->
-            io:format("cover compile failed ~p~n", [Reason]),
-            halt(1);
-        _ -> ok
-    end.
-
-report_cover(TargeDir) ->
-    lists:foreach(
-      fun(Module) ->
-              {ok, _} = cover:analyse_to_file(Module,
-                                              filename:join(TargeDir, atom_to_list(Module) ++ ".html"),
-                                              [html]),
-              {ok, {Module, {Cov, NotCov}}} = cover:analyze(Module, module),
-              io:format("~p: ~p%~n",[Module, erlang:trunc(100.0*Cov/(Cov+NotCov))])
-      end,
-      %%cover:modules()
-      [mio_node, mio_memcached]),
-    cover:stop().
-
-
 do_times_with_index(Start, End, _Fun) when Start > End ->
     ok;
 do_times_with_index(Start, End, Fun) ->
@@ -72,6 +75,7 @@ do_times_with_index(Start, End, Fun) ->
             Other
     end.
 
+
 do_times(N, Fun) ->
     do_times(N, Fun, []).
 do_times(0, _Fun, _Args) ->
@@ -79,6 +83,7 @@ do_times(0, _Fun, _Args) ->
 do_times(N, Fun, Args) ->
     ok = apply(Fun, Args),
     do_times(N - 1, Fun, Args).
+
 
 do_workers(N, Fun) ->
     do_workers(N, Fun, []).
@@ -95,6 +100,7 @@ do_workers(Max, N, Fun, Args) ->
           end),
     do_workers(Max, N - 1, Fun, Args).
 
+
 wait_workers(0, _Msg) ->
     ok;
 wait_workers(Concurrency, Msg) ->
@@ -104,8 +110,3 @@ wait_workers(Concurrency, Msg) ->
           io:format("timeout~n")
     end,
     wait_workers(Concurrency - 1, Msg).
-
-
-%%====================================================================
-%% Internal functions
-%%====================================================================
