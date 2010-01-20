@@ -218,12 +218,13 @@ pstr(undefined) -> "";
 pstr(T) -> io_lib:format("~p", [T]).
 
 
-nobin(B) when binary(B), size(B) > 1024 ->
+nobin(B) when is_binary(B), size(B) > 1024 ->
+    Size = size(B),
     <<ShortBin:32/binary, _/binary>> = B,
-    lists:flatten(io_lib:format("~p(~w)", [ShortBin, size(B)]));
-nobin(L) when list(L) ->
+    lists:flatten(io_lib:format("~p(~w)", [ShortBin, Size]));
+nobin(L) when is_list(L) ->
     map2(fun(X) -> nobin(X) end, L);
-nobin(T) when tuple(T) ->
+nobin(T) when is_tuple(T) ->
     list_to_tuple(nobin(tuple_to_list(T)));
 nobin(X) ->
     X.
@@ -279,21 +280,21 @@ get_mf() ->
 get_mf_file() ->
     case application:get_env(error_logger_mf_file) of
     {ok, false} -> throw(undefined);
-    {ok, File} when list(File) -> File;
+    {ok, File} when is_list(File) -> File;
     undefined -> throw(undefined);
     {ok, Bad} -> exit({bad_config, {error_logger_mf_file, Bad}})
     end.
 
 get_mf_maxb() ->
     case application:get_env(error_logger_mf_maxbytes) of
-    {ok, MaxB} when integer(MaxB) -> MaxB;
+    {ok, MaxB} when is_integer(MaxB) -> MaxB;
     undefined -> throw(undefined);
     {ok, Bad} -> exit({bad_config, {error_logger_mf_maxbytes, Bad}})
     end.
 
 get_mf_maxf() ->
     case application:get_env(error_logger_mf_maxfiles) of
-    {ok, MaxF} when integer(MaxF), MaxF > 0, MaxF < 256 -> MaxF;
+    {ok, MaxF} when is_integer(MaxF), MaxF > 0, MaxF < 256 -> MaxF;
     undefined -> throw(undefined);
     {ok, Bad} -> exit({bad_config, {error_logger_mf_maxfiles, Bad}})
     end.

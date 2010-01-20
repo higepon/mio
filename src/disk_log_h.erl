@@ -30,7 +30,7 @@
 -export([init/2, info/2, change_size/3]).
 
 %% gen_event callbacks
--export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2]).
+-export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {cnt, func}).
 
@@ -128,13 +128,13 @@ handle_event(Event, S) ->
         {ok, S};
     Bin ->
         case disk_log:do_log(get(log), [Bin]) of
-        N when integer(N) ->
+        N when is_integer(N) ->
             disk_log:do_sync(get(log)),
             {ok, S#state{cnt = S#state.cnt+N}};
         {error, {error, {full, _Name}}, N} ->
             disk_log:do_sync(get(log)),
             {ok, S#state{cnt = S#state.cnt+N}};
-        {error, Error, N} ->
+        {error, Error, _N} ->
             Error;
         Error ->
             Error
@@ -162,7 +162,7 @@ handle_call({change_size, NewSize}, S) ->
 handle_info({emulator, GL, Chars}, S) ->
     %% this is very unfortunate...
     handle_event({emulator, GL, Chars}, S);
-handle_info(Info, S) ->
+handle_info(_Info, S) ->
     {ok, S}.
 
 %%----------------------------------------------------------------------
@@ -170,8 +170,12 @@ handle_info(Info, S) ->
 %% Purpose: Shutdown the server
 %% Returns: any
 %%----------------------------------------------------------------------
-terminate(Arg, S) ->
+terminate(_Arg, _S) ->
     disk_log:ll_close(get(log)).
+
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 %%%----------------------------------------------------------------------
 %%% Internal functions
@@ -185,3 +189,4 @@ do_change_size(L, NewSize) ->
     erase(is_full),
     put(log, L#log{extra = Handle}),
     ok.
+
