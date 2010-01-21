@@ -77,6 +77,37 @@ test_parallel_one_delete(_Config) ->
       ?NUMBER_OF_PROCESSES,
       ?NUMBER_OF_COMMANDS).
 
+
+test_parallel_two_delete(_Config) ->
+    memcached_n_procs_m_times(
+      fun(Conn) ->
+              case memcached:delete(Conn, "10") of
+                  ok ->
+                      check_stats(Conn),
+                      ok;
+                  {error, not_found} ->
+                      check_stats(Conn),
+                      ok;
+                  Other -> exit(Other)
+              end,
+              case memcached:delete(Conn, "20") of
+                  ok ->
+                      check_stats(Conn),
+                      ok;
+                  {error, not_found} ->
+                      check_stats(Conn),
+                      ok;
+                  Other2 -> exit(Other2)
+              end,
+              ok = memcached:set(Conn, "10", "hoge"),
+              ok = memcached:set(Conn, "20", "hige"),
+              check_stats(Conn),
+              ok
+      end,
+      ?NUMBER_OF_PROCESSES,
+      ?NUMBER_OF_COMMANDS).
+
+
 test_parallel_two(_Config) ->
     memcached_n_procs_m_times(
       fun(Conn) ->
@@ -154,7 +185,8 @@ groups() ->
        test_parallel_two,
        test_parallel_three,
        test_parallel_four,
-       test_parallel_one_delete
+       test_parallel_one_delete,
+       test_parallel_two_delete
       ]}].
 
 %%====================================================================

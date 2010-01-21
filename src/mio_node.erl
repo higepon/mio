@@ -603,7 +603,7 @@ link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 
-    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
+    %%    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
