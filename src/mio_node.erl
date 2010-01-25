@@ -511,15 +511,18 @@ delete_op_call(From, Self, State) ->
     IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             gen_server:reply(From, ok);
        true ->
             MaxLevel = length(State#state.membership_vector),
-            delete_loop_(Self, MaxLevel),
             %% My State will not be changed, since I will be killed soon.
             gen_server:call(Self, set_deleted_op),
 
-            unlock(LockedNodes),
+            %% N.B.
+            %% To prevent deadlock, we unlock the Self after deleted mark is set.
+            %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for same reason.
+            unlock(LockedNodes, ?LINE),
+            delete_loop_(Self, MaxLevel),
             gen_server:reply(From, ok)
     end.
 
@@ -528,7 +531,7 @@ delete_loop_(_Self, Level) when Level < 0 ->
 delete_loop_(Self, Level) ->
     {RightNode, RightKey} = gen_server:call(Self, {get_right_op, Level}),
     {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
-    LockedNodes = lock_or_exit([RightNode, LeftNode], ?LINE, [LeftKey, RightKey]),
+    LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, [LeftKey, RightKey]),
 
     ?CHECK_SANITY(Self, Level),
 
@@ -536,7 +539,7 @@ delete_loop_(Self, Level) ->
     ok = link_right_op(LeftNode, Level, RightNode, RightKey),
 
     ?CHECK_SANITY(Self, Level),
-    unlock(LockedNodes),
+    unlock(LockedNodes, ?LINE),
     %% N.B.
     %% We keep the right/left node of Self, since it may be still located on search path.
     delete_loop_(Self, Level - 1).
@@ -566,44 +569,47 @@ insert_op_call(From, State, Self, Introducer) ->
             MaxLevel = length(State#state.membership_vector),
             link_on_level_ge1(Self, MaxLevel)
     end,
-    unlock(LockedNodes),
+    unlock(LockedNodes, ?LINE),
     gen_server:reply(From, ok).
 
 
-lock(Nodes, infinity) ->
+lock(Nodes, infinity, _Line) ->
     mio_lock:lock(Nodes, infinity);
-lock(Nodes, 50) ->
-    ?ERRORF("mio_node:lock dead lock ~p~n", [Nodes]),
+lock(Nodes, 50, Line) ->
+    ?ERRORF("mio_node:lock dead lock ~p at ~p~n", [Nodes, Line]),
     false;
-lock(Nodes, Times) ->
+lock(Nodes, Times, Line) ->
     case mio_lock:lock(Nodes) of
         true ->
             true;
         false ->
             ?INFOF("Lock NG Sleeping ~p~n", [Nodes]),
             mio_util:random_sleep(Times),
-            lock(Nodes, Times + 1)
+            lock(Nodes, Times + 1, Line)
     end.
 
-lock(Nodes) ->
-    lock(Nodes, 0).
+lock(Nodes, Line) ->
+    lock(Nodes, 0, Line).
 
-unlock(Nodes) ->
+unlock(Nodes, Line) ->
+    ?INFOF("unlocked ~p at ~p:~p", [Nodes, Line, self()]),
     mio_lock:unlock(Nodes).
 
 lock_or_exit(Nodes, Line, Info) ->
-    IsLocked = lock(Nodes),
+    IsLocked = lock(Nodes, Line),
     if not IsLocked ->
             ?ERRORF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
             exit(lock_failed);
-       true -> Nodes
+       true ->
+            ?INFOF("~p:~p:~p <~p> ~plock ok~n", [?MODULE, Line, self(), Info, Nodes]),
+            Nodes
     end.
 
 link_on_level0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 
-    %%    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
+%%    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -611,19 +617,20 @@ link_on_level0(From, State, Self, Introducer) ->
             MyValue = State#state.value,
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
-            lock([Neighbor], infinity),
+            lock([Neighbor], infinity, ?LINE),
+            ?INFOF("lock ok ~p ~p:~p", [Neighbor, ?LINE, self()]),
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
             if IsDeleted ->
 
                     %% Retry
                     ?INFOF("link_on_level0: Neighbor deleted ", []),
-                    unlock([Neighbor]),
+                    unlock([Neighbor], ?LINE),
                     mio_util:random_sleep(0),
                     link_on_level0(From, State, Self, Introducer);
                true ->
                     %% overwrite the value
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
-                    unlock([Neighbor]),
+                    unlock([Neighbor], ?LINE),
                     %% tell the callee, link_on_level_ge1 is not necessary
                     no_more
             end;
@@ -652,7 +659,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
 
     case check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) of
         retry ->
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             link_on_level0(From, State, Self, Introducer);
         ok ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
@@ -668,7 +675,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
             %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
             link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
 
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
         UnknownInvariant ->
             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
@@ -690,7 +697,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
 
     case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
         retry ->
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             link_on_level0(From, State, Self, Introducer);
         ok ->
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
@@ -705,7 +712,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             link_right_op(Self, 0, Neighbor, NeighborKey),
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
             link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
         UnknownInvariant ->
             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
@@ -952,13 +959,13 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
 
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
         retry ->
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
 %%            S2 = erlang:now(),
             gen_server:call(Self, set_inserted_op),
 %%            S3 = erlang:now(),
-            unlock(LockedNodes);
+            unlock(LockedNodes, ?LINE);
 %%            S4 = erlang:now(),
 %%            ?INFOF("link_on_level_ge1_right_buddy<0>=~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3)]);
         ok ->
@@ -971,7 +978,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
 %%            S4 = erlang:now(),
             gen_server:call(Self, {set_inserted_op, Level}),
 %%            S5 = erlang:now(),
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
 %%            S6 = erlang:now(),
 %%            ?INFOF("link_on_level_ge1_right_buddy<1>=~p ~p ~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3), timer:now_diff(S5, S4), timer:now_diff(S6, S5)]),
             %% Go up to next Level.
@@ -983,13 +990,13 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
     LockedNodes = lock_or_exit([Buddy, BuddyRight], ?LINE, MyKey),
     case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
         retry ->
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
             %% mark as inserted
             gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             ?INFOF("Insert Nomore ~p level~p", [MyKey, Level]),
             [];
@@ -1008,7 +1015,7 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
             %% [NodeToInsert:m] -> [D:m]
             link_right_op(Self, Level, BuddyRight, BuddyRightKey),
             gen_server:call(Self, {set_inserted_op, Level}),
-            unlock(LockedNodes),
+            unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             %% Debug info start
 %%            ?INFOF("Insereted<~p> Level~p BuddyKey ~p BuddyRightKey=~p", [MyKey, Level, BuddyKey, BuddyRightKey]),

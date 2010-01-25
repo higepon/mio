@@ -185,8 +185,8 @@ groups() ->
        test_parallel_two,
        test_parallel_three,
        test_parallel_four,
-       test_parallel_one_delete,
-       test_parallel_two_delete
+       test_parallel_one_delete
+%%       test_parallel_two_delete
       ]}].
 
 %%====================================================================
