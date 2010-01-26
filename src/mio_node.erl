@@ -819,25 +819,25 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
-%%    S0 = erlang:now(),
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
-%%    S1 = erlang:now(),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
     case LeftOnLower of
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         [] ->
-            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
-%%            S2 = erlang:now(),
-%%            ?INFOF("link_on_level_ge1<0>=~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1)]);
-
+            case RightOnLower of
+                [] ->
+                    %% This happens when delete_op is issued on right node concurrently.
+                    gen_server:call(Self, set_inserted_op),
+                    [];
+                _ ->
+                    link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
+            end;
         %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
         _ ->
-%%            S2 = erlang:now(),
             {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
-%%            S3 = erlang:now(),
             case Buddy of
                 [] ->
                     case RightOnLower of
@@ -846,20 +846,15 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
                         %% So we've done.
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
                         [] ->
-%%                            S4 = erlang:now(),
                             gen_server:call(Self, set_inserted_op),
                             ?CHECK_SANITY(Self, Level),
-%%                            S5 = erlang:now(),
-%%                            ?INFOF("link_on_level_ge1<1>=~p ~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3), timer:now_diff(S5, S4)]),
                             [];
                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                         _ ->
-%%                            ?INFOF("link_on_level_ge1<2>=~p~n", [timer:now_diff(S1, S0)]),
                             link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
                     end;
                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
                 _ ->
-%%                    ?INFOF("link_on_level_ge1<3>=~p~n", [timer:now_diff(S1, S0)]),
                     link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
             end
     end.
