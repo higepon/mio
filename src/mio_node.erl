@@ -572,7 +572,7 @@ insert_op_call(From, State, Self, Introducer) ->
     %%    We use inserted_op instead in order to prevent deletion.
     %% LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
 
-    case link_on_level0(From, State, Self, Introducer) of
+    case link_on_level_0(From, State, Self, Introducer) of
         no_more ->
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, 0);
@@ -619,7 +619,7 @@ lock_or_exit(Nodes, Line, Info) ->
             Nodes
     end.
 
-link_on_level0(From, State, Self, Introducer) ->
+link_on_level_0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 
@@ -640,7 +640,7 @@ link_on_level0(From, State, Self, Introducer) ->
                     ?INFOF("link_on_level0: Neighbor deleted ", []),
                     unlock([Neighbor], ?LINE),
                     mio_util:random_sleep(0),
-                    link_on_level0(From, State, Self, Introducer);
+                    link_on_level_0(From, State, Self, Introducer);
                true ->
                     %% overwrite the value
                     ok = gen_server:call(Neighbor, {set_op, MyValue}),
@@ -674,7 +674,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
     case check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) of
         retry ->
             unlock(LockedNodes, ?LINE),
-            link_on_level0(From, State, Self, Introducer);
+            link_on_level_0(From, State, Self, Introducer);
         ok ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
             link_right_op(Neighbor, 0, Self, MyKey),
@@ -712,7 +712,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
         retry ->
             unlock(LockedNodes, ?LINE),
-            link_on_level0(From, State, Self, Introducer);
+            link_on_level_0(From, State, Self, Introducer);
         ok ->
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
             link_left_op(Neighbor, 0, Self, MyKey),
