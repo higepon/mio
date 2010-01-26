@@ -691,18 +691,6 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
             link_on_level_0(From, State, Self, Introducer);
         ok ->
             link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRight, RealNeighborRightKey}, 0),
-%%             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
-%%             link_right_op(Neighbor, 0, Self, MyKey),
-
-%%             %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-%%             link_left_op(RealNeighborRight, 0, Self, MyKey),
-
-%%             %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
-%%             link_left_op(Self, 0, Neighbor, NeighborKey),
-
-%%             %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
-%%             link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
-
             unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
         UnknownInvariant ->
@@ -728,17 +716,7 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
             unlock(LockedNodes, ?LINE),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
-            %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
-            link_left_op(Neighbor, 0, Self, MyKey),
-
-            %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-            link_right_op(RealNeighborLeft, 0, Self, MyKey),
-
-            %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
-            link_right_op(Self, 0, Neighbor, NeighborKey),
-
-            %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
-            link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
+            link_three_nodes({RealNeighborLeft, RealNeighborLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0),
             unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
         UnknownInvariant ->
