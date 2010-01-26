@@ -678,14 +678,13 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when
         ok ->
             %% [Neighbor] -> [NodeToInsert]  [NeigborRight]
             link_right_op(Neighbor, 0, Self, MyKey),
-            case RealNeighborRight of
-                [] -> [];
-                _ ->
-                    %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
-                    link_left_op(RealNeighborRight, 0, Self, MyKey)
-            end,
+
+            %% [Neighbor]    [NodeToInsert] <- [NeigborRight]
+            link_left_op(RealNeighborRight, 0, Self, MyKey),
+
             %% [Neighbor] <- [NodeToInsert]    [NeigborRight]
             link_left_op(Self, 0, Neighbor, NeighborKey),
+
             %% [Neighbor]    [NodeToInsert] -> [NeigborRight]
             link_right_op(Self, 0, RealNeighborRight, RealNeighborRightKey),
 
@@ -716,14 +715,13 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
         ok ->
             %% [NeighborLeft]   [NodeToInsert] <-  [Neigbor]
             link_left_op(Neighbor, 0, Self, MyKey),
-            case RealNeighborLeft of
-                [] -> [];
-                _ ->
-                    %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
-                    link_right_op(RealNeighborLeft, 0, Self, MyKey)
-            end,
+
+            %% [NeighborLeft] -> [NodeToInsert]   [Neigbor]
+            link_right_op(RealNeighborLeft, 0, Self, MyKey),
+
             %% [NeighborLeft]  [NodeToInsert] -> [Neigbor]
             link_right_op(Self, 0, Neighbor, NeighborKey),
+
             %% [NeighborLeft] <- [NodeToInsert]     [Neigbor]
             link_left_op(Self, 0, RealNeighborLeft, RealNeighborLeftKey),
             unlock(LockedNodes, ?LINE),
@@ -1012,12 +1010,10 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
         ok ->
             % [A:m] -> [NodeToInsert:m]
             link_right_op(Buddy, Level, Self, MyKey),
-            case BuddyRight of
-                [] -> [];
-                X ->
-                    %% [NodeToInsert:m] <- [D:m]
-                    link_left_op(X, Level, Self, MyKey)
-            end,
+
+            %% [NodeToInsert:m] <- [D:m]
+            link_left_op(BuddyRight, Level, Self, MyKey),
+
             %% [A:m] <- [NodeToInsert:m]
             link_left_op(Self, Level, Buddy, BuddyKey),
 %%            erlang:garbage_collect(Self),
