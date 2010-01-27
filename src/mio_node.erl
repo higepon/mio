@@ -783,7 +783,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
     case {LeftOnLower, RightOnLower} of
-        %% This happens when delete_op is issued on right node concurrently.
+        %% This happens when delete_op is issued on the right node concurrently.
         {[], []} ->
             gen_server:call(Self, set_inserted_op);
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
@@ -883,8 +883,6 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     end.
 
 link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
-%%    S0 = erlang:now(),
-
     %% This should never happen.
     %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
     %% since insert to self is returned immediately on insert_op.
@@ -893,23 +891,15 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
     case Buddy of
         %% [NodeToInsert]
         [] ->
-%%            S1 = erlang:now(),
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
-%%            S2 = erlang:now(),
-%%            ?INFOF("link_on_level_ge1_to_right<1>=~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1)]),
-
-%%            ?INFOF("INSERT Nomore ~p level~p", [MyKey, Level]),
             [];
         %% [NodeToInsert] <-> [Buddy]
         _ ->
-%%            S1 = erlang:now(),
             link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
-%%            S2 = erlang:now(),
-%%            ?INFOF("link_on_level_ge1_to_right<2>=~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1)]),
             ?CHECK_SANITY(Self, Level)
     end.
 
