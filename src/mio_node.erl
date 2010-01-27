@@ -16,7 +16,8 @@
          search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
-         check_invariant_level_0_left/6,          check_invariant_level_0_right/6,
+         check_invariant_level_0_left/5,
+         check_invariant_level_0_right/5,
          node_on_level/2]).
 
 %% gen_server callbacks
@@ -689,7 +690,7 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, Directi
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {DirectionOp, 0}),
 
-    case apply(?MODULE, CheckInvariantFun, [Self, MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
+    case apply(?MODULE, CheckInvariantFun, [MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
         retry ->
             unlock(LockedNodes, ?LINE),
             link_on_level_0(From, State, Self, Introducer);
@@ -708,12 +709,12 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, Directi
     end.
 
 %% [Neighbor] <=> [Self] <=> [NeighborRight]
-check_invariant_level_0_left(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
-    check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
+check_invariant_level_0_left(MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
+    check_invariant_level_0(MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
 
 %% [NeighborLeft] <=> [Self] <=> [Neighbor]
-check_invariant_level_0_right(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
-    check_invariant_level_0(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
+check_invariant_level_0_right(MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
+    check_invariant_level_0(MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
 
 %% N.B.
 %%   callee shoudl lock all nodes
@@ -721,27 +722,27 @@ check_invariant_level_0_right(Self, MyKey, Neighbor, NeighborLeft, RealNeighborL
 %% Returns
 %%   retry: You should retry link_on_level_ge1 on same level.
 %%   ok: invariant is satified, you can link safely on this level.
-check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, CompareFun) ->
+check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeighbor, RealNeighborOfNeighborKey, CompareFun) ->
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   NeighborRight == RealNeighborRight
+    %%   NeighborOfNeighbor == RealNeighborOfNeighbor
     %%   Neighbor->rightKey < MyKey (sanity check)
-    IsInvalidOrder = (RealNeighborRightKey =/= [] andalso apply(CompareFun, [MyKey, RealNeighborRightKey])),
-    IsNeighborChanged = (NeighborRight =/= RealNeighborRight),
+    IsInvalidOrder = (RealNeighborOfNeighborKey =/= [] andalso apply(CompareFun, [MyKey, RealNeighborOfNeighborKey])),
+    IsNeighborChanged = (NeighborOfNeighbor =/= RealNeighborOfNeighbor),
 
     if IsInvalidOrder orelse IsNeighborChanged
        ->
             %% Retry: another key is inserted
-            ?INFOF("RETRY: check_invariant_level0_left_buddy MyKey=~p Self=~p self=~p", [MyKey, Self, self()]),
+            ?INFOF("RETRY: check_invariant_level_0 MyKey=~p RealNeighborOfNeighborKey=~p", [MyKey, RealNeighborOfNeighborKey]),
             retry;
        true ->
             IsDeleted =
                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
                 orelse
-                (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
+                (NeighborOfNeighbor =/= [] andalso gen_server:call(NeighborOfNeighbor, get_deleted_op)),
             if IsDeleted ->
-                    ?INFO("RETRY: check_invariant_level0_left_buddy neighbor deleted"),
+                    ?INFO("RETRY: check_invariant_level_0 neighbor deleted"),
                     retry;
                true ->
                     ok
