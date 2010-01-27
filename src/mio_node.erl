@@ -651,7 +651,7 @@ link_on_level_0(From, State, Self, Introducer) ->
             end;
         %% insert!
         true ->
-            do_link_on_level0(From, State, Self, Neighbor, NeighborKey,
+            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey,
                               Introducer)
     end.
 
@@ -668,32 +668,37 @@ link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, Right
     %% [Left]    [Center] -> [Right]
     link_right_op(CenterNode, Level, RightNode, RightKey).
 
+%% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
+do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
+   do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_right_op, check_invariant_level0_left_buddy);
 
-hige(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInvariantFun) ->
+%% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
+do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
+    do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level0_right_buddy).
+
+do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInvariantFun) ->
     MyKey = State#state.key,
 
-    %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
-    {NeighborRight, _} = gen_server:call(Neighbor, {DirectionOp, 0}),
+    %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
+    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {DirectionOp, 0}),
 
-    LockedNodes = lock_or_exit([Neighbor, Self, NeighborRight], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Neighbor, Self, NeighborRightOrLeft], ?LINE, MyKey),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   NeighborRight == RealNeighborRight
-    %%   Neighbor->rightKey < MyKey (sanity check)
-    {RealNeighborRight, RealNeighborRightKey} = gen_server:call(Neighbor, {DirectionOp, 0}),
+    {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {DirectionOp, 0}),
 
-    case apply(?MODULE, CheckInvariantFun, [Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey]) of
+    case apply(?MODULE, CheckInvariantFun, [Self, MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
         retry ->
             unlock(LockedNodes, ?LINE),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
             case DirectionOp of
                 get_right_op ->
-                    link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRight, RealNeighborRightKey}, 0);
+                    link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, 0);
                 _ ->
-                    link_three_nodes({RealNeighborRight, RealNeighborRightKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
+                    link_three_nodes({RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
             end,
             unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
@@ -702,63 +707,6 @@ hige(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInv
             exit(unknown_invariant)
     end.
 
-%% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
-    hige(From, State, Self, Neighbor, NeighborKey, Introducer, get_right_op, check_invariant_level0_left_buddy);
-
-%%     MyKey = State#state.key,
-
-%%     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeigborRight]
-%%     {NeighborRight, _} = gen_server:call(Neighbor, {get_right_op, 0}),
-
-%%     LockedNodes = lock_or_exit([Neighbor, Self, NeighborRight], ?LINE, MyKey),
-
-%%     %% After locked 3 nodes, check invariants.
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   NeighborRight == RealNeighborRight
-%%     %%   Neighbor->rightKey < MyKey (sanity check)
-%%     {RealNeighborRight, RealNeighborRightKey} = gen_server:call(Neighbor, {get_right_op, 0}),
-
-%%     case check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) of
-%%         retry ->
-%%             unlock(LockedNodes, ?LINE),
-%%             link_on_level_0(From, State, Self, Introducer);
-%%         ok ->
-%%             link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRight, RealNeighborRightKey}, 0),
-%%             unlock(LockedNodes, ?LINE),
-%%             need_link_on_level_ge1;
-%%         UnknownInvariant ->
-%%             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
-%%             exit(unknown_invariant)
-%%     end;
-
-%% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
-    hige(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level0_right_buddy).
-%%     MyKey = State#state.key,
-%%     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
-%%     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
-%%     LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
-
-%%     %% After locked 3 nodes, check invariants.
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   Neighbor->leftKey < MyKey
-%%     {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
-
-%%     case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
-%%         retry ->
-%%             unlock(LockedNodes, ?LINE),
-%%             link_on_level_0(From, State, Self, Introducer);
-%%         ok ->
-%%             link_three_nodes({RealNeighborLeft, RealNeighborLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0),
-%%             unlock(LockedNodes, ?LINE),
-%%             need_link_on_level_ge1;
-%%         UnknownInvariant ->
-%%             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
-%%             exit(unknown_invariant)
-%%     end.
 
 %% callee should lock all nodes
 %% Returns
