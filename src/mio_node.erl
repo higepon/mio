@@ -707,6 +707,20 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, Directi
             exit(unknown_invariant)
     end.
 
+%% [Neighbor] <=> [Self] <=> [NeighborRight]
+check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
+    check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
+
+%% [NeighborLeft] <=> [Self] <=> [Neighbor]
+check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
+    check_invariant_level_0(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
+
+%% N.B.
+%%   callee shoudl lock all nodes
+%%
+%% Returns
+%%   retry: You should retry link_on_level_ge1 on same level.
+%%   ok: invariant is satified, you can link safely on this level.
 check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, CompareFun) ->
     %% After locked 3 nodes, check invariants.
     %% invariant
@@ -734,66 +748,6 @@ check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight,
             end
     end.
 
-
-
-%% callee should lock all nodes
-%% Returns
-%%   retry: You should retry link_on_level_ge1 on same level.
-%%   ok: invariant is satified, you can link safely on this level.
-check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
-    check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
-%%     %% After locked 3 nodes, check invariants.
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   NeighborRight == RealNeighborRight
-%%     %%   Neighbor->rightKey < MyKey (sanity check)
-%%     if (RealNeighborRightKey =/= [] andalso MyKey >= RealNeighborRightKey)
-%%        orelse
-%%        (NeighborRight =/= RealNeighborRight)
-%%        ->
-%%             %% Retry: another key is inserted
-%%             ?INFOF("RETRY: check_invariant_level0_left_buddy MyKey=~p Self=~p self=~p", [MyKey, Self, self()]),
-%%             retry;
-%%        true ->
-%%             IsDeleted =
-%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-%%                 orelse
-%%                 (NeighborRight =/= [] andalso gen_server:call(NeighborRight, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     ?INFO("RETRY: check_invariant_level0_left_buddy neighbor deleted"),
-%%                     retry;
-%%                true ->
-%%                     ok
-%%             end
-%%     end.
-
-
-
-%% callee shoudl lock all nodes
-%% Returns
-%%   retry: You should retry link_on_level_ge1 on same level.
-%%   ok: invariant is satified, you can link safely on this level.
-check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
-    check_invariant_level_0(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
-%%     if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey)
-%%        orelse
-%%        (RealNeighborLeft =/= NeighborLeft)
-%%        ->
-%%             %% Retry: another key is inserted
-%%             ?INFOF("RETRY: check_invariant_level0_right_buddy Self=~p self=~p ~p ", [Self, self(), [MyKey, RealNeighborLeftKey]]),
-%%             retry;
-%%        true ->
-%%             IsDeleted =
-%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-%%                 orelse
-%%                 (NeighborLeft =/= [] andalso gen_server:call(NeighborLeft, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     ?INFO("check_invariant_level0_right_buddy: Neighbor deleted"),
-%%                     retry;
-%%                true ->
-%%                     ok
-%%             end
-%%     end.
 
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel) ->
