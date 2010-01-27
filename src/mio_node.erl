@@ -16,7 +16,7 @@
          search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
-         check_invariant_level0_left_buddy/6,          check_invariant_level0_right_buddy/6,
+         check_invariant_level_0_left/6,          check_invariant_level_0_right/6,
          node_on_level/2]).
 
 %% gen_server callbacks
@@ -670,11 +670,11 @@ link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, Right
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
-   do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_right_op, check_invariant_level0_left_buddy);
+   do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_right_op, check_invariant_level_0_left);
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
-    do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level0_right_buddy).
+    do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level_0_right).
 
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInvariantFun) ->
     MyKey = State#state.key,
@@ -708,11 +708,11 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, Directi
     end.
 
 %% [Neighbor] <=> [Self] <=> [NeighborRight]
-check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
+check_invariant_level_0_left(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
     check_invariant_level_0(Self, MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
 
 %% [NeighborLeft] <=> [Self] <=> [Neighbor]
-check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
+check_invariant_level_0_right(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
     check_invariant_level_0(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
 
 %% N.B.
