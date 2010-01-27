@@ -813,7 +813,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             end
     end.
 
-%% callee shoudl lock all nodes
+%% callee should lock all nodes
 %% Returns
 %%   retry: You should retry link_on_level_ge1 on same level.
 %%   done: link process is done. link on higher level is not necessary.
@@ -916,34 +916,22 @@ link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower)
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
-%%    S0 = erlang:now(),
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
-%%    S1 = erlang:now(),
 
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
         retry ->
             unlock(LockedNodes, ?LINE),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
-%%            S2 = erlang:now(),
             gen_server:call(Self, set_inserted_op),
-%%            S3 = erlang:now(),
             unlock(LockedNodes, ?LINE);
-%%            S4 = erlang:now(),
-%%            ?INFOF("link_on_level_ge1_right_buddy<0>=~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3)]);
         ok ->
-%%            S2 = erlang:now(),
             %% [NodeToInsert] <- [Buddy]
             link_left_op(Buddy, Level, Self, MyKey),
-%%            S3 = erlang:now(),
             %% [NodeToInsert] -> [Buddy]
             link_right_op(Self, Level, Buddy, BuddyKey),
-%%            S4 = erlang:now(),
             gen_server:call(Self, {set_inserted_op, Level}),
-%%            S5 = erlang:now(),
             unlock(LockedNodes, ?LINE),
-%%            S6 = erlang:now(),
-%%            ?INFOF("link_on_level_ge1_right_buddy<1>=~p ~p ~p ~p ~p ~p~n", [timer:now_diff(S1, S0), timer:now_diff(S2, S1), timer:now_diff(S3, S2), timer:now_diff(S4, S3), timer:now_diff(S5, S4), timer:now_diff(S6, S5)]),
             %% Go up to next Level.
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
@@ -964,17 +952,9 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
             ?INFOF("Insert Nomore ~p level~p", [MyKey, Level]),
             [];
         ok ->
-            % [A:m] -> [NodeToInsert:m]
-            link_right_op(Buddy, Level, Self, MyKey),
+            %% [A:m] <=> [NodeToInsert:m] <=> [D:m]
+            link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyRight, BuddyRightKey}, Level),
 
-            %% [NodeToInsert:m] <- [D:m]
-            link_left_op(BuddyRight, Level, Self, MyKey),
-
-            %% [A:m] <- [NodeToInsert:m]
-            link_left_op(Self, Level, Buddy, BuddyKey),
-%%            erlang:garbage_collect(Self),
-            %% [NodeToInsert:m] -> [D:m]
-            link_right_op(Self, Level, BuddyRight, BuddyRightKey),
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
