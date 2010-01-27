@@ -16,7 +16,7 @@
          search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2, dump_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
-         check_invariant_level0_left_buddy/6,
+         check_invariant_level0_left_buddy/6,          check_invariant_level0_right_buddy/6,
          node_on_level/2]).
 
 %% gen_server callbacks
@@ -689,7 +689,12 @@ hige(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInv
             unlock(LockedNodes, ?LINE),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
-            link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRight, RealNeighborRightKey}, 0),
+            case DirectionOp of
+                get_right_op ->
+                    link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRight, RealNeighborRightKey}, 0);
+                _ ->
+                    link_three_nodes({RealNeighborRight, RealNeighborRightKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
+            end,
             unlock(LockedNodes, ?LINE),
             need_link_on_level_ge1;
         UnknownInvariant ->
@@ -730,29 +735,30 @@ do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) when Nei
 
 %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
 do_link_on_level0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
-    MyKey = State#state.key,
-    {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
-    %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
-    LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
+    hige(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level0_right_buddy).
+%%     MyKey = State#state.key,
+%%     {NeighborLeft, _} = gen_server:call(Neighbor, {get_left_op, 0}),
+%%     %% Lock 3 nodes [NeighborLeft], [NodeToInsert] and [Neigbor]
+%%     LockedNodes = lock_or_exit([Neighbor, Self, NeighborLeft], ?LINE, MyKey),
 
-    %% After locked 3 nodes, check invariants.
-    %% invariant
-    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   Neighbor->leftKey < MyKey
-    {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
+%%     %% After locked 3 nodes, check invariants.
+%%     %% invariant
+%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+%%     %%   Neighbor->leftKey < MyKey
+%%     {RealNeighborLeft, RealNeighborLeftKey} = gen_server:call(Neighbor, {get_left_op, 0}),
 
-    case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
-        retry ->
-            unlock(LockedNodes, ?LINE),
-            link_on_level_0(From, State, Self, Introducer);
-        ok ->
-            link_three_nodes({RealNeighborLeft, RealNeighborLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0),
-            unlock(LockedNodes, ?LINE),
-            need_link_on_level_ge1;
-        UnknownInvariant ->
-            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
-            exit(unknown_invariant)
-    end.
+%%     case check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) of
+%%         retry ->
+%%             unlock(LockedNodes, ?LINE),
+%%             link_on_level_0(From, State, Self, Introducer);
+%%         ok ->
+%%             link_three_nodes({RealNeighborLeft, RealNeighborLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0),
+%%             unlock(LockedNodes, ?LINE),
+%%             need_link_on_level_ge1;
+%%         UnknownInvariant ->
+%%             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
+%%             exit(unknown_invariant)
+%%     end.
 
 %% callee should lock all nodes
 %% Returns
@@ -790,13 +796,13 @@ check_invariant_level0_left_buddy(Self, MyKey, Neighbor, NeighborRight, RealNeig
 %% Returns
 %%   retry: You should retry link_on_level_ge1 on same level.
 %%   ok: invariant is satified, you can link safely on this level.
-check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborKey, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
+check_invariant_level0_right_buddy(Self, MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
     if (RealNeighborLeftKey =/= [] andalso MyKey =< RealNeighborLeftKey)
        orelse
        (RealNeighborLeft =/= NeighborLeft)
        ->
             %% Retry: another key is inserted
-            ?INFOF("RETRY: check_invariant_level0_right_buddy Self=~p self=~p ~p ", [Self, self(), [MyKey, NeighborKey, RealNeighborLeftKey]]),
+            ?INFOF("RETRY: check_invariant_level0_right_buddy Self=~p self=~p ~p ", [Self, self(), [MyKey, RealNeighborLeftKey]]),
             retry;
        true ->
             IsDeleted =
