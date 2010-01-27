@@ -782,20 +782,14 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
-    case LeftOnLower of
+    case {LeftOnLower, RightOnLower} of
+        %% This happens when delete_op is issued on right node concurrently.
+        {[], []} ->
+            gen_server:call(Self, set_inserted_op);
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
-        [] ->
-            case RightOnLower of
-                [] ->
-                    %% This happens when delete_op is issued on right node concurrently.
-                    gen_server:call(Self, set_inserted_op),
-                    [];
-                _ ->
-                    link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
-            end;
-        %%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-        %%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
+        {[], RightOnLower} ->
+            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
         _ ->
             {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
             case Buddy of
