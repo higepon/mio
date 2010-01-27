@@ -560,34 +560,6 @@ delete_loop_(Self, Level) ->
     %% We keep the right/left node of Self, since it may be still located on search path.
     delete_loop_(Self, Level - 1).
 
-%%--------------------------------------------------------------------
-%%  Insert operation
-%%--------------------------------------------------------------------
-insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
-    %% I am alone.
-    gen_server:call(Self, set_inserted_op),
-    gen_server:reply(From, ok);
-insert_op_call(From, State, Self, Introducer) ->
-
-    %% At first, we lock the Self not to be deleted.
-    %% => This causes dead lock, since Self will never be released to others.
-    %%    We use inserted_op instead in order to prevent deletion.
-    %% LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
-
-    case link_on_level_0(From, State, Self, Introducer) of
-        no_more ->
-            gen_server:call(Self, set_inserted_op),
-            ?CHECK_SANITY(Self, 0);
-        _ ->
-            gen_server:call(Self, {set_inserted_op, 0}),
-
-            ?CHECK_SANITY(Self, 0),
-            %% link on level > 0
-            MaxLevel = length(State#state.membership_vector),
-            link_on_level_ge1(Self, MaxLevel)
-    end,
-    gen_server:reply(From, ok).
-
 
 lock(Nodes, infinity, _Line) ->
     mio_lock:lock(Nodes, infinity);
@@ -621,11 +593,52 @@ lock_or_exit(Nodes, Line, Info) ->
             Nodes
     end.
 
+link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, RightKey}, Level) ->
+    %% [Left] -> [Center]  [Right]
+    link_right_op(LeftNode, Level, CenterNode, CenterKey),
+
+    %% [Left]    [Center] <- [Right]
+    link_left_op(RightNode, Level, CenterNode, CenterKey),
+
+    %% [Left] <- [Center]    [Right]
+    link_left_op(CenterNode, Level, LeftNode, LeftKey),
+
+    %% [Left]    [Center] -> [Right]
+    link_right_op(CenterNode, Level, RightNode, RightKey).
+
+%%--------------------------------------------------------------------
+%%  Insert operation
+%%--------------------------------------------------------------------
+insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
+    %% I am alone.
+    gen_server:call(Self, set_inserted_op),
+    gen_server:reply(From, ok);
+insert_op_call(From, State, Self, Introducer) ->
+
+    %% At first, we lock the Self not to be deleted.
+    %% => This causes dead lock, since Self will never be released to others.
+    %%    We use inserted_op instead in order to prevent deletion.
+    %% LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
+
+    case link_on_level_0(From, State, Self, Introducer) of
+        no_more ->
+            gen_server:call(Self, set_inserted_op),
+            ?CHECK_SANITY(Self, 0);
+        _ ->
+            gen_server:call(Self, {set_inserted_op, 0}),
+
+            ?CHECK_SANITY(Self, 0),
+            %% link on level > 0
+            MaxLevel = length(State#state.membership_vector),
+            link_on_level_ge1(Self, MaxLevel)
+    end,
+    gen_server:reply(From, ok).
+
+
 link_on_level_0(From, State, Self, Introducer) ->
     MyKey = State#state.key,
     {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
 
-%%    ?INFOF("Self=~p Neighbor=~p NeighborKey=~p", [Self, Neighbor, NeighborKey]),
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
         %% MyKey is already exists
@@ -634,12 +647,11 @@ link_on_level_0(From, State, Self, Introducer) ->
             % Since this process doesn't have any other lock, dead lock will never happen.
             % Just wait infinity.
             lock([Neighbor], infinity, ?LINE),
-            ?INFOF("lock ok ~p ~p:~p", [Neighbor, ?LINE, self()]),
+
             IsDeleted = gen_server:call(Neighbor, get_deleted_op),
             if IsDeleted ->
-
                     %% Retry
-                    ?INFOF("link_on_level0: Neighbor deleted ", []),
+                    ?INFO("link_on_level_0: Neighbor deleted "),
                     unlock([Neighbor], ?LINE),
                     mio_util:random_sleep(0),
                     link_on_level_0(From, State, Self, Introducer);
@@ -656,18 +668,6 @@ link_on_level_0(From, State, Self, Introducer) ->
                               Introducer)
     end.
 
-link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, RightKey}, Level) ->
-    %% [Left] -> [Center]  [Right]
-    link_right_op(LeftNode, Level, CenterNode, CenterKey),
-
-    %% [Left]    [Center] <- [Right]
-    link_left_op(RightNode, Level, CenterNode, CenterKey),
-
-    %% [Left] <- [Center]    [Right]
-    link_left_op(CenterNode, Level, LeftNode, LeftKey),
-
-    %% [Left]    [Center] -> [Right]
-    link_right_op(CenterNode, Level, RightNode, RightKey).
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
