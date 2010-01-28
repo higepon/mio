@@ -37,7 +37,7 @@
 -module(mio_dump).
 
 %% API
--export([dump_op/3]).
+-export([dump_op/2, dump_op/3]).
 -include("mio.hrl").
 
 dump_op(_StartNode, Current, MaxLevel) when Current > MaxLevel ->
