@@ -846,7 +846,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
             %% since insert to self is returned immediately on insert_op.
             ?ASSERT_NOT_NIL(RightNodeOnLower),
-            {ok, Buddy, BuddyKey, _, _} = buddy_op(RightOnLower, MyMV, right, Level),
+            {ok, right, Buddy, BuddyKey, _, _} = buddy_op_proxy([], RightOnLower, MyMV, Level),
             case Buddy of
                 %% [NodeToInsert]
                 [] ->
