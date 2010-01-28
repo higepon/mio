@@ -846,7 +846,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             ?CHECK_SANITY(Self, Level),
             [];
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
-            link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey),
+            link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel),
             ?CHECK_SANITY(Self, Level);
         {ok, right, Buddy, BuddyKey, _BuddyLeft, _BuddyLeftKey} ->
             link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
@@ -919,27 +919,6 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
             end
     end.
 
-link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightNodeOnLower) ->
-    %% This should never happen.
-    %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
-    %% since insert to self is returned immediately on insert_op.
-    ?ASSERT_NOT_NIL(RightNodeOnLower),
-    {ok, Buddy, BuddyKey, _, _} = buddy_op(RightNodeOnLower, MyMV, right, Level),
-    case Buddy of
-        %% [NodeToInsert]
-        [] ->
-            %% We have no buddy on this level.
-            %% On higher Level, we have no buddy also.
-            %% So we've done.
-            gen_server:call(Self, set_inserted_op),
-            ?CHECK_SANITY(Self, Level),
-            [];
-        %% [NodeToInsert] <-> [Buddy]
-        _ ->
-            link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
-            ?CHECK_SANITY(Self, Level)
-    end.
-
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
@@ -963,7 +942,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
 
-link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey) ->
+link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel) ->
     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
     LockedNodes = lock_or_exit([Buddy, Self, BuddyRight], ?LINE, MyKey),
     case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
