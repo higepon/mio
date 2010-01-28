@@ -783,22 +783,25 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
 
 
 buddy_op_proxy([], [], MyMV, Level) ->
-    {ok, [], [], [], [], []};
+    not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
-    {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
-    {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey};
+    case buddy_op(LeftOnLower, MyMV, left, Level) of
+        {ok, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
+            not_found;
+        {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
+            {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey}
+    end;
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
-    {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} = buddy_op(RightOnLower, MyMV, right, Level),
-    {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey};
+    case buddy_op(RightOnLower, MyMV, right, Level) of
+        {ok, [], _BuddyKey, _BuddyLeft, _BuddyLeftKey} ->
+            not_found;
+        {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
+            {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey}
+    end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
-        {ok, left, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
-            case buddy_op_proxy([], RightOnLower, MyMV, Level) of
-                {ok, right, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
-                    {ok, [], [], [], [], []};
-                Other ->
-                    Other
-            end;
+        not_found ->
+            buddy_op_proxy([], RightOnLower, MyMV, Level);
         Other ->
             Other
     end.
@@ -864,7 +867,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
         _ ->
             case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
-                {ok, _, [], _, _, _} ->
+                not_found ->
                     %% We have no buddy on this level.
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
