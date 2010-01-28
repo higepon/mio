@@ -610,8 +610,8 @@ lock(Nodes, Times, Line) ->
 lock(Nodes, Line) ->
     lock(Nodes, 0, Line).
 
-unlock(Nodes, Line) ->
-    ?INFOF("unlocked ~p at ~p:~p", [Nodes, Line, self()]),
+unlock(Nodes, _Line) ->
+%%    ?INFOF("unlocked ~p at ~p:~p", [Nodes, Line, self()]),
     mio_lock:unlock(Nodes).
 
 lock_or_exit(Nodes, Line, Info) ->
@@ -620,7 +620,7 @@ lock_or_exit(Nodes, Line, Info) ->
             ?ERRORF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
             exit(lock_failed);
        true ->
-            ?INFOF("~p:~p:~p <~p> ~plock ok~n", [?MODULE, Line, self(), Info, Nodes]),
+%%            ?INFOF("~p:~p:~p <~p> ~plock ok~n", [?MODULE, Line, self(), Info, Nodes]),
             Nodes
     end.
 
@@ -929,10 +929,8 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level);
         ok ->
-            %% [NodeToInsert] <- [Buddy]
-            link_left_op(Buddy, Level, Self, MyKey),
-            %% [NodeToInsert] -> [Buddy]
-            link_right_op(Self, Level, Buddy, BuddyKey),
+
+            link_three_nodes({[], []}, {Self, MyKey}, {Buddy, BuddyKey}, Level),
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             %% Go up to next Level.
