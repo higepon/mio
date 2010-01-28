@@ -780,9 +780,7 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
             end
     end.
 
-
-
-buddy_op_proxy([], [], MyMV, Level) ->
+buddy_op_proxy([], [], _MyMV, _Level) ->
     not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
     case buddy_op(LeftOnLower, MyMV, left, Level) of
@@ -890,9 +888,6 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
                     retry;
                true ->
-%%            E2 = erlang:now(),
-%%            ?INFOF("buddy_left=~p~n", [timer:now_diff(E2, E1)]),
-
                     ok
             end
     end.
