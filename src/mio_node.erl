@@ -846,8 +846,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
             link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel),
             ?CHECK_SANITY(Self, Level);
-        {ok, right, Buddy, BuddyKey, _BuddyLeft, _BuddyLeftKey} ->
-            link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
+        {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
+            link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel),
             ?CHECK_SANITY(Self, Level)
     end.
 
@@ -915,7 +915,7 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     end.
 
 %% [NodeToInsert] <-> [Buddy]
-link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
+link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
 
