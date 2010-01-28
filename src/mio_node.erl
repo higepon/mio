@@ -733,10 +733,7 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, Directi
                     link_three_nodes({RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
             end,
             unlock(LockedNodes, ?LINE),
-            need_link_on_level_ge1;
-        UnknownInvariant ->
-            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
-            exit(unknown_invariant)
+            need_link_on_level_ge1
     end.
 
 %% [Neighbor] <=> [Self] <=> [NeighborRight]
