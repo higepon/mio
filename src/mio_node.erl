@@ -915,7 +915,7 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     end.
 
 %% [NodeToInsert] <-> [Buddy]
-link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
+link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, _BuddyLeft, _BuddyLeftKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
 
@@ -950,12 +950,10 @@ link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRigh
             gen_server:call(Self, set_inserted_op),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
-            ?INFOF("Insert Nomore ~p level~p", [MyKey, Level]),
             [];
         ok ->
             %% [A:m] <=> [NodeToInsert:m] <=> [D:m]
             link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyRight, BuddyRightKey}, Level),
-
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
