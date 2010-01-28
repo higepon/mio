@@ -461,14 +461,14 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
                 right ->
                     case right_node(State, Level - 1) of %% N.B. should be on LowerLevel
                         [] ->
-                            gen_server:reply(From, {ok, [], [], [], []});
+                            gen_server:reply(From, not_found);
                         RightNode ->
                             gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
                     end;
                 _ ->
                     case left_node(State, Level - 1) of
                         [] ->
-                            gen_server:reply(From, {ok, [], [], [], []});
+                            gen_server:reply(From, not_found);
                         LeftNode ->
                             gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
                     end
@@ -786,14 +786,14 @@ buddy_op_proxy([], [], MyMV, Level) ->
     not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
     case buddy_op(LeftOnLower, MyMV, left, Level) of
-        {ok, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
+        not_found ->
             not_found;
         {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
             {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey}
     end;
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
     case buddy_op(RightOnLower, MyMV, right, Level) of
-        {ok, [], _BuddyKey, _BuddyLeft, _BuddyLeftKey} ->
+        not_found ->
             not_found;
         {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
             {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey}
