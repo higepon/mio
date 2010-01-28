@@ -836,8 +836,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     RightOnLower = node_on_level(MyRight, Level - 1),
     case {LeftOnLower, RightOnLower} of
         %% This happens when delete_op is issued on the right node concurrently.
-        {[], []} ->
-            gen_server:call(Self, set_inserted_op);
+%%         {[], []} ->
+%%             gen_server:call(Self, set_inserted_op);
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
         {[], RightOnLower} ->
