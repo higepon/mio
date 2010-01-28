@@ -961,10 +961,5 @@ link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRigh
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
-            %% Debug info start
-%%            ?INFOF("Insereted<~p> Level~p BuddyKey ~p BuddyRightKey=~p", [MyKey, Level, BuddyKey, BuddyRightKey]),
-            link_on_level_ge1(Self, Level + 1, MaxLevel);
-        UnknownInvariant ->
-            ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
-            exit(unknown_invariant)
+            link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
