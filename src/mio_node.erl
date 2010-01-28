@@ -781,6 +781,28 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
     end.
 
 
+
+buddy_op_proxy([], [], MyMV, Level) ->
+    {ok, [], [], [], [], []};
+buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
+    {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op(LeftOnLower, MyMV, left, Level),
+    {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey};
+buddy_op_proxy([], RightOnLower, MyMV, Level) ->
+    {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} = buddy_op(RightOnLower, MyMV, right, Level),
+    {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey};
+buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
+    case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
+        {ok, left, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
+            case buddy_op_proxy([], RightOnLower, MyMV, Level) of
+                {ok, right, [], _BuddyKey, _BuddyRight, _BuddyRightKey} ->
+                    {ok, [], [], [], [], []};
+                Other ->
+                    Other
+            end;
+        Other ->
+            Other
+    end.
+
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel) ->
     link_on_level_ge1(Self, 1, MaxLevel).
@@ -788,7 +810,6 @@ link_on_level_ge1(Self, MaxLevel) ->
 %% Link on all levels done.
 link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
     [];
-
 %% Find buddy node and link it.
 %% buddy node has same membership_vector on this level.
 %% Insert Sample
@@ -850,13 +871,10 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %%   done: link process is done. link on higher level is not necessary.
 %%   ok: invariant is satified, you can link safely on this level.
 check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
-    %% TODO: Having "inserted lock" on each level can reduce "inserted lock" contention.
-%%    E1 = erlang:now(),
-
     BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
 
     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
-    IsSameKey = string:equal(MyKey,RealBuddyRightKey),
+    IsSameKey = RealBuddyRightKey =/= [] andalso string:equal(MyKey,RealBuddyRightKey),
 
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
@@ -867,7 +885,7 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
             ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
             retry;
         %% done: other process insert on higher level, so we have nothing to do.
-       (RealBuddyRightKey =/= [] andalso IsSameKey) ->
+        IsSameKey ->
             done;
         %% retry: another key is inserted
        (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
@@ -986,4 +1004,3 @@ link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, Budd
             ?ERRORF("FATAL: unknown invariant ~p\n", [UnknownInvariant]),
             exit(unknown_invariant)
     end.
-
