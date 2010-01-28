@@ -28,16 +28,16 @@
 %%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%%-------------------------------------------------------------------
-%%% File    : mio_dump.erl
+%%% File    : mio_debug.erl
 %%% Author  : higepon <higepon@users.sourceforge.jp>
-%%% Description : Dumper
+%%% Description : Debug utilities.
 %%%
 %%% Created : 28 Jan 2010 by higepon <higepon@users.sourceforge.jp>
 %%%-------------------------------------------------------------------
--module(mio_dump).
+-module(mio_debug).
 
 %% API
--export([dump_op/2, dump_op/3]).
+-export([dump_op/2, dump_op/3, check_sanity/4]).
 -include("mio.hrl").
 
 dump_op(_StartNode, Current, MaxLevel) when Current > MaxLevel ->
@@ -85,3 +85,59 @@ enum_nodes_(StartNode, Level) ->
     lists:append([dump_side_(LeftNode, left, Level),
                   [{StartNode, Key, Value, MembershipVector}],
                   dump_side_(RightNode, right, Level)]).
+
+%% assert(Cond, Message, Module, Line) ->
+%%     if not Cond ->
+%%             ?ERRORF("ASSERTION failed ~p:{~p,~p}:~n", [Message, Module, Line]),
+%%             exit(Message);
+%%        true ->
+%%             []
+%%     end.
+
+check_sanity_to_right(Node, Level, Module, Line) ->
+    {Key, _, _, _, _} = gen_server:call(Node, get_op),
+    {Right, RightKey} = gen_server:call(Node, {get_right_op, Level}),
+
+    %% Should be Key < RightKey (if Right exists)
+    case Right of
+        [] -> ok;
+        _ ->
+            if
+                not(Key < RightKey) ->
+                    Reason = io_lib:format("check_sanity_to_right failed: Node=~p Key=~p RightKey=~p~n", [Node, Key, RightKey]),
+                    ?ERROR(Reason),
+                    {error, Reason};
+                true ->
+                    check_sanity_to_right(Right, Level, Module, Line)
+            end
+    end.
+
+check_sanity_to_left(Node, Level, Module, Line) ->
+    {Key, _, _, _, _} = gen_server:call(Node, get_op),
+    {Left, LeftKey} = gen_server:call(Node, {get_left_op, Level}),
+    %% Key < LeftKey (if Left exists)
+    case Left of
+        [] -> ok;
+        _ ->
+            if
+                not(LeftKey < Key) ->
+                    Reason = io_lib:format("check_sanity_to_left failed: Node=~p Key=~p LeftKey=~p~n", [Node, Key, LeftKey]),
+                    ?ERROR(Reason),
+                    {error, Reason};
+                true ->
+                    check_sanity_to_left(Left, Level, Module, Line)
+            end
+    end.
+
+check_sanity(Node, Level, Module, Line) ->
+    case check_sanity_to_left(Node, Level, Module, Line) of
+        ok ->
+            case check_sanity_to_right(Node, Level, Module, Line) of
+                ok ->
+                    ok;
+                Other -> Other
+            end;
+        Other2 ->
+            Other2
+    end.
+

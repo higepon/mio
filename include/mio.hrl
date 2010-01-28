@@ -10,7 +10,7 @@
 -define(WARN(Msg), ?WARNF(Msg, [])).
 
 -ifdef (DEBUG_ON).
-  -define(CHECK_SANITY(Node, Level), check_sanity(Node, Level, ?MODULE, ?LINE)).
+  -define(CHECK_SANITY(Node, Level), mio_debug:check_sanity(Node, Level, ?MODULE, ?LINE)).
   -define(ASSERT_MATCH(EXPECTED, X),
           case X of
               EXPECTED -> true;
