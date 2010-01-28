@@ -922,10 +922,12 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel) ->
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
         retry ->
             unlock(LockedNodes, ?LINE),
+            mio_util:random_sleep(0),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
             gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes, ?LINE);
+            unlock(LockedNodes, ?LINE),
+            ?CHECK_SANITY(Self, Level);
         ok ->
             %% [NodeToInsert] <- [Buddy]
             link_left_op(Buddy, Level, Self, MyKey),
