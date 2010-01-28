@@ -840,68 +840,82 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %%             gen_server:call(Self, set_inserted_op);
         %%  <Level - 1>: [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
         %%  <Level>    : [D:m] <-> [F:m]
-        {[], RightOnLower} ->
-%%            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
-            %% This should never happen.
-            %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
-            %% since insert to self is returned immediately on insert_op.
-            ?ASSERT_NOT_NIL(RightNodeOnLower),
-            {ok, right, Buddy, BuddyKey, _, _} = buddy_op_proxy([], RightOnLower, MyMV, Level),
-            case Buddy of
-                %% [NodeToInsert]
-                [] ->
+%%         {[], RightOnLower} ->
+%% %%            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower);
+%%             %% This should never happen.
+%%             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
+%%             %% since insert to self is returned immediately on insert_op.
+%%             ?ASSERT_NOT_NIL(RightNodeOnLower),
+%%             {ok, right, Buddy, BuddyKey, _, _} = buddy_op_proxy([], RightOnLower, MyMV, Level),
+%%             case Buddy of
+%%                 %% [NodeToInsert]
+%%                 [] ->
+%%                     %% We have no buddy on this level.
+%%                     %% On higher Level, we have no buddy also.
+%%                     %% So we've done.
+%%                     gen_server:call(Self, set_inserted_op),
+%%                     ?CHECK_SANITY(Self, Level),
+%%                     [];
+%%                 %% [NodeToInsert] <-> [Buddy]
+%%                 _ ->
+%%                     link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
+%%                     ?CHECK_SANITY(Self, Level)
+%%             end;
+
+        _ ->
+            case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
+                {ok, _, [], _, _, _} ->
                     %% We have no buddy on this level.
                     %% On higher Level, we have no buddy also.
                     %% So we've done.
                     gen_server:call(Self, set_inserted_op),
                     ?CHECK_SANITY(Self, Level),
                     [];
-                %% [NodeToInsert] <-> [Buddy]
-                _ ->
+                {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
+                    link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey),
+                    ?CHECK_SANITY(Self, Level);
+                {ok, right, Buddy, BuddyKey, _BuddyLeft, _BuddyLeftKey} ->
                     link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, Level, MaxLevel),
                     ?CHECK_SANITY(Self, Level)
-            end;
-
-        _ ->
-            {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} = buddy_op_proxy(LeftOnLower, [], MyMV, Level),
-            case Buddy of
-                [] ->
-                    case RightOnLower of
-                        %% We have no buddy on this level.
-                        %% On higher Level, we have no buddy also.
-                        %% So we've done.
-                        %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
-                        [] ->
-                            gen_server:call(Self, set_inserted_op),
-                            ?CHECK_SANITY(Self, Level),
-                            [];
-                        %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-                        _ ->
-%%                            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
-                            %% This should never happen.
-                            %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
-                            %% since insert to self is returned immediately on insert_op.
-                            ?ASSERT_NOT_NIL(RightNodeOnLower),
-                            {ok, right, Buddy2, Buddy2Key, _, _} = buddy_op_proxy([], RightOnLower, MyMV, Level),
-                            case Buddy2 of
-                                %% [NodeToInsert]
-                                [] ->
-                                    %% We have no buddy on this level.
-                                    %% On higher Level, we have no buddy also.
-                                    %% So we've done.
-                                    gen_server:call(Self, set_inserted_op),
-                                    ?CHECK_SANITY(Self, Level),
-                                    [];
-                                %% [NodeToInsert] <-> [Buddy]
-                                _ ->
-                                    link_on_level_ge1_right_buddy(Self, MyKey, Buddy2, Buddy2Key, Level, MaxLevel),
-                                    ?CHECK_SANITY(Self, Level)
-                            end
-                    end;
-                %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-                _ ->
-                    link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
             end
+%%             case Buddy of
+%%                 [] ->
+%%                     case RightOnLower of
+%%                         %% We have no buddy on this level.
+%%                         %% On higher Level, we have no buddy also.
+%%                         %% So we've done.
+%%                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m]
+%%                         [] ->
+%%                             gen_server:call(Self, set_inserted_op),
+%%                             ?CHECK_SANITY(Self, Level),
+%%                             [];
+%%                         %% <Level - 1>: [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
+%%                         _ ->
+%% %%                            link_on_level_ge1_to_right(Self, Level, MaxLevel, MyKey, MyMV, RightOnLower)
+%%                             %% This should never happen.
+%%                             %% If leftNodeOnLower does not exist, RightNodeOnLower should exist,
+%%                             %% since insert to self is returned immediately on insert_op.
+%%                             ?ASSERT_NOT_NIL(RightNodeOnLower),
+%%                             {ok, right, Buddy2, Buddy2Key, _, _} = buddy_op_proxy([], RightOnLower, MyMV, Level),
+%%                             case Buddy2 of
+%%                                 %% [NodeToInsert]
+%%                                 [] ->
+%%                                     %% We have no buddy on this level.
+%%                                     %% On higher Level, we have no buddy also.
+%%                                     %% So we've done.
+%%                                     gen_server:call(Self, set_inserted_op),
+%%                                     ?CHECK_SANITY(Self, Level),
+%%                                     [];
+%%                                 %% [NodeToInsert] <-> [Buddy]
+%%                                 _ ->
+%%                                     link_on_level_ge1_right_buddy(Self, MyKey, Buddy2, Buddy2Key, Level, MaxLevel),
+%%                                     ?CHECK_SANITY(Self, Level)
+%%                             end
+%%                     end;
+%%                 %% <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
+%%                 _ ->
+%%                     link_on_level_ge1_left_buddy(Self, Level, MaxLevel, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey)
+%%             end
     end.
 
 %% callee should lock all nodes
