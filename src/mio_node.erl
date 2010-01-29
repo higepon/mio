@@ -922,31 +922,6 @@ check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
             end
     end.
 
-
-check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
-    IsDeleted = gen_server:call(Buddy, get_deleted_op),
-    if IsDeleted ->
-            ?INFO("RETRY: check_invariant_ge1_right_buddy Neighbor deleted"),
-            retry;
-       true ->
-            %% check invariants
-            %%   Buddy's left is []
-            {_, BuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
-            IsSameKey = string:equal(BuddyLeftKey, MyKey),
-            if IsSameKey ->
-                    ?INFOF("Done: check_invariant_ge1_right_buddy INSERT Nomore MyKey=~p Level~p", [MyKey, Level]),
-                    done;
-               BuddyLeftKey =/= [] ->
-                    %% Retry: another key is inserted
-                    ?INFOF("RETRY: check_invariant_ge1_right_buddy MyKey=~p BuddyLeftKey=~p", [MyKey, BuddyLeftKey]),
-                    retry;
-               true ->
-                    ok
-            end
-    end.
-
-
-
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
