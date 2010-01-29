@@ -436,6 +436,9 @@ set_op_call(State, NewValue) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+
+    %% N.B.
+    %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
     IsInserted = node_on_level(State#state.inserted, Level),
     if
         IsSameMV andalso IsInserted ->
