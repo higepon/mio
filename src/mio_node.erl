@@ -882,6 +882,43 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
             end
     end.
 
+%% check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
+%%     BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
+
+%%     {RealBuddyLeft, RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
+%%     IsSameKey = RealBuddyLeftKey =/= [] andalso string:equal(MyKey,RealBuddyLeftKey),
+
+%%     %% invariant
+%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+%%     %%   Buddy->rightKey < MyKey
+%%     if
+%%         %% retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
+%%         not BuddyInserted ->
+%%             ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
+%%             retry;
+%%         %% done: other process insert on higher level, so we have nothing to do.
+%%         IsSameKey ->
+%%             done;
+%%         %% retry: another key is inserted
+%%        (RealBuddyLeftKey =/= [] andalso MyKey < RealBuddyLeftKey)
+%%        orelse
+%%        (RealBuddyLeft =/= BuddyLeft) ->
+%%             ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
+%%             retry;
+%%        true->
+%%             IsDeleted =
+%%                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
+%%                 orelse
+%%                   (BuddyLeft =/= [] andalso gen_server:call(BuddyLeft, get_deleted_op)),
+%%             if IsDeleted ->
+%%                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
+%%                     retry;
+%%                true ->
+%%                     ok
+%%             end
+%%     end.
+
+
 check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
     IsDeleted = gen_server:call(Buddy, get_deleted_op),
     if IsDeleted ->
@@ -904,12 +941,15 @@ check_invariant_ge1_right_buddy(MyKey, Buddy, Level) ->
             end
     end.
 
+
+
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, _BuddyLeft, _BuddyLeftKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
 
     case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
+%%    case check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, _BuddyLeft) of
         retry ->
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
@@ -920,7 +960,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, _BuddyLeft, _BuddyLe
             ?CHECK_SANITY(Self, Level);
         ok ->
 
-            link_three_nodes({[], []}, {Self, MyKey}, {Buddy, BuddyKey}, Level),
+            link_three_nodes({_BuddyLeft, _BuddyLeftKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level),
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
