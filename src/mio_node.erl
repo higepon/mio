@@ -227,12 +227,8 @@ handle_call(get_op, From, State) ->
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
-handle_call({get_inserted_op, Level}, _From, State) ->
-    {reply, node_on_level(State#state.inserted, Level), State};
-
 %% Returns insert is done?
 handle_call(get_inserted_op, _From, State) ->
-    ?INFOF("inserted?=~p", [ State#state.inserted]),
     {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
 
 handle_call(get_deleted_op, _From, State) ->
