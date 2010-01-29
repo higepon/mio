@@ -436,8 +436,9 @@ set_op_call(State, NewValue) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    IsInserted = node_on_level(State#state.inserted, Level),
     if
-        Found ->
+        Found andalso IsInserted ->
             MyKey = State#state.key,
             case Direction of
                 left ->
