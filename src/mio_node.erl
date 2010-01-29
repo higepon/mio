@@ -435,10 +435,10 @@ set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
-    Found = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    IsSameMV = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     IsInserted = node_on_level(State#state.inserted, Level),
     if
-        Found andalso IsInserted ->
+        IsSameMV andalso IsInserted ->
             MyKey = State#state.key,
             case Direction of
                 left ->
@@ -949,8 +949,8 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeft
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
 
-    case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
-%%    case check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, _BuddyLeft) of
+%%    case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
+    case check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) of
         retry ->
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
