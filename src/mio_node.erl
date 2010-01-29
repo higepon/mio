@@ -851,8 +851,6 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %%   done: link process is done. link on higher level is not necessary.
 %%   ok: invariant is satified, you can link safely on this level.
 check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
-    BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
-
     {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
     IsSameKey = RealBuddyRightKey =/= [] andalso string:equal(MyKey,RealBuddyRightKey),
 
@@ -860,10 +858,6 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     %%   Buddy->rightKey < MyKey
     if
-        %% retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-        not BuddyInserted ->
-            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
-            retry;
         %% done: other process insert on higher level, so we have nothing to do.
         IsSameKey ->
             done;
@@ -887,8 +881,6 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
     end.
 
 check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
-    BuddyInserted = gen_server:call(Buddy, {get_inserted_op, Level}),
-
     {RealBuddyLeft, RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
     IsSameKey = RealBuddyLeftKey =/= [] andalso string:equal(MyKey,RealBuddyLeftKey),
 
@@ -896,10 +888,6 @@ check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     %%   Buddy->rightKey < MyKey
     if
-        %% retry: Buddy is exists only lower level, we have to wait Buddy will be inserted on this level
-        not BuddyInserted ->
-            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
-            retry;
         %% done: other process insert on higher level, so we have nothing to do.
         IsSameKey ->
             done;
