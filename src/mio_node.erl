@@ -257,8 +257,6 @@ handle_call({insert_op, Introducer}, From, State) ->
     spawn_link(?MODULE, insert_op_call, [From, State, Self, Introducer]),
     {noreply, State};
 
-%% {noreply, State, hibernate};
-
 handle_call(delete_op, From, State) ->
     Self = self(),
     spawn_link(?MODULE, delete_op_call, [From, Self, State]),
@@ -272,18 +270,6 @@ handle_call({link_right_op, Level, RightNode, RightKey}, _From, State) ->
 
 handle_call({link_left_op, Level, LeftNode, LeftKey}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode, LeftKey)};
-
-%% handle_call({link_left_op, Level, LeftNode, LeftKey}, _From, State) ->
-%%     Self = self(),
-%%     spawn(fun () ->
-%%                   Self ! {ok , set_left(State, Level, LeftNode, LeftKey)}
-%%           end),
-%%     receive {ok, NewState} ->
-%%             {reply, ok, NewState}
-%%     after 1000 ->
-%%             io:format("timeout")
-%%     end;
-
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
@@ -930,6 +916,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, _BuddyLeft, _BuddyLe
             link_three_nodes({[], []}, {Self, MyKey}, {Buddy, BuddyKey}, Level),
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
+            ?CHECK_SANITY(Self, Level),
             %% Go up to next Level.
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
