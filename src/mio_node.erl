@@ -439,9 +439,16 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     if
         Found ->
             MyKey = State#state.key,
-            MyRightKey = right_key(State, Level),
-            MyRight = right_node(State, Level),
-            gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
+            case Direction of
+                left ->
+                    MyRightKey = right_key(State, Level),
+                    MyRight = right_node(State, Level),
+                    gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
+                right ->
+                    MyLeftKey = left_key(State, Level),
+                    MyLeft = left_node(State, Level),
+                    gen_server:reply(From, {ok, Self, MyKey, MyLeft, MyLeftKey})
+            end;
         true ->
             case Direction of
                 right ->
