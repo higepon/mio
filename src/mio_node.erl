@@ -486,7 +486,7 @@ do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
         NextNode ->
             NextKey = neighbor_key(State, Direction, Level),
-            case apply(CompareFun, [NextKey, Key]) of
+            case CompareFun(NextKey, Key) of
                 true ->
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
                 _ ->
@@ -710,7 +710,7 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     %%   NeighborOfNeighbor == RealNeighborOfNeighbor
     %%   Neighbor->rightKey < MyKey (sanity check)
-    IsInvalidOrder = (RealNeighborOfNeighborKey =/= [] andalso apply(CompareFun, [MyKey, RealNeighborOfNeighborKey])),
+    IsInvalidOrder = (RealNeighborOfNeighborKey =/= [] andalso CompareFun(MyKey, RealNeighborOfNeighborKey)),
     IsNeighborChanged = (NeighborOfNeighbor =/= RealNeighborOfNeighbor),
 
     if IsInvalidOrder orelse IsNeighborChanged
@@ -844,7 +844,7 @@ check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
     {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
-    IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso apply(CompareFun, [MyKey, RealBuddyNeighborKey])),
+    IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
     IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
     %% Invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
