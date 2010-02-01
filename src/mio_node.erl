@@ -835,12 +835,42 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
             [];
+        %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
-            link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel),
+            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left),
             ?CHECK_SANITY(Self, Level);
+        %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
         {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
-            link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel),
+            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right),
             ?CHECK_SANITY(Self, Level)
+    end.
+
+do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
+    %% Lock 2 nodes [NodeToInsert] and [Buddy]
+    LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
+
+    case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
+        retry ->
+            unlock(LockedNodes, ?LINE),
+            mio_util:random_sleep(0),
+            link_on_level_ge1(Self, Level, MaxLevel);
+        done ->
+            gen_server:call(Self, set_inserted_op),
+            unlock(LockedNodes, ?LINE),
+            ?CHECK_SANITY(Self, Level);
+        ok ->
+
+            case Direction of
+                right ->
+                    link_three_nodes({BuddyNeighbor, BuddyNeighborKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level);
+                left ->
+                    link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyNeighbor, BuddyNeighborKey}, Level)
+            end,
+            gen_server:call(Self, {set_inserted_op, Level}),
+            unlock(LockedNodes, ?LINE),
+            ?CHECK_SANITY(Self, Level),
+            %% Go up to next Level.
+            link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
 
 %% callee should lock all nodes
@@ -881,38 +911,3 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
             end
     end.
 
-do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
-    %% Lock 2 nodes [NodeToInsert] and [Buddy]
-    LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
-
-    case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
-        retry ->
-            unlock(LockedNodes, ?LINE),
-            mio_util:random_sleep(0),
-            link_on_level_ge1(Self, Level, MaxLevel);
-        done ->
-            gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes, ?LINE),
-            ?CHECK_SANITY(Self, Level);
-        ok ->
-
-            case Direction of
-                right ->
-                    link_three_nodes({BuddyNeighbor, BuddyNeighborKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level);
-                left ->
-                    link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyNeighbor, BuddyNeighborKey}, Level)
-            end,
-            gen_server:call(Self, {set_inserted_op, Level}),
-            unlock(LockedNodes, ?LINE),
-            ?CHECK_SANITY(Self, Level),
-            %% Go up to next Level.
-            link_on_level_ge1(Self, Level + 1, MaxLevel)
-    end.
-
-%% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
-    do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right).
-
-%% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
-link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel) ->
-    do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left).
