@@ -397,6 +397,14 @@ neighbor_node(State, Direction, Level) ->
             node_on_level(State#state.left, Level)
     end.
 
+reverse_direction(Direction) ->
+    case Direction of
+        right ->
+             left;
+        left ->
+            right
+    end.
+
 left_node(State, Level) ->
     node_on_level(State#state.left, Level).
 
@@ -452,16 +460,10 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     if
         IsSameMV andalso IsInserted ->
             MyKey = State#state.key,
-            case Direction of
-                left ->
-                    MyRightKey = right_key(State, Level),
-                    MyRight = right_node(State, Level),
-                    gen_server:reply(From, {ok, Self, MyKey, MyRight, MyRightKey});
-                right ->
-                    MyLeftKey = left_key(State, Level),
-                    MyLeft = left_node(State, Level),
-                    gen_server:reply(From, {ok, Self, MyKey, MyLeft, MyLeftKey})
-            end;
+            ReverseDirection = reverse_direction(Direction),
+            MyNeighborKey = neighbor_key(State, ReverseDirection, Level),
+            MyNeighbor = neighbor_node(State, ReverseDirection, Level),
+            gen_server:reply(From, {ok, Self, MyKey, MyNeighbor, MyNeighborKey});
         true ->
             case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
                 [] ->
@@ -495,6 +497,7 @@ search_op_call(From, State, Self, Key, Level) ->
             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
     end.
 
+%% Not Found.
 do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
