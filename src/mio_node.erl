@@ -111,7 +111,6 @@ stats_op(Node, MaxLevel) ->
 stats_status(Node, MaxLevel) ->
     case mio_util:do_times_with_index(0, MaxLevel,
                              fun(Level) ->
-%%                                     ?INFOF("check_sanity Level~p~n", [Level]),
                                      mio_debug:check_sanity(Node, Level, stats, 0)
                              end) of
         ok -> {"mio_status", "OK"};
@@ -669,31 +668,32 @@ link_on_level_0(From, State, Self, Introducer) ->
     if
         %% MyKey is already exists
         IsSameKey ->
-            MyValue = State#state.value,
-            % Since this process doesn't have any other lock, dead lock will never happen.
-            % Just wait infinity.
-            lock([Neighbor], infinity, ?LINE),
-
-            IsDeleted = gen_server:call(Neighbor, get_deleted_op),
-            if IsDeleted ->
-                    %% Retry
-                    ?INFO("link_on_level_0: Neighbor deleted "),
-                    unlock([Neighbor], ?LINE),
-                    mio_util:random_sleep(0),
-                    link_on_level_0(From, State, Self, Introducer);
-               true ->
-                    %% overwrite the value
-                    ok = gen_server:call(Neighbor, {set_op, MyValue}),
-                    unlock([Neighbor], ?LINE),
-                    %% tell the callee, link_on_level_ge1 is not necessary
-                    no_more
-            end;
+            try_overwrite_value(From, State, Self, Neighbor, Introducer);
         %% insert!
         true ->
-            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey,
-                              Introducer)
+            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer)
     end.
 
+try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
+    Value = State#state.value,
+    %% Since this process doesn't have any other lock, dead lock will never happen.
+    %% Just wait infinity.
+    lock([Neighbor], infinity, ?LINE),
+
+    IsDeleted = gen_server:call(Neighbor, get_deleted_op),
+    if IsDeleted ->
+            %% Retry
+            ?INFO("link_on_level_0: Neighbor deleted "),
+            unlock([Neighbor], ?LINE),
+            mio_util:random_sleep(0),
+            link_on_level_0(From, State, Self, Introducer);
+       true ->
+            %% overwrite the value
+            ok = gen_server:call(Neighbor, {set_op, Value}),
+            unlock([Neighbor], ?LINE),
+            %% tell the callee, link_on_level_ge1 is not necessary
+            no_more
+    end.
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) when NeighborKey < State#state.key ->
@@ -846,7 +846,6 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     end.
 
 do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
-    %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
 
     case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
@@ -885,7 +884,7 @@ check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
 
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
     {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
-    IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey,RealBuddyNeighborKey),
+    IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso apply(CompareFun, [MyKey, RealBuddyNeighborKey])),
     IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
     %% Invariant
@@ -910,4 +909,3 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
                     ok
             end
     end.
-
