@@ -393,6 +393,14 @@ node_on_level(Nodes, Level) ->
         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
     end.
 
+neighbor_node(State, Direction, Level) ->
+    case Direction of
+        right ->
+            node_on_level(State#state.right, Level);
+        left ->
+            node_on_level(State#state.left, Level)
+    end.
+
 left_node(State, Level) ->
     node_on_level(State#state.left, Level).
 
@@ -451,21 +459,11 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
                     gen_server:reply(From, {ok, Self, MyKey, MyLeft, MyLeftKey})
             end;
         true ->
-            case Direction of
-                right ->
-                    case right_node(State, Level - 1) of %% N.B. should be on LowerLevel
-                        [] ->
-                            gen_server:reply(From, not_found);
-                        RightNode ->
-                            gen_server:reply(From, buddy_op(RightNode, MembershipVector, Direction, Level))
-                    end;
-                _ ->
-                    case left_node(State, Level - 1) of
-                        [] ->
-                            gen_server:reply(From, not_found);
-                        LeftNode ->
-                            gen_server:reply(From, buddy_op(LeftNode, MembershipVector, Direction, Level))
-                    end
+            case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
+                [] ->
+                    gen_server:reply(From, not_found);
+                NeighborNode ->
+                    gen_server:reply(From, buddy_op(NeighborNode, MembershipVector, Direction, Level))
             end
     end.
 
