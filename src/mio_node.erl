@@ -877,8 +877,39 @@ check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
     end.
 
 check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
-    {RealBuddyLeft, RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
-    IsSameKey = RealBuddyLeftKey =/= [] andalso string:equal(MyKey,RealBuddyLeftKey),
+    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft).
+%%     {RealBuddyLeft, RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
+%%     IsSameKey = RealBuddyLeftKey =/= [] andalso string:equal(MyKey,RealBuddyLeftKey),
+
+%%     %% invariant
+%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
+%%     %%   Buddy->rightKey < MyKey
+%%     if
+%%         %% done: other process insert on higher level, so we have nothing to do.
+%%         IsSameKey ->
+%%             done;
+%%         %% retry: another key is inserted
+%%        (RealBuddyLeftKey =/= [] andalso MyKey < RealBuddyLeftKey)
+%%        orelse
+%%        (RealBuddyLeft =/= BuddyLeft) ->
+%%             ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
+%%             retry;
+%%        true->
+%%             IsDeleted =
+%%                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
+%%                 orelse
+%%                   (BuddyLeft =/= [] andalso gen_server:call(BuddyLeft, get_deleted_op)),
+%%             if IsDeleted ->
+%%                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
+%%                     retry;
+%%                true ->
+%%                     ok
+%%             end
+%%     end.
+
+check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor) ->
+    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {get_left_op, Level}),
+    IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey,RealBuddyNeighborKey),
 
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
@@ -888,16 +919,16 @@ check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
         IsSameKey ->
             done;
         %% retry: another key is inserted
-       (RealBuddyLeftKey =/= [] andalso MyKey < RealBuddyLeftKey)
+       (RealBuddyNeighborKey =/= [] andalso MyKey < RealBuddyNeighborKey)
        orelse
-       (RealBuddyLeft =/= BuddyLeft) ->
-            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
+       (RealBuddyNeighbor =/= BuddyNeighbor) ->
+            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
             retry;
        true->
             IsDeleted =
                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
                 orelse
-                  (BuddyLeft =/= [] andalso gen_server:call(BuddyLeft, get_deleted_op)),
+                  (BuddyNeighbor =/= [] andalso gen_server:call(BuddyNeighbor, get_deleted_op)),
             if IsDeleted ->
                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
                     retry;
