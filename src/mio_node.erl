@@ -118,8 +118,6 @@ stats_status(Node, MaxLevel) ->
             {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
     end.
 
-
-
 terminate_node(Node, After) ->
     spawn_link(fun() ->
                   receive after After -> ok end,
@@ -314,35 +312,31 @@ handle_cast({dump_side_cast, Direction, Level, ReturnToMe, Accum}, State) ->
 %%--------------------------------------------------------------------
 handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
-                  range_search_asc_op_cast,
-                  fun(MyState, Level) -> right_node(MyState, Level) end,
-                  State#state.key =< Key1),
+                  range_search_asc_op_cast, right, State#state.key =< Key1),
     {noreply, State};
 
 handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
-                  range_search_desc_op_cast,
-                  fun(MyState, Level) -> left_node(MyState, Level) end,
-                  State#state.key >= Key2),
+                  range_search_desc_op_cast, left, State#state.key >= Key2),
     {noreply, State}.
 
-range_search_(ReturnToMe, _Key1, _Key2, Accum, Limit, _State, _Op, _NextNodeFunc, _IsOutOfRange) when Limit =:= 0 ->
+range_search_(ReturnToMe, _Key1, _Key2, Accum, Limit, _State, _Op, _Direction, _IsOutOfRange) when Limit =:= 0 ->
     ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, IsOutOfRange) when IsOutOfRange ->
-    case NextNodeFunc(State, 0) of
+range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, Direction, IsOutOfRange) when IsOutOfRange ->
+    case neighbor_node(State, Direction, 0) of
         [] ->
             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
         NextNode ->
             gen_server:cast(NextNode,
                             {Op, ReturnToMe, Key1, Key2, Accum, Limit})
     end;
-range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, NextNodeFunc, _IsOutOfRange) ->
+range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, Direction, _IsOutOfRange) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyExpireTime = State#state.expire_time,
     if
        Key1 < MyKey andalso MyKey < Key2 ->
-            case NextNodeFunc(State, 0) of
+            case neighbor_node(State, Direction, 0) of
                 [] ->
                     ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyExpireTime} | Accum])};
                 NextNode ->
