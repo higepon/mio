@@ -309,28 +309,6 @@ handle_cast({dump_side_cast, Direction, Level, ReturnToMe, Accum}, State) ->
     end,
     {noreply, State};
 
-%% handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     case right_node(State, Level) of
-%%         [] ->
-%%             ReturnToMe ! {dump_side_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
-%%         RightPid ->
-%%             gen_server:cast(RightPid, {dump_side_cast, right, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State};
-%% handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
-%%     MyKey = State#state.key,
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
-%%     case left_node(State, Level) of
-%%         [] ->
-%%             ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
-%%         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State};
-
 %%--------------------------------------------------------------------
 %%  range search operation
 %%--------------------------------------------------------------------
@@ -431,6 +409,14 @@ left_key(State, Level) ->
 right_key(State, Level) ->
     node_on_level(State#state.right_keys, Level).
 
+neighbor_key(State, Direction, Level) ->
+    case Direction of
+        right ->
+            node_on_level(State#state.right_keys, Level);
+        left ->
+            node_on_level(State#state.left_keys, Level)
+    end.
+
 set_right(State, Level, Node, Key) ->
     NewState = State#state{right_keys=mio_util:lists_set_nth(Level + 1, Key, State#state.right_keys)},
     NewState#state{right=mio_util:lists_set_nth(Level + 1, Node, NewState#state.right)}.
@@ -504,50 +490,27 @@ search_op_call(From, State, Self, Key, Level) ->
             MyExpireTime = State#state.expire_time,
             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
         MyKey < Key ->
-            search_to_right(From, Self, State, SearchLevel, Key);
+            do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
         true ->
-            search_to_left(From, Self, State, SearchLevel, Key)
+            do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
     end.
 
-%% Not found
-search_to_right(From, Self, State, Level, _Key) when Level < 0 ->
+do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyExpireTime = State#state.expire_time,
     gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-
-search_to_right(From, Self, State, Level, Key) ->
-    case right_node(State, Level) of
+do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
+    case neighbor_node(State, Direction, Level) of
         [] ->
-            search_to_right(From, Self, State, Level - 1, Key);
+            do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
         NextNode ->
-            NextKey = right_key(State, Level),
-            if
-                NextKey =< Key ->
-                    gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
+            NextKey = neighbor_key(State, Direction, Level),
+            case apply(CompareFun, [NextKey, Key]) of
                 true ->
-                    search_to_right(From, Self, State, Level - 1, Key)
-            end
-    end.
-
-%% Not found
-search_to_left(From, Self, State, Level, _Key) when Level < 0 ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    MyExpireTime = State#state.expire_time,
-    gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-
-search_to_left(From, Self, State, Level, Key) ->
-    case left_node(State, Level) of
-        [] ->
-            search_to_left(From, Self, State, Level - 1, Key);
-        NextNode ->
-            NextKey = left_key(State, Level),
-            if
-                NextKey >= Key ->
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
-                true ->
-                    search_to_left(From, Self, State, Level - 1, Key)
+                _ ->
+                    do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
             end
     end.
 
