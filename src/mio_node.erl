@@ -291,27 +291,45 @@ handle_call(set_inserted_op, _From, State) ->
 %%--------------------------------------------------------------------
 %%  dump operation
 %%--------------------------------------------------------------------
-handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
+handle_cast({dump_side_cast, Direction, Level, ReturnToMe, Accum}, State) ->
     MyKey = State#state.key,
     MyValue = State#state.value,
     MyMVector = State#state.membership_vector,
-    case right_node(State, Level) of
+    case neighbor_node(State, Direction, Level) of
         [] ->
-            ReturnToMe ! {dump_side_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
-        RightPid ->
-            gen_server:cast(RightPid, {dump_side_cast, right, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+            Ret = case Direction of
+                      right ->
+                          lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum]);
+                      left ->
+                          [{self(), MyKey, MyValue, MyMVector} | Accum]
+                  end,
+            ReturnToMe ! {dump_side_accumed, Ret};
+        NeighborNode ->
+            gen_server:cast(NeighborNode, {dump_side_cast, Direction, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
     end,
     {noreply, State};
-handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
-    MyKey = State#state.key,
-    MyValue = State#state.value,
-    MyMVector = State#state.membership_vector,
-    case left_node(State, Level) of
-        [] ->
-            ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
-        LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-    end,
-    {noreply, State};
+
+%% handle_cast({dump_side_cast, right, Level, ReturnToMe, Accum}, State) ->
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     MyMVector = State#state.membership_vector,
+%%     case right_node(State, Level) of
+%%         [] ->
+%%             ReturnToMe ! {dump_side_accumed, lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum])};
+%%         RightPid ->
+%%             gen_server:cast(RightPid, {dump_side_cast, right, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+%%     end,
+%%     {noreply, State};
+%% handle_cast({dump_side_cast, left, Level, ReturnToMe, Accum}, State) ->
+%%     MyKey = State#state.key,
+%%     MyValue = State#state.value,
+%%     MyMVector = State#state.membership_vector,
+%%     case left_node(State, Level) of
+%%         [] ->
+%%             ReturnToMe ! {dump_side_accumed, [{self(), MyKey, MyValue, MyMVector} | Accum]};
+%%         LeftPid -> gen_server:cast(LeftPid, {dump_side_cast, left, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
+%%     end,
+%%     {noreply, State};
 
 %%--------------------------------------------------------------------
 %%  range search operation
