@@ -42,8 +42,8 @@
 %% API
 -export([start_link/1,
          stats_op/2,
-         search_op_call/5, buddy_op_call/6, get_op_call/2, get_right_op_call/3,
-         get_left_op_call/3, insert_op_call/4, delete_op_call/3,
+         search_op_call/5, buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
+         insert_op_call/4, delete_op_call/3,
          search_op/2, link_right_op/4, link_left_op/4,
          set_expire_time_op/2, buddy_op/4, insert_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
@@ -234,11 +234,11 @@ handle_call(get_deleted_op, _From, State) ->
     {reply, State#state.deleted, State};
 
 handle_call({get_right_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_right_op_call, [From, State, Level]),
+    spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
     {noreply, State};
 
 handle_call({get_left_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_left_op_call, [From, State, Level]),
+    spawn_link(?MODULE, get_neighbor_op_call, [From, State, left, Level]),
     {noreply, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
@@ -399,18 +399,6 @@ reverse_direction(Direction) ->
             right
     end.
 
-left_node(State, Level) ->
-    node_on_level(State#state.left, Level).
-
-right_node(State, Level) ->
-    node_on_level(State#state.right, Level).
-
-left_key(State, Level) ->
-    node_on_level(State#state.left_keys, Level).
-
-right_key(State, Level) ->
-    node_on_level(State#state.right_keys, Level).
-
 neighbor_key(State, Direction, Level) ->
     case Direction of
         right ->
@@ -432,15 +420,10 @@ set_left(State, Level, Node, Key) ->
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {State#state.key, State#state.value, State#state.membership_vector, State#state.left, State#state.right}).
-get_right_op_call(From, State, Level) ->
-    RightNode = right_node(State, Level),
-    RightKey = right_key(State, Level),
-    gen_server:reply(From, {RightNode, RightKey}).
-
-get_left_op_call(From, State, Level) ->
-    LeftNode = left_node(State, Level),
-    LeftKey = left_key(State, Level),
-    gen_server:reply(From, {LeftNode, LeftKey}).
+get_neighbor_op_call(From, State, Direction, Level) ->
+    NeighborNode = neighbor_node(State, Direction, Level),
+    NeighborKey = neighbor_key(State, Direction, Level),
+    gen_server:reply(From, {NeighborNode, NeighborKey}).
 
 set_op_call(State, NewValue) ->
     {reply, ok, State#state{value=NewValue}}.
