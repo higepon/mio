@@ -49,6 +49,8 @@
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
          check_invariant_level_0_left/5,
          check_invariant_level_0_right/5,
+         check_invariant_level_ge1_left/5,
+         check_invariant_level_ge1_right/5,
          node_on_level/2]).
 
 %% gen_server callbacks
@@ -879,13 +881,11 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
             end
     end.
 
-%% [NodeToInsert] <-> [Buddy]
-link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
+do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
-    LockedNodes = lock_or_exit([Self, BuddyLeft, Buddy], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
 
-%%    case check_invariant_level_ge1_right(MyKey, Buddy, Level) of
-    case check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) of
+    case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
         retry ->
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
@@ -896,7 +896,12 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeft
             ?CHECK_SANITY(Self, Level);
         ok ->
 
-            link_three_nodes({BuddyLeft, BuddyLeftKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level),
+            case Direction of
+                right ->
+                    link_three_nodes({BuddyNeighbor, BuddyNeighborKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level);
+                left ->
+                    link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyNeighbor, BuddyNeighborKey}, Level)
+            end,
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
@@ -904,25 +909,10 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeft
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
 
+%% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
+link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
+    do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right).
+
+%% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
 link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel) ->
-    %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
-    LockedNodes = lock_or_exit([Buddy, Self, BuddyRight], ?LINE, MyKey),
-    case check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
-        retry ->
-            unlock(LockedNodes, ?LINE),
-            mio_util:random_sleep(0),
-            link_on_level_ge1(Self, Level, MaxLevel);
-        done ->
-            %% mark as inserted
-            gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes, ?LINE),
-            ?CHECK_SANITY(Self, Level),
-            [];
-        ok ->
-            %% [A:m] <=> [NodeToInsert:m] <=> [D:m]
-            link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyRight, BuddyRightKey}, Level),
-            gen_server:call(Self, {set_inserted_op, Level}),
-            unlock(LockedNodes, ?LINE),
-            ?CHECK_SANITY(Self, Level),
-            link_on_level_ge1(Self, Level + 1, MaxLevel)
-    end.
+    do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left).
