@@ -180,7 +180,7 @@ all() ->
 groups() ->
     [{set_one_key_parallel,
       [{repeat, ?REPEAT_COUNT}],
-%%      [{repeat_until_any_fail, forever}],
+%      [{repeat_until_any_fail, forever}],
       [test_parallel_one,
        test_parallel_two,
        test_parallel_three,

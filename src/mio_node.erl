@@ -909,7 +909,7 @@ check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
 %% [NodeToInsert] <-> [Buddy]
 link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel) ->
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
-    LockedNodes = lock_or_exit([Self, Buddy], ?LINE, MyKey),
+    LockedNodes = lock_or_exit([Self, BuddyLeft, Buddy], ?LINE, MyKey),
 
 %%    case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
     case check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) of
