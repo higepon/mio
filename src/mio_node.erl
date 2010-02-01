@@ -701,25 +701,25 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) when Ne
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level_0_right).
 
-do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, DirectionOp, CheckInvariantFun) ->
+do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, GetNeighborOp, CheckInvariantFun) ->
     MyKey = State#state.key,
 
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
-    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {DirectionOp, 0}),
+    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
 
     LockedNodes = lock_or_exit([Neighbor, Self, NeighborRightOrLeft], ?LINE, MyKey),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {DirectionOp, 0}),
+    {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
 
     case apply(?MODULE, CheckInvariantFun, [MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
         retry ->
             unlock(LockedNodes, ?LINE),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
-            case DirectionOp of
+            case GetNeighborOp of
                 get_right_op ->
                     link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, 0);
                 _ ->
@@ -846,91 +846,33 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 %%   retry: You should retry link_on_level_ge1 on same level.
 %%   done: link process is done. link on higher level is not necessary.
 %%   ok: invariant is satified, you can link safely on this level.
-check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
-    {RealBuddyRight, RealBuddyRightKey} = gen_server:call(Buddy, {get_right_op, Level}),
-    IsSameKey = RealBuddyRightKey =/= [] andalso string:equal(MyKey,RealBuddyRightKey),
+check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
+    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyRight, get_right_op, fun(X, Y) -> X > Y end).
+check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
+    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, get_left_op, fun(X, Y) -> X < Y end).
 
-    %% invariant
-    %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   Buddy->rightKey < MyKey
-    if
-        %% done: other process insert on higher level, so we have nothing to do.
-        IsSameKey ->
-            done;
-        %% retry: another key is inserted
-       (RealBuddyRightKey =/= [] andalso MyKey > RealBuddyRightKey)
-       orelse
-       (RealBuddyRight =/= BuddyRight) ->
-            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyRight, BuddyRight], [MyKey, BuddyKey, RealBuddyRightKey]]),
-            retry;
-       true->
-            IsDeleted =
-                (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
-                orelse
-                  (BuddyRight =/= [] andalso gen_server:call(BuddyRight, get_deleted_op)),
-            if IsDeleted ->
-                    ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
-                    retry;
-               true ->
-                    ok
-            end
-    end.
-
-check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
-    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft).
-%%     {RealBuddyLeft, RealBuddyLeftKey} = gen_server:call(Buddy, {get_left_op, Level}),
-%%     IsSameKey = RealBuddyLeftKey =/= [] andalso string:equal(MyKey,RealBuddyLeftKey),
-
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   Buddy->rightKey < MyKey
-%%     if
-%%         %% done: other process insert on higher level, so we have nothing to do.
-%%         IsSameKey ->
-%%             done;
-%%         %% retry: another key is inserted
-%%        (RealBuddyLeftKey =/= [] andalso MyKey < RealBuddyLeftKey)
-%%        orelse
-%%        (RealBuddyLeft =/= BuddyLeft) ->
-%%             ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyLeft, BuddyLeft], [MyKey, BuddyKey, RealBuddyLeftKey]]),
-%%             retry;
-%%        true->
-%%             IsDeleted =
-%%                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
-%%                 orelse
-%%                   (BuddyLeft =/= [] andalso gen_server:call(BuddyLeft, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
-%%                     retry;
-%%                true ->
-%%                     ok
-%%             end
-%%     end.
-
-check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor) ->
-    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {get_left_op, Level}),
+check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
+    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey,RealBuddyNeighborKey),
-
-    %% invariant
+    IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso apply(CompareFun, [MyKey, RealBuddyNeighborKey])),
+    IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
+    %% Invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    %%   Buddy->rightKey < MyKey
     if
         %% done: other process insert on higher level, so we have nothing to do.
         IsSameKey ->
             done;
         %% retry: another key is inserted
-       (RealBuddyNeighborKey =/= [] andalso MyKey < RealBuddyNeighborKey)
-       orelse
-       (RealBuddyNeighbor =/= BuddyNeighbor) ->
-            ?INFOF("RETRY: check_invariant_ge1_left_buddy Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
+        IsInvalidOrder orelse IsNeighborChanged ->
+            ?INFOF("RETRY: check_invariant_ge1 Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
             retry;
-       true->
+        true->
             IsDeleted =
                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
                 orelse
                   (BuddyNeighbor =/= [] andalso gen_server:call(BuddyNeighbor, get_deleted_op)),
             if IsDeleted ->
-                    ?INFO("RETRY: check_invariant_ge1_left_buddy Neighbor deleted"),
+                    ?INFO("RETRY: check_invariant_ge1 Neighbor deleted"),
                     retry;
                true ->
                     ok
@@ -942,8 +884,8 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeft
     %% Lock 2 nodes [NodeToInsert] and [Buddy]
     LockedNodes = lock_or_exit([Self, BuddyLeft, Buddy], ?LINE, MyKey),
 
-%%    case check_invariant_ge1_right_buddy(MyKey, Buddy, Level) of
-    case check_invariant_ge1_right_buddy(Level, MyKey, Buddy, BuddyKey, BuddyLeft) of
+%%    case check_invariant_level_ge1_right(MyKey, Buddy, Level) of
+    case check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) of
         retry ->
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
@@ -965,7 +907,7 @@ link_on_level_ge1_right_buddy(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeft
 link_on_level_ge1_left_buddy(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel) ->
     %% Lock 3 nodes [A:m=Buddy], [NodeToInsert] and [D:m]
     LockedNodes = lock_or_exit([Buddy, Self, BuddyRight], ?LINE, MyKey),
-    case check_invariant_ge1_left_buddy(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
+    case check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) of
         retry ->
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
