@@ -42,7 +42,7 @@
 -export([start/0, stop/0, get_env/1, get_env/2, wait_startup/2]).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, prep_stop/1]).
 
 %%====================================================================
 %% API
@@ -64,7 +64,6 @@ stop() ->
         X ->
             ?ERROR(X)
     end.
-
 
 wait_startup(Host, Port) ->
     wait_startup(10, Host, Port).
@@ -98,6 +97,11 @@ start(_Type, _StartArgs) ->
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
-    ?INFO("mio application stopped"),
+    ok.
+
+prep_stop(_State) ->
+    io:format("stats ~p", [dynomite_prof:stats()]),
+    %% N.B.
+    %% PROFILER_STOP should be placed here, tty may be closed on stop/1 function.
     ?PROFILER_STOP(),
     ok.

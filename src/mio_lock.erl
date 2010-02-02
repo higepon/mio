@@ -70,10 +70,13 @@ set_lock([], _LockedNodes, _Retries) ->
 set_lock([[] | More], LockedNodes, Retries) ->
     set_lock(More, LockedNodes, Retries);
 set_lock([NodeToLock | More], LockedNodes, Retries) ->
+    dynomite_prof:start_prof(global_lock),
     case global:set_lock({NodeToLock, self()}, [node() | nodes()], Retries) of
         false ->
+            dynomite_prof:stop_prof(global_lock),
             del_lock(LockedNodes);
         true ->
+            dynomite_prof:stop_prof(global_lock),
             set_lock(More, [NodeToLock | LockedNodes], Retries)
     end.
 

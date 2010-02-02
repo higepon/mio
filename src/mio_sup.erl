@@ -118,6 +118,8 @@ init(_Args) ->
           [
            {logger, {logger, start_link, []},
             permanent, brutal_kill, worker, [logger]},
+           {dynomite_prof, {dynomite_prof, start_link, []},
+            permanent, brutal_kill, worker, [dynomite_prof]},
            {mio_logger, {mio_logger, start_link, []},
             permanent, brutal_kill, worker, [mio_logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
