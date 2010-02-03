@@ -1,4 +1,4 @@
-
+%% Borrowed from dynomite
 -module(lib_misc).
 
 -define(OFFSET_BASIS, 2166136261).

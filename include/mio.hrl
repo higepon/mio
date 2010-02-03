@@ -9,6 +9,13 @@
 -define(WARNF(Msg, Args), error_logger:warn_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
 -define(WARN(Msg), ?WARNF(Msg, [])).
 
+-define(START_PROF(Id), dynomite_prof:start_prof(Id)).
+-define(STOP_PROF(Id), dynomite_prof:stop_prof(Id)).
+
+%% -define(START_PROF(Id), true).
+%% -define(STOP_PROF(Id), true).
+
+
 -ifdef (DEBUG_ON).
   -define(CHECK_SANITY(Node, Level), mio_debug:check_sanity(Node, Level, ?MODULE, ?LINE)).
   -define(ASSERT_MATCH(EXPECTED, X),

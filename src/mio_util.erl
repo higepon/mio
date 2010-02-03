@@ -46,19 +46,19 @@
 %% API
 %%====================================================================
 random_sleep(Times) ->
-    case (Times rem 10) of
-        0 -> erase(random_seed);
-        _ -> ok
-    end,
-    case get(random_seed) of
-        undefined ->
-            {A1, A2, A3} = now(),
-            random:seed(A1, A2, A3 + erlang:phash(node(), 100000));
-        _ -> ok
-    end,
-    T = random:uniform(1000) rem 20 + 1,
-    ?INFOF("HERE sleep ~p msec ~n", [T]),
-    receive after T -> ok end.
+%%     case (Times rem 10) of
+%%         0 -> erase(random_seed);
+%%         _ -> ok
+%%     end,
+%%     case get(random_seed) of
+%%         undefined ->
+%%             {A1, A2, A3} = now(),
+%%             random:seed(A1, A2, A3 + erlang:phash(node(), 100000));
+%%         _ -> ok
+%%     end,
+%%     T = random:uniform(1000) rem 20 + 1,
+%%     ?INFOF("HERE sleep ~p msec ~n", [T]),
+    receive after 1 -> ok end.
 
 lists_set_nth(Index, Value, List) ->
     lists:append([lists:sublist(List, 1, Index - 1),
