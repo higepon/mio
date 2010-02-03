@@ -84,10 +84,26 @@ insert_op(Introducer, NodeToInsert) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 is_deleted(Pid) ->
-    case ets:lookup(is_deleted, Pid) of
+    X =
+    case mnesia:dirty_read({is_deleted, Pid}) of
         [] -> false;
-        [{_, IsDeleted}] -> IsDeleted
-    end.
+        [{_, _, IsDeleted}] -> IsDeleted
+    end,
+    X.
+
+%%     F = fun() ->
+%%                 case mnesia:read({is_deleted, Pid}) of
+%%                     [] -> false;
+%%                     [IsDeleted] -> IsDeleted
+%%                 end
+%%         end,
+%%     {atomic, Value} = mnesia:transaction(F),
+%%     Value.
+
+%%     case ets:lookup(is_deleted, Pid) of
+%%         [] -> false;
+%%         [{_, IsDeleted}] -> IsDeleted
+%%     end.
 
 
 delete_op(Introducer, Key) ->
@@ -520,7 +536,9 @@ delete_op_call(From, Self, State) ->
                     MaxLevel = length(State#state.membership_vector),
                     %% My State will not be changed, since I will be killed soon.
 %%                    gen_server:call(Self, set_deleted_op),
-                    ets:insert(is_deleted, {Self, true}),
+%%                    ets:insert(is_deleted, {Self, true}),
+                    F = fun() -> mnesia:write({is_deleted, Self, true}) end,
+                    mnesia:transaction(F),
 
                     %% N.B.
                     %% To prevent deadlock, we unlock the Self after deleted mark is set.
