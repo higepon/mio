@@ -42,6 +42,7 @@
 %% API
 -export([start/0, stop/0,
          make_empty_info/2,
+         delete/1,
          is_deleted/1, set_deleted/1,
          is_inserted/1, is_inserted/2, set_inserted/1, set_inserted/2
         ]).
@@ -104,4 +105,5 @@ set_inserted(Pid, Level) ->
     [Info] = mnesia:dirty_read({node_info, Pid}),
     ok = mnesia:dirty_write(Info#node_info{array_of_inserted=mio_util:lists_set_nth(Level + 1, true, Info#node_info.array_of_inserted)}).
 
-
+delete(Pid) ->
+    ok = mnesia:dirty_delete(node_info, Pid).

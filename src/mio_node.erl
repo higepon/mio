@@ -59,7 +59,7 @@
 
 -record(state, {key, value, membership_vector,
                 left, right, left_keys, right_keys,
-                expire_time, inserted, deleted}).
+                expire_time}).
 
 %%====================================================================
 %% API
@@ -99,6 +99,7 @@ delete_op(Node) ->
     %% We wait 1 minitue.
     OneMinute = 60000,
     terminate_node(Node, OneMinute),
+%%    mio_node_info:delete(Node),
     ok.
 
 
@@ -178,6 +179,11 @@ link_left_op([], _Level, _Left, _LeftKey) ->
 link_left_op(Node, Level, Left, LeftKey) ->
     gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
 
+link_both_op([], _Level, _Left, _LeftKey, _Right, _RightKey) ->
+    ok;
+link_both_op(Node, Level, Left, LeftKey, Right, RightKey) ->
+    gen_server:call(Node, {link_both_op, Level, Left, LeftKey, Right, RightKey}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -201,9 +207,9 @@ init(Args) ->
                 right=EmptyNeighbor,
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
-                expire_time=ExpireTime,
-                inserted=Insereted,
-                deleted=false
+                expire_time=ExpireTime
+%%                 inserted=Insereted,
+%%                 deleted=false
                }}.
 
 %%--------------------------------------------------------------------
@@ -227,11 +233,11 @@ handle_call(get_op, From, State) ->
     {noreply, State};
 
 %% Returns insert is done?
-handle_call(get_inserted_op, _From, State) ->
-    {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
+%% handle_call(get_inserted_op, _From, State) ->
+%%     {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
 
-handle_call(get_deleted_op, _From, State) ->
-    {reply, State#state.deleted, State};
+%% handle_call(get_deleted_op, _From, State) ->
+%%     {reply, State#state.deleted, State};
 
 handle_call({get_right_op, Level}, From, State) ->
     spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
@@ -266,21 +272,26 @@ handle_call({link_right_op, Level, RightNode, RightKey}, _From, State) ->
 handle_call({link_left_op, Level, LeftNode, LeftKey}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode, LeftKey)};
 
+handle_call({link_both_op, Level, LeftNode, LeftKey, RightNode, RightKey}, _From, State) ->
+    {reply, ok, set_left(set_right(State, Level, RightNode, RightKey),
+                         Level, LeftNode, LeftKey)};
+
+
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
-    {reply, ok, State#state{expire_time=ExpireTime}};
+    {reply, ok, State#state{expire_time=ExpireTime}}.
 
-handle_call(set_deleted_op, _From, State) ->
-    {reply, ok, State#state{deleted=true}};
+%% handle_call(set_deleted_op, _From, State) ->
+%%     {reply, ok, State#state{deleted=true}};
 
 
-handle_call({set_inserted_op, Level}, _From, State) ->
-    ?START_PROF(set_inserted_op),
-    NewState = State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)},
-    ?STOP_PROF(set_inserted_op),
-    {reply, ok, NewState};
+%% handle_call({set_inserted_op, Level}, _From, State) ->
+%%     ?START_PROF(set_inserted_op),
+%%     NewState = State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)},
+%%     ?STOP_PROF(set_inserted_op),
+%%     {reply, ok, NewState};
 
-handle_call(set_inserted_op, _From, State) ->
-    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
+%% handle_call(set_inserted_op, _From, State) ->
+%%     {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -586,17 +597,28 @@ lock_or_exit(Nodes, Line, Info) ->
     end.
 
 link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, RightKey}, Level) ->
+    ?START_PROF(link_three_nodes_left),
     %% [Left] -> [Center]  [Right]
     link_right_op(LeftNode, Level, CenterNode, CenterKey),
+    ?STOP_PROF(link_three_nodes_left),
 
+    ?START_PROF(link_three_nodes_right),
     %% [Left]    [Center] <- [Right]
     link_left_op(RightNode, Level, CenterNode, CenterKey),
+    ?STOP_PROF(link_three_nodes_right),
 
     %% [Left] <- [Center]    [Right]
-    link_left_op(CenterNode, Level, LeftNode, LeftKey),
-
     %% [Left]    [Center] -> [Right]
-    link_right_op(CenterNode, Level, RightNode, RightKey).
+    ?START_PROF(link_three_nodes_both),
+    link_both_op(CenterNode, Level, LeftNode, LeftKey, RightNode, RightKey),
+    ?STOP_PROF(link_three_nodes_both).
+
+
+%%     %% [Left] <- [Center]    [Right]
+%%     link_left_op(CenterNode, Level, LeftNode, LeftKey),
+
+%%     %% [Left]    [Center] -> [Right]
+%%     link_right_op(CenterNode, Level, RightNode, RightKey).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
