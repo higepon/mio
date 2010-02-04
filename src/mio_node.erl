@@ -83,29 +83,6 @@ insert_op(Introducer, NodeToInsert) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-is_deleted(Pid) ->
-    X =
-    case mnesia:dirty_read({is_deleted, Pid}) of
-        [] -> false;
-        [{_, _, IsDeleted}] -> IsDeleted
-    end,
-    X.
-
-%%     F = fun() ->
-%%                 case mnesia:read({is_deleted, Pid}) of
-%%                     [] -> false;
-%%                     [IsDeleted] -> IsDeleted
-%%                 end
-%%         end,
-%%     {atomic, Value} = mnesia:transaction(F),
-%%     Value.
-
-%%     case ets:lookup(is_deleted, Pid) of
-%%         [] -> false;
-%%         [{_, IsDeleted}] -> IsDeleted
-%%     end.
-
-
 delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _, _} = search_op(Introducer, Key),
     case string:equal(FoundKey, Key) of
@@ -525,7 +502,7 @@ do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
 %%--------------------------------------------------------------------
 delete_op_call(From, Self, State) ->
     LockedNodes = lock_or_exit([Self], ?LINE, [State#state.key]),
-    IsDeleted = is_deleted(Self), %%gen_server:call(Self, get_deleted_op),
+    IsDeleted = mio_node_info:is_deleted(Self), %%gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
             unlock(LockedNodes, ?LINE),
@@ -537,9 +514,9 @@ delete_op_call(From, Self, State) ->
                     %% My State will not be changed, since I will be killed soon.
 %%                    gen_server:call(Self, set_deleted_op),
 %%                    ets:insert(is_deleted, {Self, true}),
-                    F = fun() -> mnesia:write({is_deleted, Self, true}) end,
-                    mnesia:transaction(F),
-
+%%                     F = fun() -> mnesia:write({is_deleted, Self, true}) end,
+%%                     mnesia:transaction(F),
+                    mio_node_info:set_deleted(Self),
                     %% N.B.
                     %% To prevent deadlock, we unlock the Self after deleted mark is set.
                     %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for the same reason.
@@ -673,7 +650,7 @@ try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
     %% Just wait infinity.
     lock([Neighbor], infinity, ?LINE),
 
-    IsDeleted = is_deleted(Neighbor), %% gen_server:call(Neighbor, get_deleted_op),
+    IsDeleted = mio_node_info:is_deleted(Neighbor), %% gen_server:call(Neighbor, get_deleted_op),
     if IsDeleted ->
             %% Retry
             ?INFO("link_on_level_0: Neighbor deleted "),
@@ -765,9 +742,9 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
             retry;
        true ->
             IsDeleted =
-                (Neighbor =/= [] andalso is_deleted(Neighbor)) %%gen_server:call(Neighbor, get_deleted_op))
+                (Neighbor =/= [] andalso mio_node_info:is_deleted(Neighbor)) %%gen_server:call(Neighbor, get_deleted_op))
                 orelse
-                (NeighborOfNeighbor =/= [] andalso is_deleted(NeighborOfNeighbor)), %%gen_server:call(NeighborOfNeighbor, get_deleted_op)),
+                (NeighborOfNeighbor =/= [] andalso mio_node_info:is_deleted(NeighborOfNeighbor)), %%gen_server:call(NeighborOfNeighbor, get_deleted_op)),
             if IsDeleted ->
                     ?INFO("RETRY: check_invariant_level_0 neighbor deleted"),
                     retry;
@@ -924,9 +901,9 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
         true->
             ?START_PROF(check_invariant_ge1_deleted),
             IsDeleted =
-                (Buddy =/= [] andalso is_deleted(Buddy)) %%gen_server:call(Buddy, get_deleted_op))
+                (Buddy =/= [] andalso mio_node_info:is_deleted(Buddy)) %%gen_server:call(Buddy, get_deleted_op))
                 orelse
-                  (BuddyNeighbor =/= [] andalso is_deleted(BuddyNeighbor)), %%gen_server:call(BuddyNeighbor, get_deleted_op)),
+                  (BuddyNeighbor =/= [] andalso mio_node_info:is_deleted(BuddyNeighbor)), %%gen_server:call(BuddyNeighbor, get_deleted_op)),
             ?STOP_PROF(check_invariant_ge1_deleted),
             if IsDeleted ->
                     ?INFO("RETRY: check_invariant_ge1 Neighbor deleted"),
