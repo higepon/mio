@@ -85,7 +85,7 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %%    ets:new(is_deleted, [set, public, named_table]),
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(is_deleted, [{attributes, [pid, is_deleted]}]),
+    mnesia:create_table(is_deleted, [{attributes, [pid, is_deleted]}, {disc_compies, [node()]}]),
     Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
