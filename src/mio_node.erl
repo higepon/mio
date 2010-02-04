@@ -436,7 +436,7 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
 
     %% N.B.
     %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = node_on_level(State#state.inserted, Level),
+    IsInserted = mio_node_info:is_inserted(Self, Level), %%node_on_level(State#state.inserted, Level),
     if
         IsSameMV andalso IsInserted ->
             MyKey = State#state.key,
@@ -508,7 +508,7 @@ delete_op_call(From, Self, State) ->
             unlock(LockedNodes, ?LINE),
             gen_server:reply(From, ok);
        true ->
-            case gen_server:call(Self, get_inserted_op) of
+            case mio_node_info:is_inserted(Self) of %%gen_server:call(Self, get_inserted_op) of
                 true ->
                     MaxLevel = length(State#state.membership_vector),
                     %% My State will not be changed, since I will be killed soon.
@@ -603,7 +603,8 @@ link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, Right
 %%--------------------------------------------------------------------
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% I am alone.
-    gen_server:call(Self, set_inserted_op),
+%%    gen_server:call(Self, set_inserted_op),
+    mio_node_info:set_inserted(Self),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     ?START_PROF(insert_op_call),
@@ -615,10 +616,12 @@ insert_op_call(From, State, Self, Introducer) ->
     case link_on_level_0(From, State, Self, Introducer) of
         no_more ->
             ?STOP_PROF(link_on_level_0),
-            gen_server:call(Self, set_inserted_op),
+%%            gen_server:call(Self, set_inserted_op),
+            mio_node_info:set_inserted(Self),
             ?CHECK_SANITY(Self, 0);
         _ ->
-            gen_server:call(Self, {set_inserted_op, 0}),
+%%            gen_server:call(Self, {set_inserted_op, 0}),
+            mio_node_info:set_inserted(Self, 0),
 
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
@@ -815,7 +818,8 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
-            gen_server:call(Self, set_inserted_op),
+%%            gen_server:call(Self, set_inserted_op),
+            mio_node_info:set_inserted(Self),
             ?CHECK_SANITY(Self, Level),
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
@@ -848,7 +852,8 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey,
         done ->
             ?STOP_PROF(do_link_level_ge1_check),
             ?START_PROF(do_link_level_ge1_inserted),
-            gen_server:call(Self, set_inserted_op),
+%%            gen_server:call(Self, set_inserted_op),
+            mio_node_info:set_inserted(Self),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             ?STOP_PROF(do_link_level_ge1_inserted),
@@ -864,7 +869,8 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey,
             end,
             ?STOP_PROF(do_link_level_ge1_link),
             ?START_PROF(do_link_level_ge1_inserted2),
-            gen_server:call(Self, {set_inserted_op, Level}),
+%%            gen_server:call(Self, {set_inserted_op, Level}),
+            mio_node_info:set_inserted(Self, Level),
             ?STOP_PROF(do_link_level_ge1_inserted2),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),

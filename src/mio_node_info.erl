@@ -37,10 +37,13 @@
 -module(mio_node_info).
 
 -include("mio.hrl").
+-record(node_info, {pid, is_deleted, array_of_inserted}).
 
 %% API
 -export([start/0, stop/0,
-         is_deleted/1, set_deleted/1
+         make_empty_info/2,
+         is_deleted/1, set_deleted/1,
+         is_inserted/1, is_inserted/2, set_inserted/1, set_inserted/2
         ]).
 
 start() ->
@@ -60,25 +63,45 @@ do_start() ->
         ok -> ok;
         {error, Reason2} -> throw({mnesia_start, Reason2})
     end,
-    case mnesia:create_table(is_deleted, [{attributes, [pid, is_deleted]}]) of
+    %% for developer mode
+    mnesia:delete_table(node_info),
+    case mnesia:create_table(node_info, [{attributes, record_info(fields, node_info)}]) of
         {atomic, ok} -> ok;
         {aborted, {already_exists, _}} -> ok;
         {error, Reason3} -> throw({mnesia_create_table, Reason3})
     end,
-    ok = mnesia:wait_for_tables([is_deleted], 10000),
+    ok = mnesia:wait_for_tables([node_info], 10000),
     ok.
 
 stop() ->
     stopped = mnesia:stop(),
     ok.
 
+make_empty_info(Pid, MaxLevel) ->
+    ok = mnesia:dirty_write({node_info, Pid, false, lists:duplicate(MaxLevel, false)}).
+
 is_deleted(Pid) ->
-    case mnesia:dirty_read({is_deleted, Pid}) of
-        [] -> false;
-        [{_, _Pid, IsDeleted}] -> IsDeleted
-    end.
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    Info#node_info.is_deleted.
 
 set_deleted(Pid) ->
-    ok = mnesia:dirty_write({is_deleted, Pid, true}).
-%%     F = fun() -> mnesia:write({is_deleted, Pid, true}) end,
-%%     {atomic, ok} = mnesia:transaction(F).
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    ok = mnesia:dirty_write(Info#node_info{is_deleted=true}).
+
+is_inserted(Pid) ->
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    lists:all(fun(X) -> X end, Info#node_info.array_of_inserted).
+
+is_inserted(Pid, Level) ->
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    mio_node:node_on_level(Info#node_info.array_of_inserted, Level).
+
+set_inserted(Pid) ->
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    ok = mnesia:dirty_write(Info#node_info{array_of_inserted=lists:duplicate(length(Info#node_info.array_of_inserted) + 1, true)}).
+
+set_inserted(Pid, Level) ->
+    [Info] = mnesia:dirty_read({node_info, Pid}),
+    ok = mnesia:dirty_write(Info#node_info{array_of_inserted=mio_util:lists_set_nth(Level + 1, true, Info#node_info.array_of_inserted)}).
+
+
