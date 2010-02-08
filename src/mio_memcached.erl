@@ -81,6 +81,11 @@ init_start_node(From, MaxLevel, BootNode) ->
 %% supervisor calls this to create new memcached.
 start_link(Port, MaxLevel, BootNode, Verbose) ->
     error_logger:tty(Verbose),
+
+%%    ets:new(is_deleted, [set, public, named_table]),
+    mnesia:create_schema([node()]),
+    mnesia:start(),
+    mnesia:create_table(is_deleted, [{attributes, [pid, is_deleted]}, {disc_compies, [node()]}]),
     Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
