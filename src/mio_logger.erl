@@ -1,4 +1,4 @@
-%%    Copyright (c) 2010  Taro Minowa(Higepon) <higepon@users.sourceforge.jp>
+%%    Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 %%
 %%    Redistribution and use in source and binary forms, with or without
 %%    modification, are permitted provided that the following conditions
@@ -29,10 +29,10 @@
 
 %%%-------------------------------------------------------------------
 %%% File    : mio_logger.erl
-%%% Author  : Taro Minowa(Higepon) <higepon@users.sourceforge.jp>
+%%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description : Wrapper of error_logger
 %%%
-%%% Created :  4 Jan 2010 by higepon <higepon@users.sourceforge.jp>
+%%% Created :  4 Jan 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_logger).
 -include("mio.hrl").

@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% File    : strss_SUITE.erl
-%%% Author  : higepon <higepon@users.sourceforge.jp>
+%%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description : Stress test.
 %%%
-%%% Created : 6 Aug 2010 by higepon <higepon@users.sourceforge.jp>
+%%% Created : 6 Aug 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(stress_SUITE).
 

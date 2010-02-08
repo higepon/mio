@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% File    : mio_node_SUITE.erl
-%%% Author  : higepon <higepon@users.sourceforge.jp>
+%%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description :
 %%%
-%%% Created : 30 Jun 2009 by higepon <higepon@users.sourceforge.jp>
+%%% Created : 30 Jun 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_node_SUITE).
 

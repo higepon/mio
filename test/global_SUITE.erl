@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% File    : global_SUITE.erl
-%%% Author  : higepon <higepon@users.sourceforge.jp>
+%%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description :
 %%%
-%%% Created : 21 Nov 2009 by higepon <higepon@users.sourceforge.jp>
+%%% Created : 21 Nov 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(global_SUITE).
 
