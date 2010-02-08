@@ -83,29 +83,6 @@ insert_op(Introducer, NodeToInsert) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-is_deleted(Pid) ->
-    X =
-    case mnesia:dirty_read({is_deleted, Pid}) of
-        [] -> false;
-        [{_, _, IsDeleted}] -> IsDeleted
-    end,
-    X.
-
-%%     F = fun() ->
-%%                 case mnesia:read({is_deleted, Pid}) of
-%%                     [] -> false;
-%%                     [IsDeleted] -> IsDeleted
-%%                 end
-%%         end,
-%%     {atomic, Value} = mnesia:transaction(F),
-%%     Value.
-
-%%     case ets:lookup(is_deleted, Pid) of
-%%         [] -> false;
-%%         [{_, IsDeleted}] -> IsDeleted
-%%     end.
-
-
 delete_op(Introducer, Key) ->
     {FoundNode, FoundKey, _, _} = search_op(Introducer, Key),
     case string:equal(FoundKey, Key) of
