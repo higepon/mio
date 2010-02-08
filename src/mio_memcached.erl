@@ -93,8 +93,16 @@ memcached(Port, MaxLevel, BootNode) ->
     receive
         {ok, StartNode, WriteSerializer} ->
             %% backlog value is same as on memcached
-            {ok, Listen} = gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]),
-            mio_accept(Listen, WriteSerializer, StartNode, MaxLevel)
+            case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
+                {ok, Listen} ->
+                    mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
+                {error, eaddrinuse} ->
+                    io:format("Error: Can't start mio : port(~p) is in use.", [Port]),
+                    exit({error, eaddrinuse});
+                {error, Reason} ->
+                    io:format("can't start mio : ~p", [Reason]),
+                    exit({error, Reason})
+            end
     end.
 
 
