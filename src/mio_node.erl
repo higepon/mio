@@ -297,10 +297,7 @@ handle_call(set_deleted_op, _From, State) ->
 
 
 handle_call({set_inserted_op, Level}, _From, State) ->
-    ?START_PROF(set_inserted_op),
-    NewState = State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)},
-    ?STOP_PROF(set_inserted_op),
-    {reply, ok, NewState};
+    {reply, ok, State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)}};
 
 handle_call(set_inserted_op, _From, State) ->
     {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
@@ -581,9 +578,9 @@ lock(Nodes, Times, Line) ->
             true;
         false ->
             ?INFOF("Lock NG Sleeping ~p~n", [Nodes]),
-            ?START_PROF(lock_sleep),
+            dynomite_prof:start_prof(lock_sleep),
             mio_util:random_sleep(Times),
-            ?STOP_PROF(lock_sleep),
+            dynomite_prof:stop_prof(lock_sleep),
             lock(Nodes, Times + 1, Line)
     end.
 
@@ -625,15 +622,15 @@ insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
-    ?START_PROF(insert_op_call),
+    dynomite_prof:start_prof(insert_op_call),
     %% At first, we lock the Self not to be deleted.
     %% => This causes dead lock, since Self will never be released to others.
     %%    We use inserted_op instead in order to prevent deletion.
     %% LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
-    ?START_PROF(link_on_level_0),
+    dynomite_prof:start_prof(link_on_level_0),
     case link_on_level_0(From, State, Self, Introducer) of
         no_more ->
-            ?STOP_PROF(link_on_level_0),
+            dynomite_prof:stop_prof(link_on_level_0),
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, 0);
         _ ->
@@ -642,10 +639,10 @@ insert_op_call(From, State, Self, Introducer) ->
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
             MaxLevel = length(State#state.membership_vector),
-            ?STOP_PROF(link_on_level_0),
+            dynomite_prof:stop_prof(link_on_level_0),
             link_on_level_ge1(Self, MaxLevel)
     end,
-    ?STOP_PROF(insert_op_call),
+    dynomite_prof:stop_prof(insert_op_call),
     gen_server:reply(From, ok).
 
 
@@ -693,33 +690,33 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, get_left_op, check_invariant_level_0_right).
 
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, GetNeighborOp, CheckInvariantFun) ->
-    ?START_PROF(do_link_on_level_0),
+    dynomite_prof:start_prof(do_link_on_level_0),
     MyKey = State#state.key,
-    ?START_PROF(do_link_on_level_0_hoge),
+    dynomite_prof:start_prof(do_link_on_level_0_hoge),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
     {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
-    ?STOP_PROF(do_link_on_level_0_hoge),
-    ?START_PROF(do_link_on_level_0_hoge1),
+    dynomite_prof:stop_prof(do_link_on_level_0_hoge),
+    dynomite_prof:start_prof(do_link_on_level_0_hoge1),
 
     LockedNodes = lock_or_exit([Neighbor, Self, NeighborRightOrLeft], ?LINE, MyKey),
-    ?STOP_PROF(do_link_on_level_0_hoge1),
+    dynomite_prof:stop_prof(do_link_on_level_0_hoge1),
 
-    ?START_PROF(do_link_on_level_0_hoge2),
+    dynomite_prof:start_prof(do_link_on_level_0_hoge2),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
-    ?STOP_PROF(do_link_on_level_0_hoge2),
-    ?START_PROF(do_link_on_level_0_invari),
+    dynomite_prof:stop_prof(do_link_on_level_0_hoge2),
+    dynomite_prof:start_prof(do_link_on_level_0_invari),
     case apply(?MODULE, CheckInvariantFun, [MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
         retry ->
-            ?STOP_PROF(do_link_on_level_0_invari),
+            dynomite_prof:stop_prof(do_link_on_level_0_invari),
             unlock(LockedNodes, ?LINE),
-            ?STOP_PROF(do_link_on_level_0),
+            dynomite_prof:stop_prof(do_link_on_level_0),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
-            ?STOP_PROF(do_link_on_level_0_invari),
+            dynomite_prof:stop_prof(do_link_on_level_0_invari),
             case GetNeighborOp of
                 get_right_op ->
                     link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, 0);
@@ -727,7 +724,7 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, GetNeig
                     link_three_nodes({RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
             end,
             unlock(LockedNodes, ?LINE),
-            ?STOP_PROF(do_link_on_level_0),
+            dynomite_prof:stop_prof(do_link_on_level_0),
             need_link_on_level_ge1
     end.
 
@@ -798,9 +795,9 @@ buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
 
 %% link on Level >= 1
 link_on_level_ge1(Self, MaxLevel) ->
-    ?START_PROF(link_on_level_ge1_mino),
+    dynomite_prof:start_prof(link_on_level_ge1_mino),
     link_on_level_ge1(Self, 1, MaxLevel),
-    ?STOP_PROF(link_on_level_ge1_mino).
+    dynomite_prof:stop_prof(link_on_level_ge1_mino).
 
 %% Link on all levels done.
 link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
@@ -836,58 +833,49 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% So we've done.
             gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
+            dynomite_prof:stop_prof(link_on_level_ge1),
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
+            dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left),
-            ?CHECK_SANITY(Self, Level);
+            ?CHECK_SANITY(Self, Level),
+            dynomite_prof:stop_prof(link_on_level_ge1);
         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
         {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
+            dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right),
-            ?CHECK_SANITY(Self, Level)
+            ?CHECK_SANITY(Self, Level),
+            dynomite_prof:stop_prof(link_on_level_ge1)
     end.
 
 do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
-    ?START_PROF(do_link_level_ge1),
-
-    ?START_PROF(do_link_level_ge1_lock),
+    dynomite_prof:start_prof(do_link_level_ge1_lock),
     LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
-    ?STOP_PROF(do_link_level_ge1_lock),
+    dynomite_prof:stop_prof(do_link_level_ge1_lock),
 
-    ?START_PROF(do_link_level_ge1_check),
     case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
         retry ->
-            ?STOP_PROF(do_link_level_ge1_check),
-            ?START_PROF(do_link_level_ge1_retry),
+            dynomite_prof:start_prof(do_link_level_ge1_retry),
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
-            ?STOP_PROF(do_link_level_ge1_retry),
-            ?STOP_PROF(do_link_level_ge1),
+            dynomite_prof:stop_prof(do_link_level_ge1_retry),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
-            ?STOP_PROF(do_link_level_ge1_check),
-            ?START_PROF(do_link_level_ge1_inserted),
             gen_server:call(Self, set_inserted_op),
             unlock(LockedNodes, ?LINE),
-            ?CHECK_SANITY(Self, Level),
-            ?STOP_PROF(do_link_level_ge1_inserted),
-            ?STOP_PROF(do_link_level_ge1);
+            ?CHECK_SANITY(Self, Level);
         ok ->
-            ?STOP_PROF(do_link_level_ge1_check),
-            ?START_PROF(do_link_level_ge1_link),
+
             case Direction of
                 right ->
                     link_three_nodes({BuddyNeighbor, BuddyNeighborKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level);
                 left ->
                     link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyNeighbor, BuddyNeighborKey}, Level)
             end,
-            ?STOP_PROF(do_link_level_ge1_link),
-            ?START_PROF(do_link_level_ge1_inserted2),
             gen_server:call(Self, {set_inserted_op, Level}),
-            ?STOP_PROF(do_link_level_ge1_inserted2),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
-            ?STOP_PROF(do_link_level_ge1),
             %% Go up to next Level.
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
