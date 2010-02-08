@@ -94,16 +94,9 @@ get_env(Key, DefaultValue) ->
 
 
 start(_Type, _StartArgs) ->
-    case mio_node_info:start() of
-        ok -> ok;
-        {error, Reason} ->
-            io:format("Can't start up database: ~p", [Reason]),
-            halt(1)
-    end,
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 
 stop(_State) ->
-%%    ok = mio_node_info:stop(),
     ok.
 
 prep_stop(_State) ->
@@ -111,5 +104,4 @@ prep_stop(_State) ->
     %% N.B.
     %% PROFILER_STOP should be placed here, tty may be closed on stop/1 function.
     ?PROFILER_STOP(),
-%%x    ok = mnesia:stop(),
     ok.

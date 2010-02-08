@@ -59,7 +59,7 @@
 
 -record(state, {key, value, membership_vector,
                 left, right, left_keys, right_keys,
-                expire_time}).
+                expire_time, inserted, deleted}).
 
 %%====================================================================
 %% API
@@ -99,7 +99,6 @@ delete_op(Node) ->
     %% We wait 1 minitue.
     OneMinute = 60000,
     terminate_node(Node, OneMinute),
-%%    mio_node_info:delete(Node),
     ok.
 
 
@@ -179,11 +178,6 @@ link_left_op([], _Level, _Left, _LeftKey) ->
 link_left_op(Node, Level, Left, LeftKey) ->
     gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
 
-link_both_op([], _Level, _Left, _LeftKey, _Right, _RightKey) ->
-    ok;
-link_both_op(Node, Level, Left, LeftKey, Right, RightKey) ->
-    gen_server:call(Node, {link_both_op, Level, Left, LeftKey, Right, RightKey}).
-
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -207,9 +201,9 @@ init(Args) ->
                 right=EmptyNeighbor,
                 left_keys=EmptyNeighbor,
                 right_keys=EmptyNeighbor,
-                expire_time=ExpireTime
-%%                 inserted=Insereted,
-%%                 deleted=false
+                expire_time=ExpireTime,
+                inserted=Insereted,
+                deleted=false
                }}.
 
 %%--------------------------------------------------------------------
@@ -233,11 +227,11 @@ handle_call(get_op, From, State) ->
     {noreply, State};
 
 %% Returns insert is done?
-%% handle_call(get_inserted_op, _From, State) ->
-%%     {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
+handle_call(get_inserted_op, _From, State) ->
+    {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
 
-%% handle_call(get_deleted_op, _From, State) ->
-%%     {reply, State#state.deleted, State};
+handle_call(get_deleted_op, _From, State) ->
+    {reply, State#state.deleted, State};
 
 handle_call({get_right_op, Level}, From, State) ->
     spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
@@ -272,26 +266,21 @@ handle_call({link_right_op, Level, RightNode, RightKey}, _From, State) ->
 handle_call({link_left_op, Level, LeftNode, LeftKey}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode, LeftKey)};
 
-handle_call({link_both_op, Level, LeftNode, LeftKey, RightNode, RightKey}, _From, State) ->
-    {reply, ok, set_left(set_right(State, Level, RightNode, RightKey),
-                         Level, LeftNode, LeftKey)};
-
-
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
-    {reply, ok, State#state{expire_time=ExpireTime}}.
+    {reply, ok, State#state{expire_time=ExpireTime}};
 
-%% handle_call(set_deleted_op, _From, State) ->
-%%     {reply, ok, State#state{deleted=true}};
+handle_call(set_deleted_op, _From, State) ->
+    {reply, ok, State#state{deleted=true}};
 
 
-%% handle_call({set_inserted_op, Level}, _From, State) ->
-%%     ?START_PROF(set_inserted_op),
-%%     NewState = State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)},
-%%     ?STOP_PROF(set_inserted_op),
-%%     {reply, ok, NewState};
+handle_call({set_inserted_op, Level}, _From, State) ->
+    ?START_PROF(set_inserted_op),
+    NewState = State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)},
+    ?STOP_PROF(set_inserted_op),
+    {reply, ok, NewState};
 
-%% handle_call(set_inserted_op, _From, State) ->
-%%     {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
+handle_call(set_inserted_op, _From, State) ->
+    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -447,7 +436,7 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
 
     %% N.B.
     %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = mio_node_info:is_inserted(Self, Level), %%node_on_level(State#state.inserted, Level),
+    IsInserted = node_on_level(State#state.inserted, Level),
     if
         IsSameMV andalso IsInserted ->
             MyKey = State#state.key,
@@ -513,21 +502,18 @@ do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
 %%--------------------------------------------------------------------
 delete_op_call(From, Self, State) ->
     LockedNodes = lock_or_exit([Self], ?LINE, [State#state.key]),
-    IsDeleted = mio_node_info:is_deleted(Self), %%gen_server:call(Self, get_deleted_op),
+    IsDeleted = gen_server:call(Self, get_deleted_op),
     if IsDeleted ->
             %% already deleted.
             unlock(LockedNodes, ?LINE),
             gen_server:reply(From, ok);
        true ->
-            case mio_node_info:is_inserted(Self) of %%gen_server:call(Self, get_inserted_op) of
+            case gen_server:call(Self, get_inserted_op) of
                 true ->
                     MaxLevel = length(State#state.membership_vector),
                     %% My State will not be changed, since I will be killed soon.
-%%                    gen_server:call(Self, set_deleted_op),
-%%                    ets:insert(is_deleted, {Self, true}),
-%%                     F = fun() -> mnesia:write({is_deleted, Self, true}) end,
-%%                     mnesia:transaction(F),
-                    mio_node_info:set_deleted(Self),
+                    gen_server:call(Self, set_deleted_op),
+
                     %% N.B.
                     %% To prevent deadlock, we unlock the Self after deleted mark is set.
                     %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for the same reason.
@@ -597,36 +583,24 @@ lock_or_exit(Nodes, Line, Info) ->
     end.
 
 link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, RightKey}, Level) ->
-    ?START_PROF(link_three_nodes_left),
     %% [Left] -> [Center]  [Right]
     link_right_op(LeftNode, Level, CenterNode, CenterKey),
-    ?STOP_PROF(link_three_nodes_left),
 
-    ?START_PROF(link_three_nodes_right),
     %% [Left]    [Center] <- [Right]
     link_left_op(RightNode, Level, CenterNode, CenterKey),
-    ?STOP_PROF(link_three_nodes_right),
 
     %% [Left] <- [Center]    [Right]
+    link_left_op(CenterNode, Level, LeftNode, LeftKey),
+
     %% [Left]    [Center] -> [Right]
-    ?START_PROF(link_three_nodes_both),
-    link_both_op(CenterNode, Level, LeftNode, LeftKey, RightNode, RightKey),
-    ?STOP_PROF(link_three_nodes_both).
-
-
-%%     %% [Left] <- [Center]    [Right]
-%%     link_left_op(CenterNode, Level, LeftNode, LeftKey),
-
-%%     %% [Left]    [Center] -> [Right]
-%%     link_right_op(CenterNode, Level, RightNode, RightKey).
+    link_right_op(CenterNode, Level, RightNode, RightKey).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
 %%--------------------------------------------------------------------
 insert_op_call(From, _State, Self, Introducer) when Introducer =:= Self->
     %% I am alone.
-%%    gen_server:call(Self, set_inserted_op),
-    mio_node_info:set_inserted(Self),
+    gen_server:call(Self, set_inserted_op),
     gen_server:reply(From, ok);
 insert_op_call(From, State, Self, Introducer) ->
     ?START_PROF(insert_op_call),
@@ -638,12 +612,10 @@ insert_op_call(From, State, Self, Introducer) ->
     case link_on_level_0(From, State, Self, Introducer) of
         no_more ->
             ?STOP_PROF(link_on_level_0),
-%%            gen_server:call(Self, set_inserted_op),
-            mio_node_info:set_inserted(Self),
+            gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, 0);
         _ ->
-%%            gen_server:call(Self, {set_inserted_op, 0}),
-            mio_node_info:set_inserted(Self, 0),
+            gen_server:call(Self, {set_inserted_op, 0}),
 
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
@@ -675,7 +647,7 @@ try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
     %% Just wait infinity.
     lock([Neighbor], infinity, ?LINE),
 
-    IsDeleted = mio_node_info:is_deleted(Neighbor), %% gen_server:call(Neighbor, get_deleted_op),
+    IsDeleted = gen_server:call(Neighbor, get_deleted_op),
     if IsDeleted ->
             %% Retry
             ?INFO("link_on_level_0: Neighbor deleted "),
@@ -767,9 +739,9 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
             retry;
        true ->
             IsDeleted =
-                (Neighbor =/= [] andalso mio_node_info:is_deleted(Neighbor)) %%gen_server:call(Neighbor, get_deleted_op))
+                (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
                 orelse
-                (NeighborOfNeighbor =/= [] andalso mio_node_info:is_deleted(NeighborOfNeighbor)), %%gen_server:call(NeighborOfNeighbor, get_deleted_op)),
+                (NeighborOfNeighbor =/= [] andalso gen_server:call(NeighborOfNeighbor, get_deleted_op)),
             if IsDeleted ->
                     ?INFO("RETRY: check_invariant_level_0 neighbor deleted"),
                     retry;
@@ -840,8 +812,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
-%%            gen_server:call(Self, set_inserted_op),
-            mio_node_info:set_inserted(Self),
+            gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
@@ -874,8 +845,7 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey,
         done ->
             ?STOP_PROF(do_link_level_ge1_check),
             ?START_PROF(do_link_level_ge1_inserted),
-%%            gen_server:call(Self, set_inserted_op),
-            mio_node_info:set_inserted(Self),
+            gen_server:call(Self, set_inserted_op),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             ?STOP_PROF(do_link_level_ge1_inserted),
@@ -891,8 +861,7 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey,
             end,
             ?STOP_PROF(do_link_level_ge1_link),
             ?START_PROF(do_link_level_ge1_inserted2),
-%%            gen_server:call(Self, {set_inserted_op, Level}),
-            mio_node_info:set_inserted(Self, Level),
+            gen_server:call(Self, {set_inserted_op, Level}),
             ?STOP_PROF(do_link_level_ge1_inserted2),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
@@ -927,12 +896,10 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
             ?INFOF("RETRY: check_invariant_ge1 Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
             retry;
         true->
-            ?START_PROF(check_invariant_ge1_deleted),
             IsDeleted =
-                (Buddy =/= [] andalso mio_node_info:is_deleted(Buddy)) %%gen_server:call(Buddy, get_deleted_op))
+                (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
                 orelse
-                  (BuddyNeighbor =/= [] andalso mio_node_info:is_deleted(BuddyNeighbor)), %%gen_server:call(BuddyNeighbor, get_deleted_op)),
-            ?STOP_PROF(check_invariant_ge1_deleted),
+                  (BuddyNeighbor =/= [] andalso gen_server:call(BuddyNeighbor, get_deleted_op)),
             if IsDeleted ->
                     ?INFO("RETRY: check_invariant_ge1 Neighbor deleted"),
                     retry;
