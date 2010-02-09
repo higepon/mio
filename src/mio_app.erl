@@ -52,11 +52,9 @@ start() ->
         ok ->
             ok;
         {error, {shutdown, Reason}} ->
-            io:format("~nError:~n~n application start failed~n     can't start workers ~p~n~n See more information on ~p~n~n.", [Reason, log_file_path()]),
-            halt(1);
+            ?FATALF("Can't start workers. See more information on ~p.", [Reason, log_file_path()]);
         {error, Reason} ->
-            io:format("~nError:~n~n application start failed~n     ~p~n~n     See more information on ~p", [Reason, log_file_path()]),
-            halt(1)
+            ?FATALF("Application start failed ~p. See more information on ~p.", [Reason, log_file_path()])
     end.
 
 

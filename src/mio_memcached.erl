@@ -98,11 +98,9 @@ memcached(Port, MaxLevel, BootNode) ->
                 {ok, Listen} ->
                     mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
                 {error, eaddrinuse} ->
-                    io:format("Error: Can't start mio : port(~p) is in use.", [Port]),
-                    exit({error, eaddrinuse});
+                    ?FATALF("Port ~p is in use", [Port]);
                 {error, Reason} ->
-                    io:format("can't start mio : ~p", [Reason]),
-                    exit({error, Reason})
+                    ?FATALF("Can't start memcached compatible server : ~p", [Reason])
             end
     end.
 
@@ -113,8 +111,7 @@ mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
             spawn_link(?MODULE, process_request, [Sock, WriteSerializer, StartNode, MaxLevel]),
             mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
         Other ->
-            ?ERRORF("accept returned ~w - goodbye!~n",[Other]),
-            exit(Other)
+            ?FATALF("accept returned ~w",[Other])
     end.
 
 
