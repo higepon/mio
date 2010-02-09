@@ -39,7 +39,7 @@
 -include("mio.hrl").
 
 %% API
--export([start/0, stop/0, get_env/1, get_env/2, wait_startup/2]).
+-export([start/0, stop/0, fatal/4, get_env/1, get_env/2, wait_startup/2]).
 
 %% Application callbacks
 -export([start/2, stop/1, prep_stop/1]).
@@ -51,8 +51,12 @@ start() ->
     case application:start(mio) of
         ok ->
             ok;
-        Other ->
-            io:format("FATAL application start failed ~p~n", [Other])
+        {error, {shutdown, Reason}} ->
+            io:format("~nError:~n~n application start failed~n     can't start workers ~p~n~n See more information on ~p~n~n.", [Reason, log_file_path()]),
+            halt(1);
+        {error, Reason} ->
+            io:format("~nError:~n~n application start failed~n     ~p~n~n     See more information on ~p", [Reason, log_file_path()]),
+            halt(1)
     end.
 
 
@@ -64,6 +68,14 @@ stop() ->
         X ->
             ?ERROR(X)
     end.
+
+fatal(Msg, Args, Module, Line) ->
+    ?ERRORF("
+Fatal Error:
+
+     " ++ Msg ++ " ~p:~p
+", Args ++ [Module, Line]),
+    init:stop(1).
 
 wait_startup(Host, Port) ->
     wait_startup(10, Host, Port).
@@ -105,3 +117,7 @@ prep_stop(_State) ->
     %% PROFILER_STOP should be placed here, tty may be closed on stop/1 function.
     ?PROFILER_STOP(),
     ok.
+
+log_file_path() ->
+    {ok, LogDir} = mio_app:get_env(log_dir, "."),
+    LogDir ++ "/mio.log.n".

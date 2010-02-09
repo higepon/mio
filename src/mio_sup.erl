@@ -49,6 +49,7 @@
 start_node(Key, Value, MembershipVector) ->
     start_node(Key, Value, MembershipVector, 0).
 start_node(Key, Value, MembershipVector, Expire) ->
+    %% node should be 'temporary', since a crash of node means fatal error.
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
                                                {mio_node, start_link, [[Key, Value, MembershipVector, Expire]]},
                                                temporary, brutal_kill, worker, [mio_node]}).

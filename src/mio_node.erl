@@ -547,7 +547,7 @@ delete_loop_(Self, Level) ->
 lock(Nodes, infinity, _Line) ->
     mio_lock:lock(Nodes, infinity);
 lock(Nodes, 100, Line) ->
-    ?ERRORF("mio_node:lock dead lock ~p at ~p~n", [Nodes, Line]),
+    ?FATALF("mio_node:lock dead lock Nodes=~p at mio_node:~p", [Nodes, Line]),
     false;
 lock(Nodes, Times, Line) ->
     case mio_lock:lock(Nodes) of
@@ -571,10 +571,9 @@ unlock(Nodes, _Line) ->
 lock_or_exit(Nodes, Line, Info) ->
     IsLocked = lock(Nodes, Line),
     if not IsLocked ->
-            ?ERRORF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
+            ?FATALF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
             exit(lock_failed);
        true ->
-%%            ?INFOF("~p:~p:~p <~p> ~plock ok~n", [?MODULE, Line, self(), Info, Nodes]),
             Nodes
     end.
 

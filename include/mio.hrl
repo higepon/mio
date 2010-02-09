@@ -4,8 +4,11 @@
 -define(SERVER, ?MODULE).
 -define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 -define(INFO(Msg), ?INFOF(Msg, [])).
--define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
+
+%% ERROR should be always written to stderr.
+-define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE]), io:format(Msg ++ "~n", Args)).
 -define(ERROR(Msg), ?ERRORF(Msg, [])).
+-define(FATALF(Msg, Arg), mio_app:fatal(Msg, Arg, ?MODULE, ?LINE)).
 -define(WARNF(Msg, Args), error_logger:warn_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
 -define(WARN(Msg), ?WARNF(Msg, [])).
 
