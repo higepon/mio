@@ -119,6 +119,7 @@ process_request(Sock, WriteSerializer, StartNode, MaxLevel) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
+            ?INFO(Token),
             case Token of
                 ["get", Key] ->
                     process_get(Sock, WriteSerializer, StartNode, Key),
