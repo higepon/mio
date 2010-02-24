@@ -15,7 +15,7 @@
 
 (define (profile-image name)
   (define image-alist '(
-                        ("higepon"  . "higepon.png")
+                        ("higepon"  . "higepon.jpeg")
                         ("akky"     . "akky.jpg")
                         ("amachang" . "amachang.jpg")
                         ("kazuho"   . "kazuho.jpg")))
