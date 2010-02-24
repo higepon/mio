@@ -89,7 +89,26 @@ mio_detached=${opt_detached:+"-detached"}
 #   -config conf/dev_log    : Sets the config file used to configure applications.
 #    -kernel                : Options to kernel application, which are passed to inet module
 
+IS_OSX=`echo "$OSTYPE" | grep darwin`
 # config file path
+if [ "$IS_OSX" != "" ]; then
+erl +K true \
+    +P 10000000 \
+    +W w \
+    -noshell \
+    -noinput \
+    -setcookie $mio_cookie \
+    -name $mio_name \
+    -pa ${MIO_EBIN_ROOT} \
+    -s mio_app start \
+    ${mio_detached} \
+    -mio debug $mio_verbose \
+         port $mio_port \
+         boot_node $mio_introducer \
+         maxlevel $mio_maxlevel \
+         log_dir "\"$mio_log_dir\"" \
+         verbose $mio_verbose
+else
 erl +K true \
     +P 10000000 \
     +W w \
@@ -108,4 +127,4 @@ erl +K true \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
          verbose $mio_verbose
-
+fi
