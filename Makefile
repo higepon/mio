@@ -51,9 +51,6 @@ vcheck: all
 test: check
 
 install: all install_dirs
-	@[ -n "$(TARGET_DIR)" ] || (echo "Please set TARGET_DIR. e.g. /usr/local/mio"; false)
-	@[ -n "$(SBIN_DIR)" ] || (echo "Please set SBIN_DIR. e.g. /usr/sbin/"; false)
-	mkdir -p $(TARGET_DIR)
 	cp -rp ebin include $(TARGET_DIR)
 	for script in mio mioctl mio-env; do \
 		chmod 0755 scripts/$$scripts; \
@@ -62,6 +59,8 @@ install: all install_dirs
 	done
 
 install_dirs:
+	@[ -n "$(TARGET_DIR)" ] || (echo "Please set TARGET_DIR. e.g. /usr/local/mio"; false)
+	@[ -n "$(SBIN_DIR)" ] || (echo "Please set SBIN_DIR. e.g. /usr/sbin/"; false)
 	mkdir -p $(SBIN_DIR)
 	mkdir -p $(TARGET_DIR)/sbin
 
