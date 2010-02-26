@@ -30,27 +30,28 @@ At present, it is in alpha quality.
 
 ## Access to mio
 Use memcached client to access mio.
+   
+    # Perl example
+    use strict;
+    use warnings;
+    use Cache::Memcached::Fast;
+    use Cache::Memcached;
 
-   # Perl example
-   use strict;
-   use warnings;
-   use Cache::Memcached::Fast;
-   use Cache::Memcached;
+    my $m = Cache::Memcached->new( { servers => ['example.com:11211']} );
+    $m->set( "hello" => "world" );
+    $m->set( "hi" => "japan" );
 
-   my $m = Cache::Memcached->new( { servers => ['example.com:11211']} );
-   $m->set( "hello" => "world" );
-   $m->set( "hi" => "japan" );
+    warn $m->get("helllo");
+    warn $m->get("hi");
 
-   warn $m->get("helllo");
-   warn $m->get("hi");
-
-   my $href = $m->get_multi("mio:range-search", "he", "hi", "50");
-   warn $href->{"hello"};
-   warn $href->{"hi"};
+    my $href = $m->get_multi("mio:range-search", "he", "hi", "50");
+    warn $href->{"hello"};
+    warn $href->{"hi"};
 
 
 ## Author
-Copyright (C) Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+Copyright (C) Cybozu Labs, Inc.
+Written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 
 ## License
 New BSD License
