@@ -1,5 +1,6 @@
 ## What is mio
 In short, mio is memcached + "range search".
+
 mio suports range search queries like "get 10 datum which key are between key1 and key2".
 
 N.B.
@@ -51,6 +52,7 @@ Use memcached client to access mio.
 
 ## Author
 Copyright (C) Cybozu Labs, Inc.
+
 Written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 
 ## License
