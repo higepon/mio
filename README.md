@@ -3,7 +3,7 @@ In short, mio is memcached + "range search".
 mio suports range search queries like "get 10 datum which key are between key1 and key2".
 
 N.B.
-At present, it is in alpha state.
+At present, it is in alpha quality.
 
 ## Building and Installing 
   1. Install a recent version of Erlang.
