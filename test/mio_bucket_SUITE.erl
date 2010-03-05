@@ -57,11 +57,19 @@ full(_Config) ->
     B3 = mio_bucket:set(key_c, value_c, B2),
     true = mio_bucket:is_full(B3).
 
+get_smallest(_Config) ->
+    B = mio_bucket:new(3),
+    B1 = mio_bucket:set(key_b, value_b, B),
+    B2 = mio_bucket:set(key_a, value_a, B1),
+    B3 = mio_bucket:set(key_c, value_c, B2),
+    {key_a, value_a} = mio_bucket:get_smallest(B3).
+
 all() ->
     [
      basic,
      not_found,
      remove,
      overflow,
-     full
+     full,
+     get_smallest
     ].

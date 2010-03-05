@@ -39,7 +39,7 @@
 -record(bucket, {capacity, tree}).
 
 %% API
--export([new/1, set/3, get/2, remove/2, is_full/1]).
+-export([new/1, set/3, get/2, remove/2, is_full/1, smallest/1]).
 
 %%====================================================================
 %% API
