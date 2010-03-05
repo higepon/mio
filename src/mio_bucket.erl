@@ -38,9 +38,8 @@
 
 -record(bucket, {capacity, tree}).
 
-
 %% API
--export([new/1, set/3, get/2]).
+-export([new/1, set/3, get/2, remove/2]).
 
 %%====================================================================
 %% API
@@ -71,6 +70,13 @@ get(Key, Bucket) ->
         {value, Value} ->
             Value
     end.
+
+%%--------------------------------------------------------------------
+%% Function: remove/2
+%% Description: remove value by key
+%%--------------------------------------------------------------------
+remove(Key, Bucket) ->
+    Bucket#bucket{tree=gb_trees:delete_any(Key, Bucket#bucket.tree)}.
 
 %%====================================================================
 %% Internal functions
