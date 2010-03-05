@@ -19,8 +19,16 @@ basic(_Config) ->
     value_b = mio_bucket:get(key_b, B3),
     value_c = mio_bucket:get(key_c, B3).
 
+not_found(_Config) ->
+    B = mio_bucket:new(3),
+    B1 = mio_bucket:set(key_b, value_b, B),
+    B2 = mio_bucket:set(key_a, value_a, B1),
+    B3 = mio_bucket:set(key_c, value_c, B2),
+    none = mio_bucket:get(key_d, B3).
+
 
 all() ->
     [
-     basic
+     basic,
+     not_found
     ].
