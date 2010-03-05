@@ -57,7 +57,12 @@ new(Capacity) ->
 %% Description: set (key, value)
 %%--------------------------------------------------------------------
 set(Key, Value, Bucket) ->
-    Bucket#bucket{tree=gb_trees:enter(Key, Value, Bucket#bucket.tree)}.
+    case Bucket#bucket.capacity =:= gb_trees:size(Bucket#bucket.tree) of
+        true ->
+            overflow;
+        _ ->
+            Bucket#bucket{tree=gb_trees:enter(Key, Value, Bucket#bucket.tree)}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: get/2
