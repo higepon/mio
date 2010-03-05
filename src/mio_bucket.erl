@@ -39,7 +39,7 @@
 -record(bucket, {capacity, tree}).
 
 %% API
--export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1]).
+-export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1]).
 
 %%====================================================================
 %% API
@@ -86,6 +86,19 @@ take_smallest(Bucket) ->
             none;
         _ ->
             {Key, Value, NewTree} = gb_trees:take_smallest(Bucket#bucket.tree),
+            {Key, Value, Bucket#bucket{tree=NewTree}}
+    end.
+
+%%--------------------------------------------------------------------
+%% Function: take_largest/1
+%% Description: get value by smallest key and remove it.
+%%--------------------------------------------------------------------
+take_largest(Bucket) ->
+    case gb_trees:size(Bucket#bucket.tree) of
+        0 ->
+            none;
+        _ ->
+            {Key, Value, NewTree} = gb_trees:take_largest(Bucket#bucket.tree),
             {Key, Value, Bucket#bucket{tree=NewTree}}
     end.
 

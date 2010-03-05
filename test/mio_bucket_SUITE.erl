@@ -69,6 +69,18 @@ take_smallest(_Config) ->
     B5 = mio_bucket:new(3),
     none = mio_bucket:take_smallest(B5).
 
+take_largest(_Config) ->
+    B = mio_bucket:new(3),
+    B1 = mio_bucket:set(key_b, value_b, B),
+    B2 = mio_bucket:set(key_a, value_a, B1),
+    B3 = mio_bucket:set(key_c, value_c, B2),
+    {key_c, value_c, B4} = mio_bucket:take_largest(B3),
+
+    none = mio_bucket:get(key_c, B4),
+
+    B5 = mio_bucket:new(3),
+    none = mio_bucket:take_largest(B5).
+
 all() ->
     [
      basic,
@@ -76,5 +88,6 @@ all() ->
      remove,
      overflow,
      full,
-     take_smallest
+     take_smallest,
+     take_largest
     ].
