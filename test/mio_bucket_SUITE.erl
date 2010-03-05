@@ -49,10 +49,19 @@ overflow(_Config) ->
     B5 = mio_bucket:set(key_d, value_d, B4),
     value_d = mio_bucket:get(key_d, B5).
 
+full(_Config) ->
+    B = mio_bucket:new(3),
+    B1 = mio_bucket:set(key_b, value_b, B),
+    B2 = mio_bucket:set(key_a, value_a, B1),
+    false = mio_bucket:is_full(B1),
+    B3 = mio_bucket:set(key_c, value_c, B2),
+    true = mio_bucket:is_full(B3).
+
 all() ->
     [
      basic,
      not_found,
      remove,
-     overflow
+     overflow,
+     full
     ].
