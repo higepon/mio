@@ -39,7 +39,7 @@
 -record(bucket, {capacity, tree}).
 
 %% API
--export([new/1, set/3, get/2, remove/2]).
+-export([new/1, set/3, get/2, remove/2, is_full/1]).
 
 %%====================================================================
 %% API
@@ -82,6 +82,13 @@ get(Key, Bucket) ->
 %%--------------------------------------------------------------------
 remove(Key, Bucket) ->
     Bucket#bucket{tree=gb_trees:delete_any(Key, Bucket#bucket.tree)}.
+
+%%--------------------------------------------------------------------
+%% Function: is_full/1
+%% Description: returns is bucket full?
+%%--------------------------------------------------------------------
+is_full(Bucket) ->
+    Bucket#bucket.capacity =:= gb_trees:size(Bucket#bucket.tree).
 
 %%====================================================================
 %% Internal functions
