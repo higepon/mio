@@ -36,10 +36,23 @@ remove(_Config) ->
     B4 = mio_bucket:remove(key_a, B3),
     none = mio_bucket:get(key_a, B4).
 
+overflow(_Config) ->
+    B = mio_bucket:new(3),
+    B1 = mio_bucket:set(key_b, value_b, B),
+    B2 = mio_bucket:set(key_a, value_a, B1),
+    B3 = mio_bucket:set(key_c, value_c, B2),
+    overflow = mio_bucket:set(key_d, value_d, B3),
+
+    none = mio_bucket:get(key_d, B3),
+    B4 = mio_bucket:remove(key_a, B3),
+
+    B5 = mio_bucket:set(key_d, value_d, B4),
+    value_d = mio_bucket:get(key_d, B5).
 
 all() ->
     [
      basic,
      not_found,
-     remove
+     remove,
+     overflow
     ].
