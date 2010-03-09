@@ -28,15 +28,15 @@
 %%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%%-------------------------------------------------------------------
-%%% File    : mio_bucket.erl
+%%% File    : mio_store.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
-%%% Description : bucket
+%%% Description : store
 %%%
 %%% Created : 4 Mar 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_bucket).
+-module(mio_store).
 
--record(bucket, {capacity, tree}).
+-record(store, {capacity, tree}).
 
 %% API
 -export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1]).
@@ -47,29 +47,29 @@
 
 %%--------------------------------------------------------------------
 %% Function: new/1
-%% Description: make a bucket
+%% Description: make a store
 %%--------------------------------------------------------------------
 new(Capacity) ->
-    #bucket{capacity=Capacity, tree=gb_trees:empty()}.
+    #store{capacity=Capacity, tree=gb_trees:empty()}.
 
 %%--------------------------------------------------------------------
 %% Function: set/3
 %% Description: set (key, value)
 %%--------------------------------------------------------------------
-set(Key, Value, Bucket) ->
-    case Bucket#bucket.capacity =:= gb_trees:size(Bucket#bucket.tree) of
+set(Key, Value, Store) ->
+    case Store#store.capacity =:= gb_trees:size(Store#store.tree) of
         true ->
             overflow;
         _ ->
-            Bucket#bucket{tree=gb_trees:enter(Key, Value, Bucket#bucket.tree)}
+            Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)}
     end.
 
 %%--------------------------------------------------------------------
 %% Function: get/2
 %% Description: get value by key
 %%--------------------------------------------------------------------
-get(Key, Bucket) ->
-    case gb_trees:lookup(Key, Bucket#bucket.tree) of
+get(Key, Store) ->
+    case gb_trees:lookup(Key, Store#store.tree) of
         none ->
             none;
         {value, Value} ->
@@ -80,41 +80,41 @@ get(Key, Bucket) ->
 %% Function: take_smallest/1
 %% Description: get value by smallest key and remove it.
 %%--------------------------------------------------------------------
-take_smallest(Bucket) ->
-    case gb_trees:size(Bucket#bucket.tree) of
+take_smallest(Store) ->
+    case gb_trees:size(Store#store.tree) of
         0 ->
             none;
         _ ->
-            {Key, Value, NewTree} = gb_trees:take_smallest(Bucket#bucket.tree),
-            {Key, Value, Bucket#bucket{tree=NewTree}}
+            {Key, Value, NewTree} = gb_trees:take_smallest(Store#store.tree),
+            {Key, Value, Store#store{tree=NewTree}}
     end.
 
 %%--------------------------------------------------------------------
 %% Function: take_largest/1
 %% Description: get value by smallest key and remove it.
 %%--------------------------------------------------------------------
-take_largest(Bucket) ->
-    case gb_trees:size(Bucket#bucket.tree) of
+take_largest(Store) ->
+    case gb_trees:size(Store#store.tree) of
         0 ->
             none;
         _ ->
-            {Key, Value, NewTree} = gb_trees:take_largest(Bucket#bucket.tree),
-            {Key, Value, Bucket#bucket{tree=NewTree}}
+            {Key, Value, NewTree} = gb_trees:take_largest(Store#store.tree),
+            {Key, Value, Store#store{tree=NewTree}}
     end.
 
 %%--------------------------------------------------------------------
 %% Function: remove/2
 %% Description: remove value by key
 %%--------------------------------------------------------------------
-remove(Key, Bucket) ->
-    Bucket#bucket{tree=gb_trees:delete_any(Key, Bucket#bucket.tree)}.
+remove(Key, Store) ->
+    Store#store{tree=gb_trees:delete_any(Key, Store#store.tree)}.
 
 %%--------------------------------------------------------------------
 %% Function: is_full/1
-%% Description: returns is bucket full?
+%% Description: returns is store full?
 %%--------------------------------------------------------------------
-is_full(Bucket) ->
-    Bucket#bucket.capacity =:= gb_trees:size(Bucket#bucket.tree).
+is_full(Store) ->
+    Store#store.capacity =:= gb_trees:size(Store#store.tree).
 
 %%====================================================================
 %% Internal functions
