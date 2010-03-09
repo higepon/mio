@@ -40,6 +40,94 @@
 -export([]).
 
 %%====================================================================
+%%  Bucket layer
+%%====================================================================
+%%
+%%  C: Closed bucket
+%%  O: Open bucket
+%%  O*: Open and empty bucket
+%%
+%%  Three invariants on bucket group.
+%%
+%%    (1) O
+%%      The system has one open bucket.
+%%
+%%    (2) C-O
+%%      Every closed buket is adjacent to an open bucket.
+%%
+%%    (3) C-O-C
+%%      Every open bucket has aclosed bucket to its left.
+%%
+%%
+%%  Insertion patterns.
+%%
+%%    (a) O -> O'
+%%
+%%    (b) O -> [C] -> C-O
+%%
+%%    (c) C-O -> C-O'
+%%
+%%    (d) C1-O2 -> [C1-C2] -> C1-O3-C2
+%%      Insertion new key to C1 causes key transfer from C1 to O2.
+%%      O2 becomes closed C2.
+%%      A fresh bucket is allocated and inserted into between C1 and C2 to satisfy the invariants.
+%%
+%%    (e) C-O-C -> C-'O-C
+%%
+%%    (f) C1-O2-C3 -> C1-O2'-C3'
+%%       Insertion new key to C3 caused key transfer from C3 to O2.
+%%
+%%    (g) C1-O2-C3 -> C1-O2 | C3-O4
+%%      Insertion new key to C3 causes a new group C3-O4.
+%%
+%%    (h) C1-O2-C3 -> [C1-C2-C3] -> C1-O2 | C3-O4
+%%      Insertion new key to C1 causes key transfer from C1 to O2.
+%%      O2 bacomes closed C2.
+%%      C2 transfers a key to C3 in order to stay open.
+%%      C3 must then transfer a key to empty bucket O4.
+%%
+%%  Deletion patterns
+%%
+%%    (a) C1-O2 | C3-O4
+%%      Deletion from C1 causes O2 -> C1.
+%%        C1'-O2' | C3-O4.
+%%
+%%      Deletion from C3. Same as above.
+%%
+%%    (b) C1-O2 | C3-O4*
+%%      Deletion from C1. Same as (a).
+%%
+%%      Deletion from C3 causes O2 -> C3.
+%%        C1-O2'-C3'
+%%
+%%    (c) C1-O2 | C3-O4-C5
+%%      Deletion from C1. Same as (a).
+%%
+%%      Deletion from C3 causes O4-> C3
+%%        C1-O2 | C3'-O4'-C5
+%%
+%%      Deletion from C3 causes O4-> C3
+%%        C1-O2 | C3'-O4'-C5
+
+%%
+%%    (a) C-O -> C-O'
+%%
+%%    (b) C1-O2 -> [O1-O2] -> C1'-O2'
+%%      Deletion from C1 caused key transfer from O2 to O1.
+%%
+%%    (c) C1-O2  | C3-O4* -> [C1-O2 | O3-O4*] -> C1-O2'-C3'
+%%      Deletion from C3.
+%%
+%%    (d) C1-O2*  | C3-O4* -> [C1-O2* | O3-O4*] -> C1-O3
+%%      Deletion from C3.
+%%
+%%    (e) C1-O2-C3 | C4-O5* -> [C1-O2-O3 | C4-O5*] -> C1-O2 | C3'-O4
+%%      Deletion from C3 caused key transfer from C4 to O3.
+
+
+
+
+%%====================================================================
 %% API
 %%====================================================================
 
