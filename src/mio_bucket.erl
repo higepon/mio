@@ -46,7 +46,7 @@
 %%  C: Closed bucket
 %%  O: Open bucket
 %%  O*: Open and empty bucket
-%%  O$: Nealy closed bucket
+%%  O$: Nearly closed bucket
 %%
 %%  Three invariants on bucket group.
 %%
