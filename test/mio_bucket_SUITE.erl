@@ -25,8 +25,19 @@ end_per_suite(_Config) ->
     ok = application:stop(mio),
     ok.
 
+
 insert(_Config) ->
     %% set up initial bucket
+    Bucket = setup_full_bucket(3),
+    ok = case mio_bucket:get_right_op(Bucket) of
+             [] -> ng;
+             RightBucket ->
+                 true = mio_bucket:is_empty_op(RightBucket),
+                 ok
+         end.
+
+%% Helper
+setup_full_bucket(Capacity) ->
     Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity),
     [] = mio_bucket:get_left_op(Bucket),
@@ -36,12 +47,8 @@ insert(_Config) ->
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
     ok = mio_bucket:insert_op(Bucket, key3, value3),
-    ok = case mio_bucket:get_right_op(Bucket) of
-             [] -> ng;
-             RightBucket ->
-                 true = mio_bucket:is_empty_op(RightBucket),
-                 ok
-         end.
+    Bucket.
+
 
 all() ->
     [
