@@ -62,7 +62,7 @@
 %%
 %%  Insertion patterns.
 %%
-%%    (a) * -> O'
+%%    (a) O* -> O'
 %%
 %%    (c) O$ -> [C] -> C-O*
 %%
