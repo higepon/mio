@@ -25,7 +25,7 @@ end_per_suite(_Config) ->
     ok = application:stop(mio),
     ok.
 
-
+%% 0$ -> C-O*
 insert(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
@@ -36,9 +36,21 @@ insert(_Config) ->
                  ok
          end.
 
+insert_c_o(_Config) ->
+    %% set up initial bucket
+    Bucket = setup_full_bucket(3),
+    ok = mio_bucket:insert_op(Bucket, key0, value0),
+    {ok, value0} = mio_bucket:get_op(Bucket, key0),
+    {ok, value1} = mio_bucket:get_op(Bucket, key1),
+    {ok, value2} = mio_bucket:get_op(Bucket, key2),
+    {error, not_found} = mio_bucket:get_op(Bucket, key3),
+
+    Right = mio_bucket:get_right_op(Bucket),
+    {ok, value3} = mio_bucket:get_op(Right, key3).
+
+
 %% Helper
 setup_full_bucket(Capacity) ->
-    Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity),
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
@@ -52,5 +64,6 @@ setup_full_bucket(Capacity) ->
 
 all() ->
     [
-     insert
+     insert,
+     insert_c_o
     ].
