@@ -198,7 +198,7 @@ insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
 
 is_empty_op(Bucket) ->
-    true.
+    gen_server:call(Bucket, is_empty_op).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -232,6 +232,9 @@ init([Capacity]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call(is_empty_op, _From, State) ->
+    {reply, mio_store:is_empty(State#state.store), State};
+
 handle_call(get_left_op, _From, State) ->
     {reply, State#state.left, State};
 
