@@ -194,7 +194,7 @@ get_right_op(Bucket) ->
     gen_server:call(Bucket, get_right_op).
 
 insert_op(Bucket, Key, Value) ->
-    ok.
+    gen_server:call(Bucket, {insert_op, Key, Value}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -231,6 +231,9 @@ handle_call(get_left_op, _From, State) ->
 
 handle_call(get_right_op, _From, State) ->
     {reply, State#state.right, State};
+
+handle_call({insert_op, Key, Value}, _From, State) ->
+    {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
