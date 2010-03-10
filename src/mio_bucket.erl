@@ -40,14 +40,14 @@
 
 %% API
 -export([start_link/1,
-         get_left_op/1
+         get_left_op/1, get_right_op/1
         ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {left}).
+-record(state, {left, right}).
 
 %%====================================================================
 %%  Bucket layer
@@ -189,6 +189,10 @@
 get_left_op(Bucket) ->
     gen_server:call(Bucket, get_left_op).
 
+get_right_op(Bucket) ->
+    gen_server:call(Bucket, get_right_op).
+
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -208,7 +212,7 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Capacity]) ->
-    {ok, #state{left=[]}}.
+    {ok, #state{left=[], right=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -221,6 +225,10 @@ init([Capacity]) ->
 %%--------------------------------------------------------------------
 handle_call(get_left_op, _From, State) ->
     {reply, State#state.left, State};
+
+handle_call(get_right_op, _From, State) ->
+    {reply, State#state.right, State};
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
