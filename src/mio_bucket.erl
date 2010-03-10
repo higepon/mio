@@ -40,7 +40,8 @@
 
 %% API
 -export([start_link/1,
-         get_left_op/1, get_right_op/1
+         get_left_op/1, get_right_op/1,
+         insert_op/3
         ]).
 
 %% gen_server callbacks
@@ -192,6 +193,8 @@ get_left_op(Bucket) ->
 get_right_op(Bucket) ->
     gen_server:call(Bucket, get_right_op).
 
+insert_op(Bucket, Key, Value) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
