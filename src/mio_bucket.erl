@@ -148,7 +148,7 @@
 %%      Deletion from C1 or C3. Same as (c).
 %%
 %%      Deletion from C4.
-%%        C1-O2-C3 | O4-O5*-C6 -> C1-O2'-C3' | C4'-O5*-C6
+%%        C1-O2-C3 | O4-O5*-C6 -> C1-O2-C3 | C4'-O6
 %%
 %%      Deletion from C6.
 %%        C1-O2-C3 | C4-O5*-O6 -> C1-O2-C3 | C4-O6
