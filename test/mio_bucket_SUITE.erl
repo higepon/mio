@@ -34,14 +34,14 @@ insert(_Config) ->
     ok = mio_bucket:insert_op(Bucket, key1, value1),
     ok = mio_bucket:insert_op(Bucket, key2, value2),
     [] = mio_bucket:get_left_op(Bucket),
-    [] = mio_bucket:get_right_op(Bucket).
-%%     ok = mio_bucket:insert(Bucket, key3, value3),
-%%     ok = case mio_bucket:get_right_op(Bucket) of
-%%              [] -> ng;
-%%              RightBucket ->
-%%                  true = mio_bucket:is_empty_op(RightBucket),
-%%                  ok
-%%          end.
+    [] = mio_bucket:get_right_op(Bucket),
+    ok = mio_bucket:insert_op(Bucket, key3, value3),
+    ok = case mio_bucket:get_right_op(Bucket) of
+             [] -> ng;
+             RightBucket ->
+                 true = mio_bucket:is_empty_op(RightBucket),
+                 ok
+         end.
 
 all() ->
     [
