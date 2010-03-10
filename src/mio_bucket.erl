@@ -47,7 +47,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {}).
+-record(state, {left}).
 
 %%====================================================================
 %%  Bucket layer
@@ -208,7 +208,7 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Capacity]) ->
-    {ok, #state{}}.
+    {ok, #state{left=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -220,7 +220,7 @@ init([Capacity]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(get_left_op, _From, State) ->
-    {reply, [], State};
+    {reply, State#state.left, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
