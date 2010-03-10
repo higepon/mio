@@ -41,7 +41,8 @@
 %% API
 -export([start_link/1,
          get_left_op/1, get_right_op/1,
-         insert_op/3
+         insert_op/3,
+         is_empty_op/1
         ]).
 
 %% gen_server callbacks
@@ -196,6 +197,9 @@ get_right_op(Bucket) ->
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
 
+is_empty_op(Bucket) ->
+    true.
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -237,9 +241,18 @@ handle_call(get_right_op, _From, State) ->
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         overflow ->
-            {reply, insert_op_todo, State};
+            %% should never happend
+            {reply, insert_op_assert, State};
         NewStore ->
-            {reply, ok, State#state{store=NewStore}}
+            case mio_store:is_full(NewStore) of
+                true ->
+                    {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore)),
+                    %% assertion
+                    [] = State#state.right,
+                    {reply, ok, State#state{right=EmptyBucket}};
+                _ ->
+                    {reply, ok, State#state{store=NewStore}}
+            end
     end;
 
 handle_call(_Request, _From, State) ->

@@ -39,7 +39,7 @@
 -record(store, {capacity, tree}).
 
 %% API
--export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1]).
+-export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1, capacity/1]).
 
 %%====================================================================
 %% API
@@ -115,6 +115,13 @@ remove(Key, Store) ->
 %%--------------------------------------------------------------------
 is_full(Store) ->
     Store#store.capacity =:= gb_trees:size(Store#store.tree).
+
+%%--------------------------------------------------------------------
+%% Function: capacity
+%% Description: returns capacity
+%%--------------------------------------------------------------------
+capacity(Store) ->
+    Store#store.capacity.
 
 %%====================================================================
 %% Internal functions
