@@ -249,6 +249,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
         NewStore ->
             case mio_store:is_full(NewStore) of
                 true ->
+                    %% O$ -> [C] -> C-O*
                     {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore)),
                     %% assertion
                     [] = State#state.right,
