@@ -46,6 +46,7 @@
 %%  C: Closed bucket
 %%  O: Open bucket
 %%  O*: Open and empty bucket
+%%  O$: Nealy closed bucket
 %%
 %%  Three invariants on bucket group.
 %%
@@ -61,30 +62,24 @@
 %%
 %%  Insertion patterns.
 %%
-%%    (a) O -> O'
+%%    (a) * -> O'
 %%
-%%    (b) O -> [C] -> C-O
+%%    (c) O$ -> [C] -> C-O*
 %%
-%%    (c) C-O -> C-O'
+%%    (c) C1-O2
+%%      Insertion to C1 : C1'-O2'.
+%%      Insertion to O2 : C1-O2'.
 %%
-%%    (d) C1-O2 -> [C1-C2] -> C1-O3-C2
-%%      Insertion new key to C1 causes key transfer from C1 to O2.
-%%      O2 becomes closed C2.
-%%      A fresh bucket is allocated and inserted into between C1 and C2 to satisfy the invariants.
+%%    (d) C1-O2$
+%%      Insertion to C1 : C1'-C2 -> C1'-O*-C2.
+%%      Insertion to O2$ : C1-C2 -> C1-O*-C2
 %%
-%%    (e) C-O-C -> C-'O-C
+%%    (e) C1-O2-C3
+%%      Insertion to C1 : C1'-O2'-C3
+%%      Insertion to C3 : C1-O2'-C3'
 %%
-%%    (f) C1-O2-C3 -> C1-O2'-C3'
-%%       Insertion new key to C3 caused key transfer from C3 to O2.
-%%
-%%    (g) C1-O2-C3 -> C1-O2 | C3-O4
-%%      Insertion new key to C3 causes a new group C3-O4.
-%%
-%%    (h) C1-O2-C3 -> [C1-C2-C3] -> C1-O2 | C3-O4
-%%      Insertion new key to C1 causes key transfer from C1 to O2.
-%%      O2 bacomes closed C2.
-%%      C2 transfers a key to C3 in order to stay open.
-%%      C3 must then transfer a key to empty bucket O4.
+%%    (f) C1-O2$-C3
+%%      Insertion to C1 : C1'-C2-C3 ->C1'-O2 | C3'-O4
 %%
 %%  Deletion patterns
 %%
