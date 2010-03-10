@@ -29,8 +29,8 @@ insert(_Config) ->
     %% set up initial bucket
     Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity).
-%%     [] = mio_bucket:get_left_op(Bucket),
-%%     [] = mio_bucket:get_right_op(Bucket),
+    [] = mio_bucket:get_left_op(Bucket),
+%%    [] = mio_bucket:get_right_op(Bucket),
 
 %%     ok = mio_bucket:insert(Bucket, key1, value1),
 %%     ok = mio_bucket:insert(Bucket, key2, value2),
