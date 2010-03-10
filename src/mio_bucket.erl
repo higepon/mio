@@ -235,7 +235,12 @@ handle_call(get_right_op, _From, State) ->
     {reply, State#state.right, State};
 
 handle_call({insert_op, Key, Value}, _From, State) ->
-    {reply, ok, State};
+    case mio_store:set(Key, Value, State#state.store) of
+        overflow ->
+            {reply, insert_op_todo, State};
+        NewStore ->
+            {reply, ok, State#state{store=NewStore}}
+    end;
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
