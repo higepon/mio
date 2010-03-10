@@ -48,7 +48,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {left, right}).
+-record(state, {store, left, right}).
 
 %%====================================================================
 %%  Bucket layer
@@ -215,7 +215,9 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Capacity]) ->
-    {ok, #state{left=[], right=[]}}.
+    {ok, #state{store=mio_store:new(Capacity),
+                left=[],
+                right=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
