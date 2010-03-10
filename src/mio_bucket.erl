@@ -187,7 +187,7 @@
 %% API
 %%====================================================================
 get_left_op(Bucket) ->
-    [].
+    gen_server:call(Bucket, get_left_op).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -219,6 +219,8 @@ init([Capacity]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call(get_left_op, _From, State) ->
+    {reply, [], State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
