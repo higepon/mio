@@ -36,9 +36,12 @@ insert(_Config) ->
                  ok
          end.
 
+%% C1-O2 -> C1'-O2'
 insert_c_o(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
+
+    %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, key0, value0),
     {ok, value0} = mio_bucket:get_op(Bucket, key0),
     {ok, value1} = mio_bucket:get_op(Bucket, key1),

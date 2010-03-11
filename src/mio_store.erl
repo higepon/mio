@@ -57,7 +57,7 @@ new(Capacity) ->
 %% Description: set (key, value)
 %%--------------------------------------------------------------------
 set(Key, Value, Store) ->
-    case Store#store.capacity =:= gb_trees:size(Store#store.tree) of
+    case is_full(Store) of
         true ->
             overflow;
         _ ->

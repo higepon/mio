@@ -40,7 +40,7 @@
 
 %% API
 -export([start_link/1,
-         get_left_op/1, get_right_op/1,
+         get_op/2, get_left_op/1, get_right_op/1,
          insert_op/3,
          is_empty_op/1
         ]).
@@ -188,6 +188,9 @@
 %%====================================================================
 %% API
 %%====================================================================
+get_op(Bucket, Key) ->
+    gen_server:call(Bucket, {get_op, Key}).
+
 get_left_op(Bucket) ->
     gen_server:call(Bucket, get_left_op).
 
@@ -235,6 +238,14 @@ init([Capacity]) ->
 handle_call(is_empty_op, _From, State) ->
     {reply, mio_store:is_empty(State#state.store), State};
 
+handle_call({get_op, Key}, _From, State) ->
+    case mio_store:get(Key, State#state.store) of
+        none ->
+            {reply, {error, not_found}, State};
+        Value ->
+            {reply, {ok, Value}, State}
+    end;
+
 handle_call(get_left_op, _From, State) ->
     {reply, State#state.left, State};
 
@@ -244,16 +255,20 @@ handle_call(get_right_op, _From, State) ->
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         overflow ->
-            %% should never happend
-            {reply, insert_op_assert, State};
+            %% C1-O -> C1'-O'
+            ?ASSERT_NOT_NIL(State#state.right),
+            {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
+            ok = mio_bucket:insert_op(State#state.right, LKey, LValue),
+            NewStore2 = mio_store:set(Key, Value, NewStore),
+            {reply, ok, State#state{store=NewStore2}};
         NewStore ->
             case mio_store:is_full(NewStore) of
                 true ->
                     %% O$ -> [C] -> C-O*
                     {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore)),
                     %% assertion
-                    [] = State#state.right,
-                    {reply, ok, State#state{right=EmptyBucket}};
+                    ?ASSERT_MATCH([], State#state.right),
+                    {reply, ok, State#state{right=EmptyBucket, store=NewStore}};
                 _ ->
                     {reply, ok, State#state{store=NewStore}}
             end
