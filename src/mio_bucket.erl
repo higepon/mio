@@ -44,7 +44,7 @@
          get_left_op/1, get_right_op/1,
          set_left_op/2, set_right_op/2,
          insert_op/3,
-         set_type_op/2,
+         get_type_op/1, set_type_op/2,
          is_empty_op/1
         ]).
 
@@ -211,6 +211,9 @@ set_left_op(Bucket, Left) ->
 set_right_op(Bucket, Right) ->
     gen_server:call(Bucket, {set_right_op, Right}).
 
+get_type_op(Bucket) ->
+    gen_server:call(Bucket, get_type_op).
+
 set_type_op(Bucket, Type) ->
     gen_server:call(Bucket, {set_type_op, Type}).
 
@@ -280,6 +283,9 @@ handle_call({set_right_op, Right}, _From, State) ->
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#state{type=Type}};
 
+handle_call(get_type_op, _From, State) ->
+    {reply, State#state.type, State};
+
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         overflow ->
@@ -304,6 +310,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             %% C1-O2$ -> C1-O*-C2
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_c_m),
                             LeftBucket = State#state.left,
+                            ?ASSERT_MATCH(c_o_l, mio_bucket:get_type_op(LeftBucket)),
                             ok = mio_bucket:set_right_op(LeftBucket, EmptyBucket),
                             ok = mio_bucket:set_left_op(EmptyBucket, LeftBucket),
                             ok = mio_bucket:set_right_op(EmptyBucket, self()),
