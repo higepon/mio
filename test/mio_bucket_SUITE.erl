@@ -63,6 +63,28 @@ insert_c_o_2(_Config) ->
     {ok, value3} = mio_bucket:get_op(Bucket, key3),
     {ok, value4} = mio_bucket:get_op(Right, key4).
 
+%% C1-O2$ -> C1-O*-C2
+insert_c_o_3(_Config) ->
+    %% set up initial bucket
+    Bucket = setup_full_bucket(3),
+    Right = mio_bucket:get_right_op(Bucket),
+
+    %% right is nearly full
+    ok = mio_bucket:insert_op(Right, key4, value4),
+    ok = mio_bucket:insert_op(Right, key5, value5),
+    ok = mio_bucket:insert_op(Right, key6, value6),
+
+    NewRight = mio_bucket:get_right_op(Bucket),
+    true = mio_bucket:is_empty_op(NewRight),
+
+    Bucket = mio_bucket:get_left_op(NewRight),
+    Right = mio_bucket:get_right_op(NewRight),
+    NewRight = mio_bucket:get_left_op(Right),
+    [] =  mio_bucket:get_right_op(Right),
+
+    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value5} = mio_bucket:get_op(Right, key5),
+    {ok, value6} = mio_bucket:get_op(Right, key6).
 
 %% Helper
 setup_full_bucket(Capacity) ->
@@ -81,5 +103,6 @@ all() ->
     [
      insert,
      insert_c_o_1,
-     insert_c_o_2
+     insert_c_o_2,
+     insert_c_o_3
     ].
