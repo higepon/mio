@@ -329,6 +329,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {reply, ok, State#state{store=NewStore2}}
                     end;
                 c_o_c_l ->
+                    %% C1-O2-C3 -> C1'-O2'-C3
                     {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
                     ok = mio_bucket:just_insert_op(State#state.right, LKey, LValue),
                     NewStore2 = mio_store:set(Key, Value, NewStore),
