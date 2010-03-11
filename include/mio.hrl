@@ -17,8 +17,8 @@
   -define(ASSERT_MATCH(EXPECTED, X),
           case X of
               EXPECTED -> true;
-              Value ->
-                  io:format("** Assertion failed: ~p expected, but got ~p at ~p:~p~n", [EXPECTED, Value, ?MODULE, ?LINE]),
+              _ ->
+                  io:format("** Assertion failed: ~p expected, but got ~p at ~p:~p~n", [EXPECTED, X, ?MODULE, ?LINE]),
                   exit(assertion_failed)
           end.
   -define(ASSERT_NOT_NIL(X),

@@ -40,8 +40,11 @@
 
 %% API
 -export([start_link/1,
-         get_op/2, get_left_op/1, get_right_op/1,
+         get_op/2,
+         get_left_op/1, get_right_op/1,
+         set_left_op/2, set_right_op/2,
          insert_op/3,
+         set_type_op/2,
          is_empty_op/1
         ]).
 
@@ -202,6 +205,15 @@ get_left_op(Bucket) ->
 get_right_op(Bucket) ->
     gen_server:call(Bucket, get_right_op).
 
+set_left_op(Bucket, Left) ->
+    gen_server:call(Bucket, {set_left_op, Left}).
+
+set_right_op(Bucket, Right) ->
+    gen_server:call(Bucket, {set_right_op, Right}).
+
+set_type_op(Bucket, Type) ->
+    gen_server:call(Bucket, {set_type_op, Type}).
+
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
 
@@ -259,6 +271,15 @@ handle_call(get_left_op, _From, State) ->
 handle_call(get_right_op, _From, State) ->
     {reply, State#state.right, State};
 
+handle_call({set_left_op, Left}, _From, State) ->
+    {reply, ok, State#state{left=Left}};
+
+handle_call({set_right_op, Right}, _From, State) ->
+    {reply, ok, State#state{right=Right}};
+
+handle_call({set_type_op, Type}, _From, State) ->
+    {reply, ok, State#state{type=Type}};
+
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         overflow ->
@@ -272,13 +293,23 @@ handle_call({insert_op, Key, Value}, _From, State) ->
         NewStore ->
             case mio_store:is_full(NewStore) of
                 true ->
-                    %% O$ -> [C] -> C-O*
-                    ?ASSERT_MATCH(alone, State#state.type),
-                    {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r),
-
-                    ?ASSERT_MATCH([], State#state.right),
-
-                    {reply, ok, State#state{right=EmptyBucket, store=NewStore, type=c_o_l}};
+                    case State#state.type of
+                        alone ->
+                            %% O$ -> [C] -> C-O*
+                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r),
+                            ?ASSERT_MATCH([], State#state.right),
+                            ok = mio_bucket:set_left_op(EmptyBucket, self()),
+                            {reply, ok, State#state{right=EmptyBucket, store=NewStore, type=c_o_l}};
+                        c_o_r ->
+                            %% C1-O2$ -> C1-O*-C2
+                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_c_m),
+                            LeftBucket = State#state.left,
+                            ok = mio_bucket:set_right_op(LeftBucket, EmptyBucket),
+                            ok = mio_bucket:set_left_op(EmptyBucket, LeftBucket),
+                            ok = mio_bucket:set_right_op(EmptyBucket, self()),
+                            ok = mio_bucket:set_type_op(LeftBucket, c_o_c_l),
+                            {reply, ok, State#state{store=NewStore, type=c_o_c_r, left=EmptyBucket}}
+                    end;
                 _ ->
                     {reply, ok, State#state{store=NewStore}}
             end

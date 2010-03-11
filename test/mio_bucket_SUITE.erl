@@ -33,6 +33,7 @@ insert(_Config) ->
              [] -> ng;
              RightBucket ->
                  true = mio_bucket:is_empty_op(RightBucket),
+                 Bucket = mio_bucket:get_left_op(RightBucket),
                  ok
          end.
 
@@ -103,6 +104,6 @@ all() ->
     [
      insert,
      insert_c_o_1,
-     insert_c_o_2
-%%     insert_c_o_3
+     insert_c_o_2,
+     insert_c_o_3
     ].
