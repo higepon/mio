@@ -97,9 +97,10 @@
 %%    (e) C1-O2-C3
 %%      Insertion to C1 : C1'-O2'-C3
 %%      Insertion to C3 : C1-O2'-C3'
+%%      Insertion to O2 : C1-O2'-C3
 %%
 %%    (f) C1-O2$-C3
-%%      Insertion to C1 : C1'-C2-C3 ->C1'-O2 | C3'-O4
+%%      Insertion to C1 : C1'-C2-C3 -> C1'-O2 | C3'-O4
 %%
 %%  Deletion patterns
 %%
