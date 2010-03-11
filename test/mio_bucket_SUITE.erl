@@ -103,6 +103,6 @@ all() ->
     [
      insert,
      insert_c_o_1,
-     insert_c_o_2,
-     insert_c_o_3
+     insert_c_o_2
+%%     insert_c_o_3
     ].
