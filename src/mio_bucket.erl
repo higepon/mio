@@ -49,7 +49,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {store, left, right}).
+-record(state, {store, left, right, type}).
+
+%% Known types
+%%   O     : <alone>
+%%   C-O   : <c_o_l>-<c_o_r>
+%%   C-O-C : <c_o_c_l>-<c_o_c_m>-<c_o_c_r>
 
 %%====================================================================
 %%  Bucket layer
@@ -221,10 +226,12 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Capacity]) ->
+init([Capacity, Type]) ->
     {ok, #state{store=mio_store:new(Capacity),
                 left=[],
-                right=[]}}.
+                right=[],
+                type=Type
+               }}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -257,6 +264,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
         overflow ->
             %% C1-O -> C1'-O'
             ?ASSERT_NOT_NIL(State#state.right),
+            ?ASSERT_MATCH(c_o_l, State#state.type),
             {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
             ok = mio_bucket:insert_op(State#state.right, LKey, LValue),
             NewStore2 = mio_store:set(Key, Value, NewStore),
@@ -265,10 +273,12 @@ handle_call({insert_op, Key, Value}, _From, State) ->
             case mio_store:is_full(NewStore) of
                 true ->
                     %% O$ -> [C] -> C-O*
-                    {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore)),
-                    %% assertion
+                    ?ASSERT_MATCH(alone, State#state.type),
+                    {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r),
+
                     ?ASSERT_MATCH([], State#state.right),
-                    {reply, ok, State#state{right=EmptyBucket, store=NewStore}};
+
+                    {reply, ok, State#state{right=EmptyBucket, store=NewStore, type=c_o_l}};
                 _ ->
                     {reply, ok, State#state{store=NewStore}}
             end
