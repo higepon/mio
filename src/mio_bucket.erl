@@ -307,9 +307,10 @@ handle_call({just_insert_op, Key, Value}, _From, State) ->
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         overflow ->
-            ?ASSERT_NOT_NIL(State#state.right),
+
             case State#state.type of
                 c_o_l ->
+                    ?ASSERT_NOT_NIL(State#state.right),
                     {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
                     ok = mio_bucket:just_insert_op(State#state.right, LKey, LValue),
                     NewStore2 = mio_store:set(Key, Value, NewStore),
@@ -329,12 +330,20 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {reply, ok, State#state{store=NewStore2}}
                     end;
                 c_o_c_l ->
+                    ?ASSERT_NOT_NIL(State#state.right),
                     %% C1-O2-C3 -> C1'-O2'-C3
                     {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
                     ok = mio_bucket:just_insert_op(State#state.right, LKey, LValue),
                     NewStore2 = mio_store:set(Key, Value, NewStore),
+                    {reply, ok, State#state{store=NewStore2}};
+                c_o_c_r ->
+                    %% C1-O2-C3 -> C1-O2'-C3'
+                    {LKey, LValue, NewStore} = mio_store:take_smallest(State#state.store),
+                    ok = mio_bucket:just_insert_op(State#state.left, LKey, LValue),
+                    NewStore2 = mio_store:set(Key, Value, NewStore),
                     {reply, ok, State#state{store=NewStore2}}
-                end;
+            end;
+
         NewStore ->
             case mio_store:is_full(NewStore) of
                 true ->

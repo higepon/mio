@@ -152,11 +152,11 @@ insert_c_o_c_2(_Config) ->
     ok = mio_bucket:insert_op(Right, key7, value7),
 
     true = mio_bucket:is_full_op(Right),
+    {ok, value4} = mio_bucket:get_op(Right, key4),
     {ok, value5} = mio_bucket:get_op(Right, key5),
-    {ok, value6} = mio_bucket:get_op(Right, key6),
     {ok, value7} = mio_bucket:get_op(Right, key7),
 
-    {ok, value4} = mio_bucket:get_op(Middle, key4),
+    {ok, value3} = mio_bucket:get_op(Middle, key3),
 
     true = mio_bucket:is_full_op(Left),
     ok.
