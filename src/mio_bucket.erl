@@ -322,18 +322,18 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                 c_o_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
                     {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
-                    ok = mio_bucket:just_insert_op(State#state.right, LKey, LValue),
+                    ok = just_insert_op(State#state.right, LKey, LValue),
                     NewStore2 = mio_store:set(Key, Value, NewStore),
-                    case mio_bucket:is_full_op(State#state.right) of
+                    case is_full_op(State#state.right) of
                         true ->
                             %% C1-O2$ -> C1'-O*-C2
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_c_m),
                             RightBucket = State#state.right,
-                            ?ASSERT_MATCH(c_o_r, mio_bucket:get_type_op(RightBucket)),
-                            ok = mio_bucket:set_right_op(EmptyBucket, RightBucket),
-                            ok = mio_bucket:set_left_op(EmptyBucket, self()),
-                            ok = mio_bucket:set_left_op(RightBucket, EmptyBucket),
-                            ok = mio_bucket:set_type_op(RightBucket, c_o_c_r),
+                            ?ASSERT_MATCH(c_o_r, get_type_op(RightBucket)),
+                            ok = set_right_op(EmptyBucket, RightBucket),
+                            ok = set_left_op(EmptyBucket, self()),
+                            ok = set_left_op(RightBucket, EmptyBucket),
+                            ok = set_type_op(RightBucket, c_o_c_r),
                             {reply, ok, State#state{store=NewStore2, type=c_o_c_l, right=EmptyBucket}};
                         _ ->
                             %% C1-O -> C1'-O'
@@ -343,27 +343,27 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                 c_o_c_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
                     {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
-                    ok = mio_bucket:just_insert_op(State#state.right, LKey, LValue),
-                    case mio_bucket:is_full_op(State#state.right) of
+                    ok = just_insert_op(State#state.right, LKey, LValue),
+                    case is_full_op(State#state.right) of
                         true ->
                             NewStore2 = mio_store:set(Key, Value, NewStore),
                             %%  C1-O2$-C3
                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-                            Right = mio_bucket:get_right_op(State#state.right),
-                            mio_bucket:set_type_op(Right, c_o_l),
+                            Right = get_right_op(State#state.right),
+                            set_type_op(Right, c_o_l),
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r_m),
-                            PrevRight = mio_bucket:get_right_op(Right),
-                            ok = mio_bucket:set_right_op(Right, EmptyBucket),
-                            ok = mio_bucket:set_left_op(EmptyBucket, Right),
-                            ok = mio_bucket:set_right_op(EmptyBucket, PrevRight),
+                            PrevRight = get_right_op(Right),
+                            ok = set_right_op(Right, EmptyBucket),
+                            ok = set_left_op(EmptyBucket, Right),
+                            ok = set_right_op(EmptyBucket, PrevRight),
 
-                            {RKey, RValue} = mio_bucket:take_largest_op(Right),
-                            ok = mio_bucket:just_insert_op(EmptyBucket, RKey, RValue),
+                            {RKey, RValue} = take_largest_op(Right),
+                            ok = just_insert_op(EmptyBucket, RKey, RValue),
 
-                            {RKey2, RValue2} = mio_bucket:take_largest_op(State#state.right),
-                            ok = mio_bucket:just_insert_op(Right, RKey2, RValue2),
-                            ok = mio_bucket:set_type_op(Right, c_o_l),
-                            ok = mio_bucket:set_type_op(State#state.right, c_o_r),
+                            {RKey2, RValue2} = take_largest_op(State#state.right),
+                            ok = just_insert_op(Right, RKey2, RValue2),
+                            ok = set_type_op(Right, c_o_l),
+                            ok = set_type_op(State#state.right, c_o_r),
                             {reply, ok, State#state{store=NewStore2, type=c_o_l}};
                         _ ->
                             %% C1-O2-C3 -> C1'-O2'-C3
@@ -373,7 +373,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                 c_o_c_r ->
                     %% C1-O2-C3 -> C1-O2'-C3'
                     {LKey, LValue, NewStore} = mio_store:take_smallest(State#state.store),
-                    ok = mio_bucket:just_insert_op(State#state.left, LKey, LValue),
+                    ok = just_insert_op(State#state.left, LKey, LValue),
                     NewStore2 = mio_store:set(Key, Value, NewStore),
                     {reply, ok, State#state{store=NewStore2}}
             end;
@@ -386,17 +386,17 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             %% O$ -> [C] -> C-O*
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r),
                             ?ASSERT_MATCH([], State#state.right),
-                            ok = mio_bucket:set_left_op(EmptyBucket, self()),
+                            ok = set_left_op(EmptyBucket, self()),
                             {reply, ok, State#state{right=EmptyBucket, store=NewStore, type=c_o_l}};
                         c_o_r ->
                             %% C1-O2$ -> C1-O*-C2
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_c_m),
                             LeftBucket = State#state.left,
-                            ?ASSERT_MATCH(c_o_l, mio_bucket:get_type_op(LeftBucket)),
-                            ok = mio_bucket:set_right_op(LeftBucket, EmptyBucket),
-                            ok = mio_bucket:set_left_op(EmptyBucket, LeftBucket),
-                            ok = mio_bucket:set_right_op(EmptyBucket, self()),
-                            ok = mio_bucket:set_type_op(LeftBucket, c_o_c_l),
+                            ?ASSERT_MATCH(c_o_l, get_type_op(LeftBucket)),
+                            ok = set_right_op(LeftBucket, EmptyBucket),
+                            ok = set_left_op(EmptyBucket, LeftBucket),
+                            ok = set_right_op(EmptyBucket, self()),
+                            ok = set_type_op(LeftBucket, c_o_c_l),
                             {reply, ok, State#state{store=NewStore, type=c_o_c_r, left=EmptyBucket}}
                     end;
                 _ ->
