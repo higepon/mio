@@ -52,8 +52,24 @@ insert_c_o_1(_Config) ->
     Right = mio_bucket:get_right_op(Bucket),
     {ok, value3} = mio_bucket:get_op(Right, key3).
 
-%% C1-O2 -> C1-O2'
+%% C1-O2 -> C1'-O2'
 insert_c_o_2(_Config) ->
+    %% set up initial bucket
+    Bucket = setup_full_bucket(3),
+
+    %% insert to most left of C1
+    ok = mio_bucket:insert_op(Bucket, key4, value4),
+    {ok, value1} = mio_bucket:get_op(Bucket, key1),
+    {ok, value2} = mio_bucket:get_op(Bucket, key2),
+    {ok, value3} = mio_bucket:get_op(Bucket, key3),
+    {error, not_found} = mio_bucket:get_op(Bucket, key4),
+
+    Right = mio_bucket:get_right_op(Bucket),
+    {ok, value4} = mio_bucket:get_op(Right, key4).
+
+
+%% C1-O2 -> C1-O2'
+insert_c_o_3(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -65,7 +81,7 @@ insert_c_o_2(_Config) ->
     {ok, value4} = mio_bucket:get_op(Right, key4).
 
 %% C1-O2$ -> C1-O*-C2
-insert_c_o_3(_Config) ->
+insert_c_o_4(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -91,7 +107,7 @@ insert_c_o_3(_Config) ->
 
 %% C1-O2$ -> C1'-O*-C2
 %% Insertion to C1
-insert_c_o_4(_Config) ->
+insert_c_o_5(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -126,7 +142,7 @@ insert_c_o_4(_Config) ->
 %%    Insertion to C1 : C1'-O2'-C3
 insert_c_o_c_1(_Config) ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_4(_Config),
+    {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
     ok = mio_bucket:insert_op(Left, key10, value10),
@@ -146,7 +162,7 @@ insert_c_o_c_1(_Config) ->
 %%    Insertion to C3 : C1-O2'-C3'
 insert_c_o_c_2(_Config) ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_4(_Config),
+    {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
     ok = mio_bucket:insert_op(Right, key7, value7),
@@ -165,7 +181,7 @@ insert_c_o_c_2(_Config) ->
 %%    Insertion to O2 : C1-O2'-C3
 insert_c_o_c_3(_Config) ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_4(_Config),
+    {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
     ok = mio_bucket:insert_op(Middle, key22, value22),
@@ -187,7 +203,7 @@ insert_c_o_c_3(_Config) ->
 %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
 insert_c_o_c_4(_Config) ->
     %% setup C1-O2$-C3
-    {Left, Middle, Right} = insert_c_o_4(_Config),
+    {Left, Middle, Right} = insert_c_o_5(_Config),
     ok = mio_bucket:insert_op(Middle, key21, value21),
     ok = mio_bucket:insert_op(Middle, key22, value22),
 
@@ -251,6 +267,7 @@ all() ->
      insert_c_o_2,
      insert_c_o_3,
      insert_c_o_4,
+     insert_c_o_5,
      insert_c_o_c_1,
      insert_c_o_c_2,
      insert_c_o_c_3,
