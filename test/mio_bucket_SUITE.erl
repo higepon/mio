@@ -205,8 +205,8 @@ insert_c_o_c_4(_Config) ->
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
-    {ok, value21} = mio_bucket:get_op(Left, key21),
+    {ok, value2} = mio_bucket:get_op(Middle, key2),
+    {ok, value21} = mio_bucket:get_op(Middle, key21),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
 
@@ -221,13 +221,15 @@ insert_c_o_c_4(_Config) ->
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, key5),
     Right = mio_bucket:get_left_op(MostRight),
     [] = mio_bucket:get_right_op(MostRight),
     ok.
 
 
 %% (f) should be tested.
+%% take_largest has bug
+%% mio_bucket: prexi is not necessary
 
 %% Helper
 setup_full_bucket(Capacity) ->
