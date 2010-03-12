@@ -303,7 +303,6 @@ handle_call(get_type_op, _From, State) ->
     {reply, State#state.type, State};
 
 handle_call(take_largest_op, _From, State) ->
-    ?ASSERT_MATCH(true, mio_store:is_full(State#state.store)),
     {Key, Value, NewStore} = mio_store:take_largest(State#state.store),
     {reply, {Key, Value}, State#state{store=NewStore}};
 
@@ -397,7 +396,29 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             ok = set_left_op(EmptyBucket, LeftBucket),
                             ok = set_right_op(EmptyBucket, self()),
                             ok = set_type_op(LeftBucket, c_o_c_l),
-                            {reply, ok, State#state{store=NewStore, type=c_o_c_r, left=EmptyBucket}}
+                            {reply, ok, State#state{store=NewStore, type=c_o_c_r, left=EmptyBucket}};
+                        %% Insertion to left o
+                        c_o_c_m ->
+                            ?ASSERT_NOT_NIL(State#state.right),
+                            ?ASSERT_NOT_NIL(State#state.left),
+                            {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
+                            overflow = just_insert_op(State#state.right, LKey, LValue),
+
+                            %%  C1-O2$-C3
+                            %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r_m),
+                            PrevRight = get_right_op(State#state.right),
+                            ok = set_right_op(State#state.right, EmptyBucket),
+                            ok = set_left_op(EmptyBucket, State#state.right),
+                            ok = set_right_op(EmptyBucket, PrevRight),
+
+                            {RKey, RValue} = take_largest_op(State#state.right),
+                            ?ASSERT_MATCH(true, is_full_op(State#state.right)),
+                            ok = just_insert_op(EmptyBucket, RKey, RValue),
+
+                            ok = set_type_op(State#state.right, c_o_l),
+                            ok = set_type_op(State#state.left, c_o_l),
+                            {reply, ok, State#state{store=NewStore2, type=c_o_r}}
                     end;
                 _ ->
                     {reply, ok, State#state{store=NewStore}}

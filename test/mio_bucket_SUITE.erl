@@ -126,8 +126,11 @@ insert_c_o_5(_Config) ->
     true = mio_bucket:is_empty_op(NewRight),
 
     Bucket = mio_bucket:get_left_op(NewRight),
+    c_o_c_l = mio_bucket:get_type_op(Bucket),
     Right = mio_bucket:get_right_op(NewRight),
+    c_o_c_r = mio_bucket:get_type_op(Right),
     NewRight = mio_bucket:get_left_op(Right),
+    c_o_c_m = mio_bucket:get_type_op(NewRight),
     [] =  mio_bucket:get_right_op(Right),
 
     {ok, value3} = mio_bucket:get_op(Right, key3),
@@ -366,6 +369,8 @@ insert_c_o_c_8(_Config) ->
     ok = mio_bucket:insert_op(Middle, key21, value21),
     ok = mio_bucket:insert_op(Middle, key22, value22),
 
+    c_o_c_m = mio_bucket:get_type_op(Middle),
+
     %% insert!
     ok = mio_bucket:insert_op(Middle, key23, value23),
 
@@ -403,9 +408,7 @@ insert_c_o_c_8(_Config) ->
 
 
 
-%% (f) should be tested.
-%% take_largest has bug
-%% mio_bucket: prexi is not necessary
+%% (f) insertion to C3 should be tested.
 
 %% Helper
 setup_full_bucket(Capacity) ->
