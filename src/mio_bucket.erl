@@ -309,21 +309,21 @@ handle_call(take_largest_op, _From, State) ->
 
 handle_call({just_insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
-        overflow ->
-            {reply, overflow, State};
+        {overflow, NewStore} ->
+            {reply, overflow, State#state{store=NewStore}};
         NewStore ->
             {reply, ok, State#state{store=NewStore}}
     end;
 
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
-        overflow ->
+        {overflow, NewStore} ->
             case State#state.type of
                 c_o_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
-                    {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
+                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     ok = just_insert_op(State#state.right, LKey, LValue),
-                    NewStore2 = mio_store:set(Key, Value, NewStore),
+%%                    NewStore2 = mio_store:set(Key, Value, NewStore),
                     case is_full_op(State#state.right) of
                         true ->
                             %% C1-O2$ -> C1'-O*-C2
@@ -342,16 +342,16 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                 %% Insertion to left c
                 c_o_c_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
-                    {LKey, LValue, NewStore} = mio_store:take_largest(State#state.store),
+                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     ok = just_insert_op(State#state.right, LKey, LValue),
                     case is_full_op(State#state.right) of
                         true ->
-                            NewStore2 = mio_store:set(Key, Value, NewStore),
+%%                            NewStore2 = mio_store:set(Key, Value, NewStore),
                             %%  C1-O2$-C3
                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
                             Right = get_right_op(State#state.right),
                             set_type_op(Right, c_o_l),
-                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_r_m),
+                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r_m),
                             PrevRight = get_right_op(Right),
                             ok = set_right_op(Right, EmptyBucket),
                             ok = set_left_op(EmptyBucket, Right),
@@ -367,14 +367,14 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {reply, ok, State#state{store=NewStore2, type=c_o_l}};
                         _ ->
                             %% C1-O2-C3 -> C1'-O2'-C3
-                            NewStore2 = mio_store:set(Key, Value, NewStore),
+%                            NewStore2 = mio_store:set(Key, Value, NewStore),
                             {reply, ok, State#state{store=NewStore2}}
                     end;
                 c_o_c_r ->
                     %% C1-O2-C3 -> C1-O2'-C3'
-                    {LKey, LValue, NewStore} = mio_store:take_smallest(State#state.store),
+                    {LKey, LValue, NewStore2} = mio_store:take_smallest(NewStore),
                     ok = just_insert_op(State#state.left, LKey, LValue),
-                    NewStore2 = mio_store:set(Key, Value, NewStore),
+%                    NewStore2 = mio_store:set(Key, Value, NewStore),
                     {reply, ok, State#state{store=NewStore2}}
             end;
 

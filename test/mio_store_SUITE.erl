@@ -41,13 +41,11 @@ overflow(_Config) ->
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
     B3 = mio_store:set(key_c, value_c, B2),
-    overflow = mio_store:set(key_d, value_d, B3),
 
-    none = mio_store:get(key_d, B3),
-    B4 = mio_store:remove(key_a, B3),
+    %% overflow accept key, value
+    {overflow, B4} = mio_store:set(key_d, value_d, B3),
 
-    B5 = mio_store:set(key_d, value_d, B4),
-    value_d = mio_store:get(key_d, B5).
+    value_d = mio_store:get(key_d, B4).
 
 full(_Config) ->
     B = mio_store:new(3),
