@@ -388,11 +388,10 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             link_op(EmptyBucket, RightBucket),
                             link_op(Self, EmptyBucket),
                             ok = set_type_op(RightBucket, c_o_c_r),
-                            ok = set_type_op(Self, c_o_c_l),
-                            gen_server:reply(From, ok);
+                            ok = set_type_op(Self, c_o_c_l);
                         _ ->
                             %% C1-O -> C1'-O'
-                            gen_server:reply(From, ok)
+                            []
                     end;
                 %% Insertion to left c
                 c_o_c_l ->
@@ -417,11 +416,10 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             ok = just_insert_op(Right, RKey2, RValue2),
                             ok = set_type_op(Right, c_o_l),
                             ok = set_type_op(State#state.right, c_o_r),
-                            ok = set_type_op(Self, c_o_l),
-                            gen_server:reply(From, ok);
+                            ok = set_type_op(Self, c_o_l);
                         _ ->
                             %% C1-O2-C3 -> C1'-O2'-C3
-                            gen_server:reply(From, ok)
+                            []
                     end;
                 c_o_c_r ->
                     %% C1-O2-C3 -> C1-O2 | C3'-O4
@@ -435,8 +433,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
 
                     ok = set_type_op(State#state.left, c_o_r),
                     ok = set_type_op(get_left_op(State#state.left), c_o_l),
-                    ok = set_type_op(Self, c_o_l),
-                    gen_server:reply(From, ok)
+                    ok = set_type_op(Self, c_o_l)
             end;
         ok ->
             case is_full_op(Self) of
@@ -447,8 +444,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(State#state.store), c_o_r),
                             ?ASSERT_MATCH([], State#state.right),
                             link_op(Self, EmptyBucket),
-                            set_type_op(Self, c_o_l),
-                            gen_server:reply(From, ok);
+                            set_type_op(Self, c_o_l);
                         c_o_r ->
                             %% C1-O2$ -> C1-O*-C2
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(State#state.store), c_o_c_m),
@@ -457,8 +453,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             link_op(LeftBucket, EmptyBucket),
                             link_op(EmptyBucket, Self),
                             ok = set_type_op(LeftBucket, c_o_c_l),
-                            ok = set_type_op(Self, c_o_c_r),
-                            gen_server:reply(From, ok);
+                            ok = set_type_op(Self, c_o_c_r);
                         %% Insertion to left o
                         c_o_c_m ->
                             ?ASSERT_NOT_NIL(State#state.right),
@@ -480,10 +475,11 @@ insert_op_call(From, State, Self, Key, Value)  ->
 
                             ok = set_type_op(State#state.right, c_o_l),
                             ok = set_type_op(State#state.left, c_o_l),
-                            ok = set_type_op(Self, c_o_r),
-                            gen_server:reply(From, ok)
+                            ok = set_type_op(Self, c_o_r)
                     end;
                 _ ->
-                    gen_server:reply(From, ok)
+                    []
             end
-    end.
+    end,
+    gen_server:reply(From, ok).
+
