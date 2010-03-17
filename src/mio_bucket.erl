@@ -322,7 +322,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                     ?ASSERT_NOT_NIL(State#state.right),
                     {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     ok = just_insert_op(State#state.right, LKey, LValue),
-%%                    NewStore2 = mio_store:set(Key, Value, NewStore),
                     case is_full_op(State#state.right) of
                         true ->
                             %% C1-O2$ -> C1'-O*-C2
@@ -345,7 +344,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                     ok = just_insert_op(State#state.right, LKey, LValue),
                     case is_full_op(State#state.right) of
                         true ->
-%%                            NewStore2 = mio_store:set(Key, Value, NewStore),
                             %%  C1-O2$-C3
                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
                             Right = get_right_op(State#state.right),
@@ -366,7 +364,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {reply, ok, State#state{store=NewStore2, type=c_o_l}};
                         _ ->
                             %% C1-O2-C3 -> C1'-O2'-C3
-%                            NewStore2 = mio_store:set(Key, Value, NewStore),
                             {reply, ok, State#state{store=NewStore2}}
                     end;
                 c_o_c_r ->
@@ -383,11 +380,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                     ok = set_type_op(State#state.left, c_o_r),
                     ok = set_type_op(get_left_op(State#state.left), c_o_l),
                     {reply, ok, State#state{store=NewStore2, right=EmptyBucket, type=c_o_l}}
-
-%%                     {LKey, LValue, NewStore2} = mio_store:take_smallest(NewStore),
-%%                     ok = just_insert_op(State#state.left, LKey, LValue),
-%% %                    NewStore2 = mio_store:set(Key, Value, NewStore),
-%%                     {reply, ok, State#state{store=NewStore2}}
             end;
 
         NewStore ->
