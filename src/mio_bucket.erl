@@ -328,9 +328,8 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_c_m),
                             RightBucket = State#state.right,
                             ?ASSERT_MATCH(c_o_r, get_type_op(RightBucket)),
-                            ok = set_right_op(EmptyBucket, RightBucket),
+                            link_op(EmptyBucket, RightBucket),
                             ok = set_left_op(EmptyBucket, self()),
-                            ok = set_left_op(RightBucket, EmptyBucket),
                             ok = set_type_op(RightBucket, c_o_c_r),
                             {reply, ok, State#state{store=NewStore2, type=c_o_c_l, right=EmptyBucket}};
                         _ ->
@@ -349,8 +348,8 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             set_type_op(Right, c_o_l),
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r),
                             PrevRight = get_right_op(Right),
-                            ok = set_right_op(Right, EmptyBucket),
-                            ok = set_left_op(EmptyBucket, Right),
+
+                            link_op(Right, EmptyBucket),
                             ok = set_right_op(EmptyBucket, PrevRight),
 
                             {RKey, RValue} = take_largest_op(Right),
@@ -394,8 +393,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore), c_o_c_m),
                             LeftBucket = State#state.left,
                             ?ASSERT_MATCH(c_o_l, get_type_op(LeftBucket)),
-                            ok = set_right_op(LeftBucket, EmptyBucket),
-                            ok = set_left_op(EmptyBucket, LeftBucket),
+                            link_op(LeftBucket, EmptyBucket),
                             ok = set_right_op(EmptyBucket, self()),
                             ok = set_type_op(LeftBucket, c_o_c_l),
                             {reply, ok, State#state{store=NewStore, type=c_o_c_r, left=EmptyBucket}};
@@ -410,8 +408,8 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
                             {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r),
                             PrevRight = get_right_op(State#state.right),
-                            ok = set_right_op(State#state.right, EmptyBucket),
-                            ok = set_left_op(EmptyBucket, State#state.right),
+
+                            link_op(State#state.right, EmptyBucket),
                             ok = set_right_op(EmptyBucket, PrevRight),
 
                             {RKey, RValue} = take_largest_op(State#state.right),
@@ -474,3 +472,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+link_op(Left, Right) ->
+    ok = set_right_op(Left, Right),
+    ok = set_left_op(Right, Left).
