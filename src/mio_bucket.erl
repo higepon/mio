@@ -371,6 +371,12 @@ link_op(Left, Right) ->
     ok = set_right_op(Left, Right),
     ok = set_left_op(Right, Left).
 
+link3_op(Left, Middle, Right) ->
+    ok = set_right_op(Left, Middle),
+    ok = set_left_op(Middle, Left),
+    ok = set_right_op(Middle, Right),
+    ok = set_left_op(Right, Middle).
+
 insert_op_call(From, State, Self, Key, Value)  ->
     case just_insert_op(Self, Key, Value) of
         overflow ->
@@ -385,8 +391,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
                             RightBucket = State#state.right,
                             ?ASSERT_MATCH(c_o_r, get_type_op(RightBucket)),
-                            link_op(EmptyBucket, RightBucket),
-                            link_op(Self, EmptyBucket),
+                            link3_op(Self, EmptyBucket, RightBucket),
                             ok = set_type_op(RightBucket, c_o_c_r),
                             ok = set_type_op(Self, c_o_c_l);
                         _ ->
@@ -450,8 +455,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
                             LeftBucket = State#state.left,
                             ?ASSERT_MATCH(c_o_l, get_type_op(LeftBucket)),
-                            link_op(LeftBucket, EmptyBucket),
-                            link_op(EmptyBucket, Self),
+                            link3_op(LeftBucket, EmptyBucket, Self),
                             ok = set_type_op(LeftBucket, c_o_c_l),
                             ok = set_type_op(Self, c_o_c_r);
                         %% Insertion to left o
