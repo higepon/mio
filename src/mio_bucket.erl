@@ -370,11 +370,24 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             {reply, ok, State#state{store=NewStore2}}
                     end;
                 c_o_c_r ->
-                    %% C1-O2-C3 -> C1-O2'-C3'
-                    {LKey, LValue, NewStore2} = mio_store:take_smallest(NewStore),
-                    ok = just_insert_op(State#state.left, LKey, LValue),
-%                    NewStore2 = mio_store:set(Key, Value, NewStore),
-                    {reply, ok, State#state{store=NewStore2}}
+                    %% C1-O2-C3 -> C1-O2 | C3'-O4
+                    %%   or
+                    %% C1-O2$-C3 -> C1-O2$ | C3'-O4
+                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
+                    {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r),
+                    ok = just_insert_op(EmptyBucket, LKey, LValue),
+                    PrevRight = State#state.right,
+                    ok = set_left_op(EmptyBucket, self()),
+                    ok = set_right_op(EmptyBucket, PrevRight),
+
+                    ok = set_type_op(State#state.left, c_o_r),
+                    ok = set_type_op(get_left_op(State#state.left), c_o_l),
+                    {reply, ok, State#state{store=NewStore2, right=EmptyBucket, type=c_o_l}}
+
+%%                     {LKey, LValue, NewStore2} = mio_store:take_smallest(NewStore),
+%%                     ok = just_insert_op(State#state.left, LKey, LValue),
+%% %                    NewStore2 = mio_store:set(Key, Value, NewStore),
+%%                     {reply, ok, State#state{store=NewStore2}}
             end;
 
         NewStore ->
