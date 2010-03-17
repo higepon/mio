@@ -42,6 +42,9 @@ insert_c_o_1(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
 
+    PrevLeft = mio_bucket:get_left_op(Bucket),
+    PrevRight = mio_bucket:get_right_op(mio_bucket:get_right_op(Bucket)),
+
     %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, key0, value0),
     {ok, value0} = mio_bucket:get_op(Bucket, key0),
@@ -52,6 +55,10 @@ insert_c_o_1(_Config) ->
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
+
+    PrevLeft = mio_bucket:get_left_op(Bucket),
+    PrevRight = mio_bucket:get_right_op(mio_bucket:get_right_op(Bucket)),
+
     {ok, value3} = mio_bucket:get_op(Right, key3).
 
 %% C1-O2 -> C1'-O2'
@@ -529,6 +536,8 @@ setup_full_bucket(Capacity) ->
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
     ok = mio_bucket:insert_op(Bucket, key3, value3),
+    ok = mio_bucket:set_left_op(Bucket, left),
+    ok = mio_bucket:set_right_op(mio_bucket:get_right_op(Bucket), right),
     Bucket.
 
 
