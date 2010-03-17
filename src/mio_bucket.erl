@@ -372,10 +372,8 @@ link_op(Left, Right) ->
     ok = set_left_op(Right, Left).
 
 link3_op(Left, Middle, Right) ->
-    ok = set_right_op(Left, Middle),
-    ok = set_left_op(Middle, Left),
-    ok = set_right_op(Middle, Right),
-    ok = set_left_op(Right, Middle).
+    link_op(Left, Middle),
+    link_op(Middle, Right).
 
 insert_op_call(From, State, Self, Key, Value)  ->
     case just_insert_op(Self, Key, Value) of
@@ -411,8 +409,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
                             PrevRight = get_right_op(Right),
 
-                            link_op(Right, EmptyBucket),
-                            ok = set_right_op(EmptyBucket, PrevRight),
+                            link3_op(Right, EmptyBucket, PrevRight),
 
                             {RKey, RValue} = take_largest_op(Right),
                             ok = just_insert_op(EmptyBucket, RKey, RValue),
@@ -433,9 +430,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
                     ok = just_insert_op(EmptyBucket, LKey, LValue),
                     PrevRight = State#state.right,
-                    link_op(Self, EmptyBucket),
-                    ok = set_right_op(EmptyBucket, PrevRight),
-
+                    link3_op(Self, EmptyBucket, PrevRight),
                     ok = set_type_op(State#state.left, c_o_r),
                     ok = set_type_op(get_left_op(State#state.left), c_o_l),
                     ok = set_type_op(Self, c_o_l)
@@ -470,8 +465,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
                             PrevRight = get_right_op(State#state.right),
 
-                            link_op(State#state.right, EmptyBucket),
-                            ok = set_right_op(EmptyBucket, PrevRight),
+                            link3_op(State#state.right, EmptyBucket, PrevRight),
 
                             {RKey, RValue} = take_largest_op(State#state.right),
                             ?ASSERT_MATCH(true, is_full_op(State#state.right)),
