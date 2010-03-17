@@ -442,6 +442,7 @@ insert_c_o_c_8(_Config) ->
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
+    c_o_r = mio_bucket:get_type_op(MostRight),
     {ok, value5} = mio_bucket:get_op(MostRight, key5),
     Right = mio_bucket:get_left_op(MostRight),
     [] = mio_bucket:get_right_op(MostRight),
