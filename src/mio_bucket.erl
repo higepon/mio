@@ -350,7 +350,7 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
                             Right = get_right_op(State#state.right),
                             set_type_op(Right, c_o_l),
-                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r_m),
+                            {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r),
                             PrevRight = get_right_op(Right),
                             ok = set_right_op(Right, EmptyBucket),
                             ok = set_left_op(EmptyBucket, Right),
