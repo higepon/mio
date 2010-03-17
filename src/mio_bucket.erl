@@ -317,10 +317,10 @@ handle_call({just_insert_op, Key, Value}, _From, State) ->
 handle_call({insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
         {overflow, NewStore} ->
+            {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
             case State#state.type of
                 c_o_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
-                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     ok = just_insert_op(State#state.right, LKey, LValue),
                     case is_full_op(State#state.right) of
                         true ->
@@ -340,7 +340,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                 %% Insertion to left c
                 c_o_c_l ->
                     ?ASSERT_NOT_NIL(State#state.right),
-                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     ok = just_insert_op(State#state.right, LKey, LValue),
                     case is_full_op(State#state.right) of
                         true ->
@@ -370,7 +369,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                     %% C1-O2-C3 -> C1-O2 | C3'-O4
                     %%   or
                     %% C1-O2$-C3 -> C1-O2$ | C3'-O4
-                    {LKey, LValue, NewStore2} = mio_store:take_largest(NewStore),
                     {ok, EmptyBucket} = mio_sup:make_bucket(mio_store:capacity(NewStore2), c_o_r),
                     ok = just_insert_op(EmptyBucket, LKey, LValue),
                     PrevRight = State#state.right,
@@ -381,7 +379,6 @@ handle_call({insert_op, Key, Value}, _From, State) ->
                     ok = set_type_op(get_left_op(State#state.left), c_o_l),
                     {reply, ok, State#state{store=NewStore2, right=EmptyBucket, type=c_o_l}}
             end;
-
         NewStore ->
             case mio_store:is_full(NewStore) of
                 true ->
