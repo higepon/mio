@@ -415,35 +415,26 @@ insert_op_call(From, State, Self, Key, Value)  ->
             Right = Self,
             Middle = State#state.left,
             split_c_o_c3(State, Middle, Right);
-        {_, full} ->
-            case is_full_op(Self) of
-                true ->
-                    case State#state.type of
-                        alone ->
-                            %% O$ -> [C] -> C-O*
-                            {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-                            link_op(Self, EmptyBucket),
-                            set_type_op(Self, c_o_l);
-                        c_o_r ->
-                            Right = Self,
-                            Left = State#state.left,
-                            %% C1-O2$ -> C1-O*-C2
-                            make_c_o_c(State, Left, Right);
-                        %% Insertion to left o
-                        c_o_c_m ->
-                            Left = State#state.left,
-                            Middle = Self,
-                            Right = State#state.right,
-                            ?ASSERT_NOT_NIL(Right),
-                            ?ASSERT_NOT_NIL(Left),
-
-                            %%  C1-O2$-C3
-                            %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-                            split_c_o_c2(State, Left, Middle, Right)
-                    end;
-                _ ->
-                    []
-            end;
+        {alone, full} ->
+            %% O$ -> [C] -> C-O*
+            {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+            link_op(Self, EmptyBucket),
+            set_type_op(Self, c_o_l);
+        {c_o_r, full} ->
+            Right = Self,
+            Left = State#state.left,
+            %% C1-O2$ -> C1-O*-C2
+            make_c_o_c(State, Left, Right);
+        %% Insertion to left o
+        {c_o_c_m, full} ->
+            Left = State#state.left,
+            Middle = Self,
+            Right = State#state.right,
+            ?ASSERT_NOT_NIL(Right),
+            ?ASSERT_NOT_NIL(Left),
+            %%  C1-O2$-C3
+            %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+            split_c_o_c2(State, Left, Middle, Right);
         _ -> []
     end,
     gen_server:reply(From, ok).
