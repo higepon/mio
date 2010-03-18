@@ -399,23 +399,24 @@ insert_op_call(From, State, Self, Key, Value)  ->
                     ok = just_insert_op(Right, LargeKey, LargeValue),
                     case is_full_op(Right) of
                         true ->
-                            %%  C1-O2$-C3
-                            %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-                            RightOfRight = get_right_op(Right),
-                            set_type_op(RightOfRight, c_o_l),
-                            {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-                            PrevRight = get_right_op(RightOfRight),
+%%                             %%  C1-O2$-C3
+%%                             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+%%                             RightOfRight = get_right_op(Right),
+%%                             set_type_op(RightOfRight, c_o_l),
+%%                             {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+%%                             PrevRight = get_right_op(RightOfRight),
 
-                            link3_op(RightOfRight, EmptyBucket, PrevRight),
+%%                             link3_op(RightOfRight, EmptyBucket, PrevRight),
 
-                            {LargeRRKey, LargeRRValue} = take_largest_op(RightOfRight),
-                            ok = just_insert_op(EmptyBucket, LargeRRKey, LargeRRValue),
+%%                             {LargeRRKey, LargeRRValue} = take_largest_op(RightOfRight),
+%%                             ok = just_insert_op(EmptyBucket, LargeRRKey, LargeRRValue),
 
-                            {LargeRKey, LargeRValue} = take_largest_op(Right),
-                            ok = just_insert_op(RightOfRight, LargeRKey, LargeRValue),
-                            ok = set_type_op(RightOfRight, c_o_l),
-                            ok = set_type_op(Right, c_o_r),
-                            ok = set_type_op(Self, c_o_l);
+%%                             {LargeRKey, LargeRValue} = take_largest_op(Right),
+%%                             ok = just_insert_op(RightOfRight, LargeRKey, LargeRValue),
+%%                             ok = set_type_op(RightOfRight, c_o_l),
+%%                             ok = set_type_op(Right, c_o_r),
+%%                             ok = set_type_op(Self, c_o_l);
+                            split_c_o_c(State, Self, Right, get_right_op(Right));
                         _ ->
                             %% C1-O2-C3 -> C1'-O2'-C3
                             []
@@ -481,3 +482,21 @@ make_c_o_c(State, Left, Right) ->
     link3_op(Left, EmptyBucket, Right),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
+
+split_c_o_c(State, Left, Middle, Right) ->
+    %%  C1-O2$-C3
+    %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    PrevRight = get_right_op(Right),
+
+    %% C3'-O4 | C ...
+    link3_op(Right, EmptyBucket, PrevRight),
+
+    {LargeRKey, LargeRValue} = take_largest_op(Right),
+    ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
+
+    {LargeRKey, LargeRValue} = take_largest_op(Middle),
+    ok = just_insert_op(Right, LargeRKey, LargeRValue),
+    ok = set_type_op(Right, c_o_l),
+    ok = set_type_op(Middle, c_o_r),
+    ok = set_type_op(Left, c_o_l).
