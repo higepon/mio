@@ -451,9 +451,7 @@ make_c_o_c(State, Left, Right) ->
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
 
-split_c_o_c(State, Left, Middle, Right) ->
-    %%  C1-O2$-C3
-    %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
     ok = set_type_op(Right, c_o_l),
     ok = set_type_op(Middle, c_o_r),
@@ -462,6 +460,13 @@ split_c_o_c(State, Left, Middle, Right) ->
 
     %% C3'-O4 | C ...
     link3_op(Right, EmptyBucket, PrevRight),
+    EmptyBucket.
+
+
+split_c_o_c(State, Left, Middle, Right) ->
+    %%  C1-O2$-C3
+    %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
 
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
@@ -472,26 +477,11 @@ split_c_o_c(State, Left, Middle, Right) ->
 split_c_o_c2(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-
-    ok = set_type_op(Right, c_o_l),
-    ok = set_type_op(Left, c_o_l),
-    ok = set_type_op(Middle, c_o_r),
-
-    PrevRight = get_right_op(Right),
-
-    link3_op(Right, EmptyBucket, PrevRight),
-
+    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ?ASSERT_MATCH(true, is_full_op(Right)),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue).
 
 split_c_o_c3(State, LargeKey, LargeValue, Middle, Right) ->
-    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-    ok = set_type_op(Middle, c_o_r),
-    ok = set_type_op(get_left_op(Middle), c_o_l),
-    ok = set_type_op(Right, c_o_l),
-
-    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
-    PrevRight = get_right_op(Right),
-    link3_op(Right, EmptyBucket, PrevRight).
+    EmptyBucket = prepare_for_split_c_o_c(State, get_left_op(Middle), Middle, Right),
+    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue).
