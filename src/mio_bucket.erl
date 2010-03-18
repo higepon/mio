@@ -388,11 +388,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                     case is_full_op(Right) of
                         true ->
                             %% C1-O2$ -> C1'-O*-C2
-                            {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-                            ?ASSERT_MATCH(c_o_r, get_type_op(Right)),
-                            link3_op(Self, EmptyBucket, Right),
-                            ok = set_type_op(Right, c_o_c_r),
-                            ok = set_type_op(Self, c_o_c_l);
+                            make_c_o_c(State, Self, Right);
                         _ ->
                             %% C1-O -> C1'-O'
                             []
@@ -448,11 +444,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                             set_type_op(Self, c_o_l);
                         c_o_r ->
                             %% C1-O2$ -> C1-O*-C2
-                            {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-                            ?ASSERT_MATCH(c_o_l, get_type_op(Left)),
-                            link3_op(Left, EmptyBucket, Self),
-                            ok = set_type_op(Left, c_o_c_l),
-                            ok = set_type_op(Self, c_o_c_r);
+                            make_c_o_c(State, Left, Self);
                         %% Insertion to left o
                         c_o_c_m ->
                             ?ASSERT_NOT_NIL(Right),
@@ -483,3 +475,9 @@ insert_op_call(From, State, Self, Key, Value)  ->
 
 make_empty_bucket(State, Type) ->
     mio_sup:make_bucket(mio_store:capacity(State#state.store), Type).
+
+make_c_o_c(State, Left, Right) ->
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
+    link3_op(Left, EmptyBucket, Right),
+    ok = set_type_op(Right, c_o_c_r),
+    ok = set_type_op(Left, c_o_c_l).
