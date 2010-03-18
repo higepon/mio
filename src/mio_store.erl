@@ -61,7 +61,13 @@ set(Key, Value, Store) ->
         true ->
             {overflow, Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)}};
         _ ->
-            Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)}
+            NewStore = Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)},
+            case is_full(NewStore) of
+                true ->
+                    {full, NewStore};
+                _ ->
+                    NewStore
+            end
     end.
 
 %%--------------------------------------------------------------------
