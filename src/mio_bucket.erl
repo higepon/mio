@@ -381,9 +381,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     case {State#state.type, InsertState} of
         {c_o_l, overflow} ->
-            Left = Self,
-            Right = State#state.right,
-            ?ASSERT_NOT_NIL(Right),
+            {Left, Right} = {Self, State#state.right},
             {LargeKey, LargeValue} = take_largest_op(Left),
             case just_insert_op(Right, LargeKey, LargeValue) of
                 full ->
@@ -395,9 +393,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
             end;
         %% Insertion to left c
         {c_o_c_l, overflow} ->
-            Left = Self,
-            Middle = State#state.right,
-            ?ASSERT_NOT_NIL(Middle),
+            {Left, Middle} = {Self, State#state.right},
             {LargeKey, LargeValue} = take_largest_op(Left),
             case just_insert_op(Middle, LargeKey, LargeValue) of
                 full ->
@@ -412,26 +408,20 @@ insert_op_call(From, State, Self, Key, Value)  ->
             %% C1-O2-C3 -> C1-O2 | C3'-O4
             %%   or
             %% C1-O2$-C3 -> C1-O2$ | C3'-O4
-            Right = Self,
-            Middle = State#state.left,
-            split_c_o_c_by_r(State, get_left_op(Middle), Middle, Right);
+            {Left, Middle, Right} = {get_left_op(State#state.left), State#state.left, Self},
+            split_c_o_c_by_r(State, Left, Middle, Right);
         {alone, full} ->
             %% O$ -> [C] -> C-O*
             {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
             link_op(Self, EmptyBucket),
             set_type_op(Self, c_o_l);
         {c_o_r, full} ->
-            Right = Self,
-            Left = State#state.left,
+            {Left, Right} = {State#state.left, Self},
             %% C1-O2$ -> C1-O*-C2
             make_c_o_c(State, Left, Right);
         %% Insertion to left o
         {c_o_c_m, full} ->
-            Left = State#state.left,
-            Middle = Self,
-            Right = State#state.right,
-            ?ASSERT_NOT_NIL(Right),
-            ?ASSERT_NOT_NIL(Left),
+            {Left, Middle, Right} = {State#state.left, Self, State#state.right},
             %%  C1-O2$-C3
             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
             split_c_o_c_by_m(State, Left, Middle, Right);
@@ -449,6 +439,9 @@ make_c_o_c(State, Left, Right) ->
     ok = set_type_op(Left, c_o_c_l).
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
+    ?ASSERT_NOT_NIL(Left),
+    ?ASSERT_NOT_NIL(Middle),
+    ?ASSERT_NOT_NIL(Right),
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
     ok = set_type_op(Right, c_o_l),
     ok = set_type_op(Middle, c_o_r),
