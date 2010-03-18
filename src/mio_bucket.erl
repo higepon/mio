@@ -425,13 +425,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                     %% C1-O2-C3 -> C1-O2 | C3'-O4
                     %%   or
                     %% C1-O2$-C3 -> C1-O2$ | C3'-O4
-                    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-                    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
-                    PrevRight = Right,
-                    link3_op(Self, EmptyBucket, PrevRight),
-                    ok = set_type_op(Left, c_o_r),
-                    ok = set_type_op(get_left_op(Left), c_o_l),
-                    ok = set_type_op(Self, c_o_l)
+                    split_c_o_c3(State, LargeKey, LargeValue, Left, Self)
             end;
         ok ->
             case is_full_op(Self) of
@@ -505,3 +499,12 @@ split_c_o_c2(State, Left, Middle, Right) ->
     ok = set_type_op(Right, c_o_l),
     ok = set_type_op(Left, c_o_l),
     ok = set_type_op(Middle, c_o_r).
+
+split_c_o_c3(State, LargeKey, LargeValue, Middle, Right) ->
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
+    PrevRight = get_right_op(Right),
+    link3_op(Right, EmptyBucket, PrevRight),
+    ok = set_type_op(Middle, c_o_r),
+    ok = set_type_op(get_left_op(Middle), c_o_l),
+    ok = set_type_op(Right, c_o_l).
