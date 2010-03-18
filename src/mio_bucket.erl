@@ -474,11 +474,7 @@ prepare_for_split_c_o_c(State, Left, Middle, Right) ->
 split_c_o_c(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
-
-    {LargeRKey, LargeRValue} = take_largest_op(Right),
-    ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
-
+    split_c_o_c2(State, Left, Middle, Right),
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
     ok = just_insert_op(Right, LargeMKey, LargeMValue).
 
@@ -487,7 +483,6 @@ split_c_o_c2(State, Left, Middle, Right) ->
     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
     EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeRKey, LargeRValue} = take_largest_op(Right),
-    ?ASSERT_MATCH(true, is_full_op(Right)),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue).
 
 split_c_o_c3(State, LargeKey, LargeValue, Middle, Right) ->
