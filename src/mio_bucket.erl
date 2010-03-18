@@ -403,7 +403,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
                 full ->
                     %%  C1-O2$-C3
                     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-                    split_c_o_c(State, Left, Middle, get_right_op(Middle));
+                    split_c_o_c_by_l(State, Left, Middle, get_right_op(Middle));
                 _ ->
                     %% C1-O2-C3 -> C1'-O2'-C3
                     []
@@ -414,7 +414,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
             %% C1-O2$-C3 -> C1-O2$ | C3'-O4
             Right = Self,
             Middle = State#state.left,
-            split_c_o_c3(State, Middle, Right);
+            split_c_o_c_by_r(State, get_left_op(Middle), Middle, Right);
         {alone, full} ->
             %% O$ -> [C] -> C-O*
             {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
@@ -434,7 +434,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
             ?ASSERT_NOT_NIL(Left),
             %%  C1-O2$-C3
             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-            split_c_o_c2(State, Left, Middle, Right);
+            split_c_o_c_by_m(State, Left, Middle, Right);
         _ -> []
     end,
     gen_server:reply(From, ok).
@@ -459,7 +459,8 @@ prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     link3_op(Right, EmptyBucket, PrevRight),
     EmptyBucket.
 
-split_c_o_c(State, Left, Middle, Right) ->
+%% Insertion to the Left causes overflow
+split_c_o_c_by_l(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
     EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
@@ -468,16 +469,18 @@ split_c_o_c(State, Left, Middle, Right) ->
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
     full = just_insert_op(Right, LargeMKey, LargeMValue).
 
-split_c_o_c2(State, Left, Middle, Right) ->
+%% Insertion to the Middle causes overflow
+split_c_o_c_by_m(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
-    %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+    %%    Insertion to O2$  : C1-C2-C3 -> C1-O2' | C3'-O4
     EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeKey, LargeValue} = take_largest_op(Middle),
     overflow = just_insert_op(Right, LargeKey, LargeValue),
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue).
 
-split_c_o_c3(State, Middle, Right) ->
-    EmptyBucket = prepare_for_split_c_o_c(State, get_left_op(Middle), Middle, Right),
+%% Insertion to the Right causes overflow
+split_c_o_c_by_r(State, Left, Middle, Right) ->
+    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue).
