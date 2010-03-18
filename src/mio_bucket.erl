@@ -377,21 +377,22 @@ link3_op(Left, Middle, Right) ->
     link_op(Left, Middle),
     link_op(Middle, Right).
 
+insert_c_o_l_overflow(State, Left, Right) ->
+    {LargeKey, LargeValue} = take_largest_op(Left),
+    case just_insert_op(Right, LargeKey, LargeValue) of
+        full ->
+            %% C1-O2$ -> C1'-O*-C2
+            make_c_o_c(State, Left, Right);
+        _ ->
+            %% C1-O -> C1'-O'
+            []
+    end.
+
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     case {State#state.type, InsertState} of
         {c_o_l, overflow} ->
-            {Left, Right} = {Self, State#state.right},
-            {LargeKey, LargeValue} = take_largest_op(Left),
-            case just_insert_op(Right, LargeKey, LargeValue) of
-                full ->
-                    %% C1-O2$ -> C1'-O*-C2
-                    make_c_o_c(State, Left, Right);
-                _ ->
-                    %% C1-O -> C1'-O'
-                    []
-            end;
-        %% Insertion to left c
+            insert_c_o_l_overflow(State, Self, State#state.right);
         {c_o_c_l, overflow} ->
             {Left, Middle} = {Self, State#state.right},
             {LargeKey, LargeValue} = take_largest_op(Left),
