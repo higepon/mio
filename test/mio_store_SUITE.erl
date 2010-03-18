@@ -13,7 +13,7 @@ basic(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
 
     value_a = mio_store:get(key_a, B3),
     value_b = mio_store:get(key_b, B3),
@@ -23,14 +23,14 @@ not_found(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
     none = mio_store:get(key_d, B3).
 
 remove(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
     value_a = mio_store:get(key_a, B3),
 
     B4 = mio_store:remove(key_a, B3),
@@ -40,7 +40,7 @@ overflow(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
 
     %% overflow accept key, value
     {overflow, B4} = mio_store:set(key_d, value_d, B3),
@@ -52,14 +52,14 @@ full(_Config) ->
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
     false = mio_store:is_full(B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
     true = mio_store:is_full(B3).
 
 take_smallest(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
     {key_a, value_a, B4} = mio_store:take_smallest(B3),
 
     none = mio_store:get(key_a, B4),
@@ -71,7 +71,7 @@ take_largest(_Config) ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
-    B3 = mio_store:set(key_c, value_c, B2),
+    {full, B3} = mio_store:set(key_c, value_c, B2),
     {key_c, value_c, B4} = mio_store:take_largest(B3),
 
     none = mio_store:get(key_c, B4),

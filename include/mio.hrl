@@ -1,5 +1,5 @@
 %%-define(PROFILER_ON, true).
--define(DEBUG_ON, true).
+%%-define(DEBUG_ON, true).
 
 -define(SERVER, ?MODULE).
 -define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
