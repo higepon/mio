@@ -377,55 +377,29 @@ link3_op(Left, Middle, Right) ->
     link_op(Left, Middle),
     link_op(Middle, Right).
 
-insert_c_o_l_overflow(State, Left, Right) ->
-    {LargeKey, LargeValue} = take_largest_op(Left),
-    case just_insert_op(Right, LargeKey, LargeValue) of
-        full ->
-            %% C1-O2$ -> C1'-O*-C2
-            make_c_o_c(State, Left, Right);
-        _ ->
-            %% C1-O -> C1'-O'
-            []
-    end.
-
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     case {State#state.type, InsertState} of
         {c_o_l, overflow} ->
             insert_c_o_l_overflow(State, Self, State#state.right);
         {c_o_c_l, overflow} ->
-            {Left, Middle} = {Self, State#state.right},
-            {LargeKey, LargeValue} = take_largest_op(Left),
-            case just_insert_op(Middle, LargeKey, LargeValue) of
-                full ->
-                    %%  C1-O2$-C3
-                    %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-                    split_c_o_c_by_l(State, Left, Middle, get_right_op(Middle));
-                _ ->
-                    %% C1-O2-C3 -> C1'-O2'-C3
-                    []
-            end;
+            insert_c_o_c_l_overflow(State, Self, State#state.right);
         {c_o_c_r, overflow} ->
             %% C1-O2-C3 -> C1-O2 | C3'-O4
             %%   or
             %% C1-O2$-C3 -> C1-O2$ | C3'-O4
-            {Left, Middle, Right} = {get_left_op(State#state.left), State#state.left, Self},
-            split_c_o_c_by_r(State, Left, Middle, Right);
+            split_c_o_c_by_r(State, get_left_op(State#state.left), State#state.left, Self);
         {alone, full} ->
             %% O$ -> [C] -> C-O*
-            {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-            link_op(Self, EmptyBucket),
-            set_type_op(Self, c_o_l);
+            insert_alone_full(State, Self);
         {c_o_r, full} ->
-            {Left, Right} = {State#state.left, Self},
             %% C1-O2$ -> C1-O*-C2
-            make_c_o_c(State, Left, Right);
+            make_c_o_c(State, State#state.left, Self);
         %% Insertion to left o
         {c_o_c_m, full} ->
-            {Left, Middle, Right} = {State#state.left, Self, State#state.right},
             %%  C1-O2$-C3
             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-            split_c_o_c_by_m(State, Left, Middle, Right);
+            split_c_o_c_by_m(State, State#state.left, Self, State#state.right);
         _ -> []
     end,
     gen_server:reply(From, ok).
@@ -438,6 +412,34 @@ make_c_o_c(State, Left, Right) ->
     link3_op(Left, EmptyBucket, Right),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
+
+insert_c_o_l_overflow(State, Left, Right) ->
+    {LargeKey, LargeValue} = take_largest_op(Left),
+    case just_insert_op(Right, LargeKey, LargeValue) of
+        full ->
+            %% C1-O2$ -> C1'-O*-C2
+            make_c_o_c(State, Left, Right);
+        _ ->
+            %% C1-O -> C1'-O'
+            []
+    end.
+
+insert_c_o_c_l_overflow(State, Left, Middle) ->
+    {LargeKey, LargeValue} = take_largest_op(Left),
+    case just_insert_op(Middle, LargeKey, LargeValue) of
+        full ->
+            %%  C1-O2$-C3
+            %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+            split_c_o_c_by_l(State, Left, Middle, get_right_op(Middle));
+        _ ->
+            %% C1-O2-C3 -> C1'-O2'-C3
+            []
+    end.
+
+insert_alone_full(State, Self) ->
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    link_op(Self, EmptyBucket),
+    set_type_op(Self, c_o_l).
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     ?ASSERT_NOT_NIL(Left),
