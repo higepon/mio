@@ -5,6 +5,9 @@
 -define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 -define(INFO(Msg), ?INFOF(Msg, [])).
 
+-define(MIN_KEY, <<16#20>>).
+-define(MAX_KEY, <<16#7F>>).
+
 %% ERROR should be always written to stderr.
 -define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE]), io:format(Msg ++ "~n", Args)).
 -define(ERROR(Msg), ?ERRORF(Msg, [])).
