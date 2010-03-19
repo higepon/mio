@@ -561,6 +561,10 @@ insert_c_o_c_9(_Config) ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
+initial_range(_Config) ->
+    Bucket = setup_full_bucket(3),
+    {?MIN_KEY, ?MAX_KEY} = mio_bucket:get_range_op(Bucket).
+
 %% Helper
 setup_full_bucket(Capacity) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
@@ -605,5 +609,6 @@ all() ->
      insert_c_o_c_6,
      insert_c_o_c_7,
      insert_c_o_c_8,
-     insert_c_o_c_9
+     insert_c_o_c_9,
+     initial_range
     ].
