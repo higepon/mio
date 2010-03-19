@@ -47,14 +47,15 @@
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
          take_largest_op/1,
-         insert_op_call/5
+         insert_op_call/5,
+         get_range_op/1
         ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {store, left, right, type}).
+-record(state, {store, left, right, type, min_key, max_key}).
 
 %% Known types
 %%   O     : <alone>
@@ -210,6 +211,9 @@ get_left_op(Bucket) ->
 get_right_op(Bucket) ->
     gen_server:call(Bucket, get_right_op).
 
+get_range_op(Bucket) ->
+    gen_server:call(Bucket, get_range_op).
+
 set_left_op(Bucket, Left) ->
     gen_server:call(Bucket, {set_left_op, Left}).
 
@@ -259,7 +263,9 @@ init([Capacity, Type]) ->
     {ok, #state{store=mio_store:new(Capacity),
                 left=[],
                 right=[],
-                type=Type
+                type=Type,
+                min_key=?MIN_KEY,
+                max_key=?MAX_KEY
                }}.
 
 %%--------------------------------------------------------------------
@@ -321,6 +327,9 @@ handle_call({insert_op, Key, Value}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value]),
     {noreply, State};
+
+handle_call(get_range_op, _From, State) ->
+    {reply, {State#state.min_key, State#state.max_key}, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
