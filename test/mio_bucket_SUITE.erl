@@ -68,6 +68,8 @@ insert_c_o_2(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
 
+    {MinKey, MaxKey} = mio_bucket:get_range_op(Bucket),
+
     %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, "key4", value4),
     {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
@@ -75,6 +77,7 @@ insert_c_o_2(_Config) ->
     {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
     c_o_l = mio_bucket:get_type_op(Bucket),
     {error, not_found} = mio_bucket:get_op(Bucket, "key4"),
+    check_range(Bucket, MinKey, MaxKey),
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
