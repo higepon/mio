@@ -88,6 +88,9 @@
 %%    (a) O* -> O'
 %%
 %%    (c) O$ -> [C] -> C-O*
+%%        Range partition:
+%%          C(system_key_min, C_stored_key_max)
+%%          O*(C_stored_key_max, system_key_max)
 %%
 %%    (c) C1-O2
 %%      Insertion to C1 : C1'-O2'.
@@ -96,11 +99,20 @@
 %%    (d) C1-O2$
 %%      Insertion to C1 : C1'-C2 -> C1'-O*-C2.
 %%      Insertion to O2$ : C1-C2 -> C1-O*-C2
+%%        Range partition:
+%%          C1(C1_min, C1_stored_max)
+%%          O*(C1_stored_max, O2_min)
+%%          C2(O2_min, O2_max)
 %%
 %%    (e) C1-O2-C3
 %%      Insertion to C1 : C1'-O2'-C3
 %%      Insertion to C3 : C1-O2'-C3'
 %%      Insertion to O2 : C1-O2 | C3'-O4
+%%        Range partition:
+%%          C1(C1_min, C1_max)
+%%          O2(O2_min, O2_max)
+%%          C3(O2_max, C3_stored_max)
+%%          O4(C3_stored_max, C3_max)
 %%
 %%    (f) C1-O2$-C3
 %%      Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
