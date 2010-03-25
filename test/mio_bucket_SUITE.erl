@@ -37,8 +37,8 @@ insert(_Config) ->
                  right = get_right_type(RightBucket),
                  Bucket = mio_bucket:get_left_op(RightBucket),
 
-                 check_range(Bucket, ?MIN_KEY, key3),
-                 check_range(RightBucket, key3, ?MAX_KEY),
+                 check_range(Bucket, ?MIN_KEY, "key3"),
+                 check_range(RightBucket, "key3", ?MAX_KEY),
                  ok
          end.
 
@@ -48,12 +48,12 @@ insert_c_o_1(_Config) ->
     Bucket = setup_full_bucket(3),
 
     %% insert to most left of C1
-    ok = mio_bucket:insert_op(Bucket, key0, value0),
-    {ok, value0} = mio_bucket:get_op(Bucket, key0),
-    {ok, value1} = mio_bucket:get_op(Bucket, key1),
-    {ok, value2} = mio_bucket:get_op(Bucket, key2),
+    ok = mio_bucket:insert_op(Bucket, "key0", value0),
+    {ok, value0} = mio_bucket:get_op(Bucket, "key0"),
+    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
+    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {error, not_found} = mio_bucket:get_op(Bucket, key3),
+    {error, not_found} = mio_bucket:get_op(Bucket, "key3"),
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
@@ -61,7 +61,7 @@ insert_c_o_1(_Config) ->
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)),
 
-    {ok, value3} = mio_bucket:get_op(Right, key3).
+    {ok, value3} = mio_bucket:get_op(Right, "key3").
 
 %% C1-O2 -> C1'-O2'
 insert_c_o_2(_Config) ->
@@ -69,16 +69,16 @@ insert_c_o_2(_Config) ->
     Bucket = setup_full_bucket(3),
 
     %% insert to most left of C1
-    ok = mio_bucket:insert_op(Bucket, key4, value4),
-    {ok, value1} = mio_bucket:get_op(Bucket, key1),
-    {ok, value2} = mio_bucket:get_op(Bucket, key2),
-    {ok, value3} = mio_bucket:get_op(Bucket, key3),
+    ok = mio_bucket:insert_op(Bucket, "key4", value4),
+    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
+    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
+    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {error, not_found} = mio_bucket:get_op(Bucket, key4),
+    {error, not_found} = mio_bucket:get_op(Bucket, "key4"),
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
@@ -87,14 +87,14 @@ insert_c_o_3(_Config) ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
-    ok = mio_bucket:insert_op(Right, key4, value4),
+    ok = mio_bucket:insert_op(Right, "key4", value4),
 
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {ok, value1} = mio_bucket:get_op(Bucket, key1),
-    {ok, value2} = mio_bucket:get_op(Bucket, key2),
-    {ok, value3} = mio_bucket:get_op(Bucket, key3),
+    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
+    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
+    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
     c_o_r = mio_bucket:get_type_op(Right),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
@@ -105,12 +105,12 @@ insert_c_o_4(_Config) ->
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
-    ok = mio_bucket:insert_op(Right, key4, value4),
-    ok = mio_bucket:insert_op(Right, key5, value5),
+    ok = mio_bucket:insert_op(Right, "key4", value4),
+    ok = mio_bucket:insert_op(Right, "key5", value5),
     c_o_r = mio_bucket:get_type_op(Right),
 
     %% insert!
-    ok = mio_bucket:insert_op(Right, key6, value6),
+    ok = mio_bucket:insert_op(Right, "key6", value6),
 
     c_o_c_l = mio_bucket:get_type_op(Bucket),
     c_o_c_r = mio_bucket:get_type_op(Right),
@@ -123,9 +123,9 @@ insert_c_o_4(_Config) ->
     Right = mio_bucket:get_right_op(NewRight),
     NewRight = mio_bucket:get_left_op(Right),
 
-    {ok, value4} = mio_bucket:get_op(Right, key4),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
-    {ok, value6} = mio_bucket:get_op(Right, key6),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value5} = mio_bucket:get_op(Right, "key5"),
+    {ok, value6} = mio_bucket:get_op(Right, "key6"),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right).
@@ -138,11 +138,11 @@ insert_c_o_5(_Config) ->
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
-    ok = mio_bucket:insert_op(Right, key4, value4),
-    ok = mio_bucket:insert_op(Right, key5, value5),
+    ok = mio_bucket:insert_op(Right, "key4", value4),
+    ok = mio_bucket:insert_op(Right, "key5", value5),
 
     %% insert!
-    ok = mio_bucket:insert_op(Bucket, key0, value0),
+    ok = mio_bucket:insert_op(Bucket, "key0", value0),
 
     true = mio_bucket:is_full_op(Bucket),
     true = mio_bucket:is_full_op(Right),
@@ -157,12 +157,12 @@ insert_c_o_5(_Config) ->
     NewRight = mio_bucket:get_left_op(Right),
     c_o_c_m = mio_bucket:get_type_op(NewRight),
 
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
-    {ok, value0} = mio_bucket:get_op(Bucket, key0),
-    {ok, value1} = mio_bucket:get_op(Bucket, key1),
-    {ok, value2} = mio_bucket:get_op(Bucket, key2),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value5} = mio_bucket:get_op(Right, "key5"),
+    {ok, value0} = mio_bucket:get_op(Bucket, "key0"),
+    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
+    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right),
@@ -177,11 +177,11 @@ insert_c_o_6(_Config) ->
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
-    ok = mio_bucket:insert_op(Right, key4, value4),
-    ok = mio_bucket:insert_op(Right, key5, value5),
+    ok = mio_bucket:insert_op(Right, "key4", value4),
+    ok = mio_bucket:insert_op(Right, "key5", value5),
 
     %% insert!
-    ok = mio_bucket:insert_op(Bucket, key31, value31),
+    ok = mio_bucket:insert_op(Bucket, "key31", value31),
 
     true = mio_bucket:is_full_op(Bucket),
     true = mio_bucket:is_full_op(Right),
@@ -193,12 +193,12 @@ insert_c_o_6(_Config) ->
     Right = mio_bucket:get_right_op(NewRight),
     NewRight = mio_bucket:get_left_op(Right),
 
-    {ok, value31} = mio_bucket:get_op(Right, key31),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
-    {ok, value1} = mio_bucket:get_op(Bucket, key1),
-    {ok, value2} = mio_bucket:get_op(Bucket, key2),
-    {ok, value3} = mio_bucket:get_op(Bucket, key3),
+    {ok, value31} = mio_bucket:get_op(Right, "key31"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value5} = mio_bucket:get_op(Right, "key5"),
+    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
+    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
+    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right),
@@ -213,14 +213,14 @@ insert_c_o_c_1(_Config) ->
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
-    ok = mio_bucket:insert_op(Left, key10, value10),
+    ok = mio_bucket:insert_op(Left, "key10", value10),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value10} = mio_bucket:get_op(Left, key10),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value10} = mio_bucket:get_op(Left, "key10"),
 
-    {ok, value2} = mio_bucket:get_op(Middle, key2),
+    {ok, value2} = mio_bucket:get_op(Middle, "key2"),
 
     true = mio_bucket:is_full_op(Right),
     c_o_c_l = mio_bucket:get_type_op(Left),
@@ -235,14 +235,14 @@ insert_c_o_c_2(_Config) ->
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
-    ok = mio_bucket:insert_op(Left, key3, value3),
+    ok = mio_bucket:insert_op(Left, "key3", value3),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
 
-    {ok, value3} = mio_bucket:get_op(Middle, key3),
+    {ok, value3} = mio_bucket:get_op(Middle, "key3"),
 
     true = mio_bucket:is_full_op(Right),
     c_o_c_l = mio_bucket:get_type_op(Left),
@@ -262,14 +262,14 @@ insert_c_o_c_3(_Config) ->
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
-    ok = mio_bucket:insert_op(Right, key7, value7),
+    ok = mio_bucket:insert_op(Right, "key7", value7),
 
     %% Check C1
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
@@ -281,16 +281,16 @@ insert_c_o_c_3(_Config) ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value5} = mio_bucket:get_op(Right, "key5"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value7} = mio_bucket:get_op(MostRight, key7),
+    {ok, value7} = mio_bucket:get_op(MostRight, "key7"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -305,14 +305,14 @@ insert_c_o_c_4(_Config) ->
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
-    ok = mio_bucket:insert_op(Right, key22, value22),
+    ok = mio_bucket:insert_op(Right, "key22", value22),
 
     %% Check C1
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
@@ -324,16 +324,16 @@ insert_c_o_c_4(_Config) ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, key22),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value22} = mio_bucket:get_op(Right, "key22"),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -349,19 +349,19 @@ insert_c_o_c_5(_Config) ->
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
     %% insert!
-    ok = mio_bucket:insert_op(Middle, key22, value22),
+    ok = mio_bucket:insert_op(Middle, "key22", value22),
 
     true = mio_bucket:is_full_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
-    {ok, value5} = mio_bucket:get_op(Right, key5),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value5} = mio_bucket:get_op(Right, "key5"),
 
-    {ok, value22} = mio_bucket:get_op(Middle, key22),
+    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     c_o_c_l = mio_bucket:get_type_op(Left),
     c_o_c_m = mio_bucket:get_type_op(Middle),
     c_o_c_r = mio_bucket:get_type_op(Right),
@@ -375,41 +375,41 @@ insert_c_o_c_5(_Config) ->
 insert_c_o_c_6(_Config) ->
     %% setup C1-O2$-C3
     {Left, Middle, Right} = insert_c_o_5(_Config),
-    ok = mio_bucket:insert_op(Middle, key21, value21),
-    ok = mio_bucket:insert_op(Middle, key22, value22),
+    ok = mio_bucket:insert_op(Middle, "key21", value21),
+    ok = mio_bucket:insert_op(Middle, "key22", value22),
 
     %% insert!
-    ok = mio_bucket:insert_op(Left, key00, value00),
+    ok = mio_bucket:insert_op(Left, "key00", value00),
 
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value00} = mio_bucket:get_op(Left, key00),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value00} = mio_bucket:get_op(Left, "key00"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value2} = mio_bucket:get_op(Middle, key2),
-    {ok, value21} = mio_bucket:get_op(Middle, key21),
+    {ok, value2} = mio_bucket:get_op(Middle, "key2"),
+    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, key22),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value22} = mio_bucket:get_op(Right, "key22"),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -422,41 +422,41 @@ insert_c_o_c_6(_Config) ->
 insert_c_o_c_7(_Config) ->
     %% setup C1-O2$-C3
     {Left, Middle, Right} = insert_c_o_5(_Config),
-    ok = mio_bucket:insert_op(Middle, key21, value21),
-    ok = mio_bucket:insert_op(Middle, key22, value22),
+    ok = mio_bucket:insert_op(Middle, "key21", value21),
+    ok = mio_bucket:insert_op(Middle, "key22", value22),
 
     %% insert!
-    ok = mio_bucket:insert_op(Left, key20, value20),
+    ok = mio_bucket:insert_op(Left, "key20", value20),
 
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value20} = mio_bucket:get_op(Middle, key20),
-    {ok, value21} = mio_bucket:get_op(Middle, key21),
+    {ok, value20} = mio_bucket:get_op(Middle, "key20"),
+    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, key22),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value22} = mio_bucket:get_op(Right, "key22"),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -469,43 +469,43 @@ insert_c_o_c_7(_Config) ->
 insert_c_o_c_8(_Config) ->
     %% setup C1-O2$-C3
     {Left, Middle, Right} = insert_c_o_5(_Config),
-    ok = mio_bucket:insert_op(Middle, key21, value21),
-    ok = mio_bucket:insert_op(Middle, key22, value22),
+    ok = mio_bucket:insert_op(Middle, "key21", value21),
+    ok = mio_bucket:insert_op(Middle, "key22", value22),
 
     c_o_c_m = mio_bucket:get_type_op(Middle),
 
     %% insert!
-    ok = mio_bucket:insert_op(Middle, key23, value23),
+    ok = mio_bucket:insert_op(Middle, "key23", value23),
 
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value21} = mio_bucket:get_op(Middle, key21),
-    {ok, value22} = mio_bucket:get_op(Middle, key22),
+    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
+    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value23} = mio_bucket:get_op(Right, key23),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value23} = mio_bucket:get_op(Right, "key23"),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -520,43 +520,43 @@ insert_c_o_c_8(_Config) ->
 insert_c_o_c_9(_Config) ->
     %% setup C1-O2$-C3
     {Left, Middle, Right} = insert_c_o_5(_Config),
-    ok = mio_bucket:insert_op(Middle, key21, value21),
-    ok = mio_bucket:insert_op(Middle, key22, value22),
+    ok = mio_bucket:insert_op(Middle, "key21", value21),
+    ok = mio_bucket:insert_op(Middle, "key22", value22),
 
     c_o_c_m = mio_bucket:get_type_op(Middle),
 
     %% insert!
-    ok = mio_bucket:insert_op(Right, key31, value31),
+    ok = mio_bucket:insert_op(Right, "key31", value31),
 
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, key0),
-    {ok, value1} = mio_bucket:get_op(Left, key1),
-    {ok, value2} = mio_bucket:get_op(Left, key2),
+    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value21} = mio_bucket:get_op(Middle, key21),
-    {ok, value22} = mio_bucket:get_op(Middle, key22),
+    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
+    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, key3),
-    {ok, value31} = mio_bucket:get_op(Right, key31),
-    {ok, value4} = mio_bucket:get_op(Right, key4),
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value31} = mio_bucket:get_op(Right, "key31"),
+    {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, key5),
+    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
 
     left = get_left_type(Left),
@@ -569,11 +569,11 @@ setup_full_bucket(Capacity) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
-    ok = mio_bucket:insert_op(Bucket, key1, value1),
-    ok = mio_bucket:insert_op(Bucket, key2, value2),
+    ok = mio_bucket:insert_op(Bucket, "key1", value1),
+    ok = mio_bucket:insert_op(Bucket, "key2", value2),
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
-    ok = mio_bucket:insert_op(Bucket, key3, value3),
+    ok = mio_bucket:insert_op(Bucket, "key3", value3),
 
     %% set dummy type.
     {ok, Right } = mio_sup:make_bucket(Capacity, right),
