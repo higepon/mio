@@ -39,7 +39,8 @@
 -record(store, {capacity, tree}).
 
 %% API
--export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1, capacity/1, is_empty/1]).
+-export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
+         capacity/1, is_empty/1, largest/1]).
 
 %%====================================================================
 %% API
@@ -97,7 +98,7 @@ take_smallest(Store) ->
 
 %%--------------------------------------------------------------------
 %% Function: take_largest/1
-%% Description: get value by smallest key and remove it.
+%% Description: get value by largest key and remove it.
 %%--------------------------------------------------------------------
 take_largest(Store) ->
     case gb_trees:size(Store#store.tree) of
@@ -106,6 +107,18 @@ take_largest(Store) ->
         _ ->
             {Key, Value, NewTree} = gb_trees:take_largest(Store#store.tree),
             {Key, Value, Store#store{tree=NewTree}}
+    end.
+
+%%--------------------------------------------------------------------
+%% Function: largest/1
+%% Description: get value by largest key.
+%%--------------------------------------------------------------------
+largest(Store) ->
+    case gb_trees:size(Store#store.tree) of
+        0 ->
+            none;
+        _ ->
+            gb_trees:largest(Store#store.tree)
     end.
 
 %%--------------------------------------------------------------------

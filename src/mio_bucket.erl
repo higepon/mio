@@ -47,8 +47,10 @@
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
          take_largest_op/1,
+         get_largest_op/1,
          insert_op_call/5,
-         get_range_op/1
+         get_range_op/1, set_range_op/3,
+         set_max_key_op/2
         ]).
 
 %% gen_server callbacks
@@ -238,6 +240,12 @@ get_type_op(Bucket) ->
 set_type_op(Bucket, Type) ->
     gen_server:call(Bucket, {set_type_op, Type}).
 
+set_range_op(Bucket, MinKey, MaxKey) ->
+    gen_server:call(Bucket, {set_range_op, MinKey, MaxKey}).
+
+set_max_key_op(Bucket, MaxKey) ->
+    gen_server:call(Bucket, {set_max_key_op, MaxKey}).
+
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
 
@@ -249,6 +257,9 @@ is_empty_op(Bucket) ->
 
 is_full_op(Bucket) ->
     gen_server:call(Bucket, is_full_op).
+
+get_largest_op(Bucket) ->
+    gen_server:call(Bucket, get_largest_op).
 
 take_largest_op(Bucket) ->
     gen_server:call(Bucket, take_largest_op).
@@ -318,12 +329,21 @@ handle_call({set_right_op, Right}, _From, State) ->
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#state{type=Type}};
 
+handle_call({set_range_op, MinKey, MaxKey}, _From, State) ->
+    {reply, ok, State#state{min_key=MinKey, max_key=MaxKey}};
+
+handle_call({set_max_key_op, MaxKey}, _From, State) ->
+    {reply, ok, State#state{max_key=MaxKey}};
+
 handle_call(get_type_op, _From, State) ->
     {reply, State#state.type, State};
 
 handle_call(take_largest_op, _From, State) ->
     {Key, Value, NewStore} = mio_store:take_largest(State#state.store),
     {reply, {Key, Value}, State#state{store=NewStore}};
+
+handle_call(get_largest_op, _From, State) ->
+    {reply, mio_store:largest(State#state.store), State};
 
 handle_call({just_insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
@@ -460,7 +480,12 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
 insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
     link_op(Self, EmptyBucket),
-    set_type_op(Self, c_o_l).
+    set_type_op(Self, c_o_l),
+
+    %% range partition
+    {LargestKey, _} = get_largest_op(Self),
+    set_max_key_op(Self, LargestKey),
+    set_range_op(EmptyBucket, LargestKey, State#state.max_key).
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     ?ASSERT_NOT_NIL(Left),
