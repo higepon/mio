@@ -36,6 +36,9 @@ insert(_Config) ->
                  left = get_left_type(Bucket),
                  right = get_right_type(RightBucket),
                  Bucket = mio_bucket:get_left_op(RightBucket),
+
+                 check_range(Bucket, ?MIN_KEY, key3),
+                 check_range(RightBucket, key3, ?MAX_KEY),
                  ok
          end.
 
@@ -591,6 +594,9 @@ get_left_type(Bucket) ->
 
 get_right_type(Bucket) ->
     mio_bucket:get_type_op(mio_bucket:get_right_op(Bucket)).
+
+check_range(Bucket, ExpectedMin, ExpectedMax) ->
+    {ExpectedMin, ExpectedMax} = mio_bucket:get_range_op(Bucket).
 
 all() ->
     [
