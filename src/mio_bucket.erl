@@ -566,6 +566,7 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 
 %% Insertion to the Right causes overflow
 split_c_o_c_by_r(State, Left, Middle, Right) ->
+    %% todo
     EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
