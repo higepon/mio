@@ -177,8 +177,8 @@ insert_c_o_5(_Config) ->
     %%  O*(C1_stored_max, O2_min)
     %%  C2(O2_min, O2_max)
     {?MIN_KEY, "key2"} = mio_bucket:get_range_op(Bucket),
-%%     {"key2", "key3"} = mio_bucket:get_range_op(NewRight),
-%%     {"key3", ?MAX_KEY} =  mio_bucket:get_range_op(Right),
+    {"key2", "key3"} = mio_bucket:get_range_op(NewRight),
+    {"key3", ?MAX_KEY} =  mio_bucket:get_range_op(Right),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right),

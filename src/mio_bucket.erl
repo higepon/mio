@@ -461,7 +461,7 @@ make_empty_bucket(State, Type) ->
     mio_sup:make_bucket(mio_store:capacity(State#state.store), Type).
 
 make_c_o_c(State, Left, Right) ->
-    {_, EmptyBucketMinKey} = get_range_op(Left),
+    {EmptyBucketMinKey, _} = get_largest_op(Left),
     {EmptyBucketMaxKey, _} = get_smallest_op(Right),
     {NewLeftMaxKey, _} = get_largest_op(Left),
 
