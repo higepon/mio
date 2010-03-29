@@ -525,6 +525,18 @@ prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     link3_op(Right, EmptyBucket, PrevRight),
     EmptyBucket.
 
+adjust_range_c_o_c_o(Left, Middle, Right, MostRight) ->
+    {LeftMax, _} = get_largest_op(Left),
+    set_max_key_op(Left, LeftMax),
+
+    {MiddleMax, _} = get_largest_op(Middle),
+    set_range_op(Middle, LeftMax, MiddleMax),
+
+    {_, OldRightMax} = get_range_op(Right),
+    {RightMax, _} = get_largest_op(Right),
+    set_range_op(Right, MiddleMax, RightMax),
+    set_range_op(MostRight, RightMax, OldRightMax).
+
 %% Insertion to the Left causes overflow
 split_c_o_c_by_l(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
@@ -536,17 +548,7 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     full = just_insert_op(Right, LargeMKey, LargeMValue),
 
     %% range partition
-    {LeftMax, _} = get_largest_op(Left),
-    set_max_key_op(Left, LeftMax),
-
-    {MiddleMax, _} = get_largest_op(Middle),
-    set_range_op(Middle, LeftMax, MiddleMax),
-
-    {_, OldRightMax} = get_range_op(Right),
-    {RightMax, _} = get_largest_op(Right),
-    set_range_op(Right, MiddleMax, RightMax),
-    set_range_op(EmptyBucket, RightMax, OldRightMax).
-
+    adjust_range_c_o_c_o(Left, Middle, Right, EmptyBucket).
 
 
 %% Insertion to the Middle causes overflow
@@ -560,17 +562,7 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
 
     %% range partition
-    {LeftMax, _} = get_largest_op(Left),
-    set_max_key_op(Left, LeftMax),
-
-    {MiddleMax, _} = get_largest_op(Middle),
-    set_range_op(Middle, LeftMax, MiddleMax),
-
-    {_, OldRightMax} = get_range_op(Right),
-    {RightMax, _} = get_largest_op(Right),
-    set_range_op(Right, MiddleMax, RightMax),
-    set_range_op(EmptyBucket, RightMax, OldRightMax).
-
+    adjust_range_c_o_c_o(Left, Middle, Right, EmptyBucket).
 
 %% Insertion to the Right causes overflow
 split_c_o_c_by_r(State, Left, Middle, Right) ->
