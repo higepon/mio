@@ -549,4 +549,8 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 split_c_o_c_by_r(State, Left, Middle, Right) ->
     EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
     {LargeKey, LargeValue} = take_largest_op(Right),
-    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue).
+    ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
+    {_, MaxKey} = get_range_op(Right),
+    {NewRightMaxKey, _} = get_largest_op(Right),
+    set_max_key_op(Right, NewRightMaxKey),
+    set_range_op(EmptyBucket, NewRightMaxKey, MaxKey).
