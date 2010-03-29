@@ -387,8 +387,16 @@ insert_c_o_c_5(_Config) ->
     %% setup C1-O2-C3
     {Left, Middle, Right} = insert_c_o_5(_Config),
 
+    {LMin, LMax} = mio_bucket:get_range_op(Left),
+    {MMin, MMax} = mio_bucket:get_range_op(Middle),
+    {RMin, RMax} = mio_bucket:get_range_op(Right),
+
     %% insert!
     ok = mio_bucket:insert_op(Middle, "key22", value22),
+
+    {LMin, LMax} = mio_bucket:get_range_op(Left),
+    {MMin, MMax} = mio_bucket:get_range_op(Middle),
+    {RMin, RMax} = mio_bucket:get_range_op(Right),
 
     true = mio_bucket:is_full_op(Right),
     {ok, value3} = mio_bucket:get_op(Right, "key3"),
