@@ -463,6 +463,7 @@ make_empty_bucket(State, Type) ->
 make_c_o_c(State, Left, Right) ->
     {_, EmptyBucketMinKey} = get_range_op(Left),
     {EmptyBucketMaxKey, _} = get_smallest_op(Right),
+    {NewLeftMaxKey, _} = get_largest_op(Left),
 
     %%  Range partition:
     %%    C1(C1_min, C1_stored_max)
@@ -471,6 +472,7 @@ make_c_o_c(State, Left, Right) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
     set_range_op(EmptyBucket, EmptyBucketMinKey, EmptyBucketMaxKey),
     set_min_key_op(Right, EmptyBucketMaxKey),
+    set_max_key_op(Left, NewLeftMaxKey),
 
     link3_op(Left, EmptyBucket, Right),
     ok = set_type_op(Right, c_o_c_r),
