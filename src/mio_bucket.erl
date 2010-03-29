@@ -533,7 +533,21 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
-    full = just_insert_op(Right, LargeMKey, LargeMValue).
+    full = just_insert_op(Right, LargeMKey, LargeMValue),
+
+    %% range partition
+    {LeftMax, _} = get_largest_op(Left),
+    set_max_key_op(Left, LeftMax),
+
+    {MiddleMax, _} = get_largest_op(Middle),
+    set_range_op(Middle, LeftMax, MiddleMax),
+
+    {_, OldRightMax} = get_range_op(Right),
+    {RightMax, _} = get_largest_op(Right),
+    set_range_op(Right, MiddleMax, RightMax),
+    set_range_op(EmptyBucket, RightMax, OldRightMax).
+
+
 
 %% Insertion to the Middle causes overflow
 split_c_o_c_by_m(State, Left, Middle, Right) ->
