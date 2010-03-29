@@ -216,6 +216,13 @@ insert_c_o_6(_Config) ->
     {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
     {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
 
+    %%  C1(C1_min, C1_stored_max)
+    %%  O*(C1_stored_max, O2_min)
+    %%  C2(O2_min, O2_max)
+    {?MIN_KEY, "key3"} = mio_bucket:get_range_op(Bucket),
+    {"key3", "key31"} = mio_bucket:get_range_op(NewRight),
+    {"key31", ?MAX_KEY} =  mio_bucket:get_range_op(Right),
+
     left = get_left_type(Bucket),
     right = get_right_type(Right),
 
