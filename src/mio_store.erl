@@ -40,7 +40,7 @@
 
 %% API
 -export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
-         capacity/1, is_empty/1, largest/1]).
+         capacity/1, is_empty/1, largest/1, smallest/1]).
 
 %%====================================================================
 %% API
@@ -119,6 +119,18 @@ largest(Store) ->
             none;
         _ ->
             gb_trees:largest(Store#store.tree)
+    end.
+
+%%--------------------------------------------------------------------
+%% Function: smallest/1
+%% Description: get value by smallest key.
+%%--------------------------------------------------------------------
+smallest(Store) ->
+    case gb_trees:size(Store#store.tree) of
+        0 ->
+            none;
+        _ ->
+            gb_trees:smallest(Store#store.tree)
     end.
 
 %%--------------------------------------------------------------------

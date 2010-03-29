@@ -47,10 +47,10 @@
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
          take_largest_op/1,
-         get_largest_op/1,
+         get_largest_op/1, get_smallest_op/1,
          insert_op_call/5,
          get_range_op/1, set_range_op/3,
-         set_max_key_op/2
+         set_max_key_op/2, set_min_key_op/2
         ]).
 
 %% gen_server callbacks
@@ -246,6 +246,9 @@ set_range_op(Bucket, MinKey, MaxKey) ->
 set_max_key_op(Bucket, MaxKey) ->
     gen_server:call(Bucket, {set_max_key_op, MaxKey}).
 
+set_min_key_op(Bucket, MaxKey) ->
+    gen_server:call(Bucket, {set_min_key_op, MaxKey}).
+
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
 
@@ -260,6 +263,9 @@ is_full_op(Bucket) ->
 
 get_largest_op(Bucket) ->
     gen_server:call(Bucket, get_largest_op).
+
+get_smallest_op(Bucket) ->
+    gen_server:call(Bucket, get_smallest_op).
 
 take_largest_op(Bucket) ->
     gen_server:call(Bucket, take_largest_op).
@@ -335,6 +341,9 @@ handle_call({set_range_op, MinKey, MaxKey}, _From, State) ->
 handle_call({set_max_key_op, MaxKey}, _From, State) ->
     {reply, ok, State#state{max_key=MaxKey}};
 
+handle_call({set_min_key_op, MinKey}, _From, State) ->
+    {reply, ok, State#state{min_key=MinKey}};
+
 handle_call(get_type_op, _From, State) ->
     {reply, State#state.type, State};
 
@@ -344,6 +353,9 @@ handle_call(take_largest_op, _From, State) ->
 
 handle_call(get_largest_op, _From, State) ->
     {reply, mio_store:largest(State#state.store), State};
+
+handle_call(get_smallest_op, _From, State) ->
+    {reply, mio_store:smallest(State#state.store), State};
 
 handle_call({just_insert_op, Key, Value}, _From, State) ->
     case mio_store:set(Key, Value, State#state.store) of
@@ -449,7 +461,17 @@ make_empty_bucket(State, Type) ->
     mio_sup:make_bucket(mio_store:capacity(State#state.store), Type).
 
 make_c_o_c(State, Left, Right) ->
+    {_, EmptyBucketMinKey} = get_range_op(Left),
+    {EmptyBucketMaxKey, _} = get_smallest_op(Right),
+
+    %%  Range partition:
+    %%    C1(C1_min, C1_stored_max)
+    %%    O*(C1_stored_max, O2_min)
+    %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
+    set_range_op(EmptyBucket, EmptyBucketMinKey, EmptyBucketMaxKey),
+    set_min_key_op(Right, EmptyBucketMaxKey),
+
     link3_op(Left, EmptyBucket, Right),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
