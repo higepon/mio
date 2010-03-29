@@ -564,7 +564,7 @@ insert_c_o_c_8(_Config) ->
     c_o_r = mio_bucket:get_type_op(MostRight),
     {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
-    {"key4", ?MAX_KEY} = mio_bucket:get_range_op(Right),
+    {"key4", ?MAX_KEY} = mio_bucket:get_range_op(MostRight),
 
     left = get_left_type(Left),
     right = get_right_type(MostRight),
