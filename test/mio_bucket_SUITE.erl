@@ -626,6 +626,11 @@ insert_c_o_c_9(_Config) ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
+sg_search_o(_Config) ->
+    Capacity = 3,
+    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {error, not_found} = mio_bucket:sg_search_op(Bucket, "key").
+
 %% Helper
 setup_full_bucket(Capacity) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
@@ -673,5 +678,6 @@ all() ->
      insert_c_o_c_6,
      insert_c_o_c_7,
      insert_c_o_c_8,
-     insert_c_o_c_9
+     insert_c_o_c_9,
+     sg_search_o
     ].
