@@ -50,7 +50,9 @@
          get_largest_op/1, get_smallest_op/1,
          insert_op_call/5,
          get_range_op/1, set_range_op/3,
-         set_max_key_op/2, set_min_key_op/2
+         set_max_key_op/2, set_min_key_op/2,
+         %% Skip Graph layer
+         sg_search_op/2
         ]).
 
 %% gen_server callbacks
@@ -223,6 +225,9 @@
 %%====================================================================
 %% API
 %%====================================================================
+sg_search_op(Bucket, Key) ->
+    gen_server:call(Bucket, {sg_search_op, Key}).
+
 get_op(Bucket, Key) ->
     gen_server:call(Bucket, {get_op, Key}).
 
@@ -318,6 +323,9 @@ handle_call(is_empty_op, _From, State) ->
 
 handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#state.store), State};
+
+handle_call({sg_search_op, _Key}, _From, State) ->
+    {reply, {error, not_found}, State};
 
 handle_call({get_op, Key}, _From, State) ->
     case mio_store:get(Key, State#state.store) of
