@@ -59,14 +59,21 @@
 
 -record(state, {store, left, right, type, min_key, max_key}).
 
-%% Known types
-%%   O     : <alone>
-%%   C-O   : <c_o_l>-<c_o_r>
-%%   C-O-C : <c_o_c_l>-<c_o_c_m>-<c_o_c_r>
+%%====================================================================
+%%  Skip Graph layer
+%%====================================================================
+%%
+%%  We use max_range value of bucket as representative key.
+%%
 
 %%====================================================================
 %%  Bucket layer
 %%====================================================================
+%%
+%% Known types
+%%   O     : <alone>
+%%   C-O   : <c_o_l>-<c_o_r>
+%%   C-O-C : <c_o_c_l>-<c_o_c_m>-<c_o_c_r>
 %%
 %%  C: Closed bucket
 %%  O: Open bucket
