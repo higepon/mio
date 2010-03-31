@@ -37,7 +37,7 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, terminate_node/1, make_bucket/1, make_bucket/2]).
+-export([init/1, start_node/3, start_node/4, start_write_serializer/0, terminate_node/1, make_bucket/1, make_bucket/2, make_bucket/3]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -55,10 +55,14 @@ start_node(Key, Value, MembershipVector, Expire) ->
                                                temporary, brutal_kill, worker, [mio_node]}).
 
 make_bucket(Capacity, Type) ->
-    MembershipVector = mio_mvector:generate(3),
+    make_bucket(Capacity, Type, mio_mvector:generate(3)).
+
+%% You can set MembershipVector for testablity.
+make_bucket(Capacity, Type, MembershipVector) ->
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
                                                {mio_bucket, start_link, [[Capacity, Type, MembershipVector]]},
                                                temporary, brutal_kill, worker, [mio_bucket]}).
+
 make_bucket(Capacity) ->
     %% todo : MaxLevel = 3
     MembershipVector = mio_mvector:generate(3),
