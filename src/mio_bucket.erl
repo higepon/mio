@@ -601,24 +601,21 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     set_max_key_op(Right, NewRightMaxKey),
     set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey).
 
+my_key(State) ->
+    State#state.max_key.
+
 %% Skip Graph Layer
 sg_search_op_call(From, State, Self, Key) ->
-    gen_server:reply(From, {error, not_found}).
-%%     SearchLevel = case Level of
-%%                       [] ->
-%%                           length(State#state.right) - 1; %% Level is 0 origin
-%%                       _ -> Level
-%%                   end,
-%%     MyKey = State#state.key,
-%%     Found = string:equal(MyKey, Key),
-%%     if
-%%         %% Found!
-%%         Found ->
-%%             MyValue = State#state.value,
-%%             MyExpireTime = State#state.expire_time,
-%%             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-%%         MyKey < Key ->
-%%             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
-%%         true ->
-%%             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
-%%     end.
+    gen_server:reply(From, {error, not_found}),
+    SearchLevel = length(State#state.rights) - 1, %% Level is 0 origin
+    case Key =< my_key(State) of
+        true ->
+            case mio_store:get(Key, State#state.store) of
+                none ->
+                    gen_server:reply(From ,{error, not_found});
+                Value ->
+                    gen_server:reply(From ,{ok, Value})
+            end;
+        _ ->
+            exit(hige)
+    end.
