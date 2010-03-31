@@ -54,9 +54,9 @@
          get_range_op/1, set_range_op/3,
          set_max_key_op/2, set_min_key_op/2,
          %% Skip Graph layer
-         sg_search_op/2
+         sg_search_op/2,
          %% For testability
-%%         change_gen_mvector_op/1
+         set_gen_mvector_op/2
         ]).
 
 %% gen_server callbacks
@@ -235,6 +235,9 @@
 sg_search_op(Bucket, Key) ->
     gen_server:call(Bucket, {sg_search_op, Key}).
 
+set_gen_mvector_op(Bucket, Fun) ->
+    gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
+
 get_op(Bucket, Key) ->
     gen_server:call(Bucket, {get_op, Key}).
 
@@ -378,6 +381,9 @@ handle_call({set_max_key_op, MaxKey}, _From, State) ->
 
 handle_call({set_min_key_op, MinKey}, _From, State) ->
     {reply, ok, State#state{min_key=MinKey}};
+
+handle_call({set_gen_mvector_op, Fun}, _From, State) ->
+    {reply, ok, State#state{gen_mvector=Fun}};
 
 handle_call(get_type_op, _From, State) ->
     {reply, State#state.type, State};
