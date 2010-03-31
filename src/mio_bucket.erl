@@ -42,6 +42,7 @@
 -export([start_link/1,
          get_op/2,
          get_left_op/1, get_right_op/1,
+         get_left_op/2, get_right_op/2,
          set_left_op/2, set_right_op/2,
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
@@ -240,6 +241,12 @@ get_left_op(Bucket) ->
 get_right_op(Bucket) ->
     gen_server:call(Bucket, get_right_op).
 
+get_left_op(Bucket, Level) ->
+    gen_server:call(Bucket, {get_left_op, Level}).
+
+get_right_op(Bucket, Level) ->
+    gen_server:call(Bucket, {get_right_op, Level}).
+
 get_range_op(Bucket) ->
     gen_server:call(Bucket, get_range_op).
 
@@ -345,6 +352,12 @@ handle_call(get_left_op, _From, State) ->
 
 handle_call(get_right_op, _From, State) ->
     {reply, State#state.right, State};
+
+handle_call({get_left_op, Level}, _From, State) ->
+    {reply, neighbor(State, left, Level), State};
+
+handle_call({get_right_op, Level}, _From, State) ->
+    {reply, neighbor(State, right, Level), State};
 
 handle_call({set_left_op, Left}, _From, State) ->
     {reply, ok, State#state{left=Left}};
@@ -608,4 +621,21 @@ sg_search_op_call(From, State, Self, Key) ->
             gen_server:reply(From,mio_store:get(Key, State#state.store));
         _ ->
             exit(hige)
+    end.
+
+%%--------------------------------------------------------------------
+%%% Internal functions
+%%--------------------------------------------------------------------
+neighbor_on_level(Buckets, Level) ->
+    case Buckets of
+        [] -> [];
+        _ ->  lists:nth(Level + 1, Buckets) %% Erlang array is 1 origin.
+    end.
+
+neighbor(State, Direction, Level) ->
+    case Direction of
+        right ->
+            neighbor_on_level(State#state.rights, Level);
+        left ->
+            neighbor_on_level(State#state.lefts, Level)
     end.
