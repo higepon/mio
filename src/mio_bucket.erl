@@ -44,6 +44,7 @@
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
          set_left_op/2, set_right_op/2,
+         set_left_op/3, set_right_op/3,
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
@@ -63,7 +64,7 @@
 %% gen_server calls for spawn
 -export([sg_search_op_call/4]).
 
--record(state, {store, left, right, type, min_key, max_key, lefts, rights, membership_vector}).
+-record(state, {store, type, min_key, max_key, lefts, rights, membership_vector}).
 
 %%====================================================================
 %%  Skip Graph layer
@@ -236,10 +237,10 @@ get_op(Bucket, Key) ->
     gen_server:call(Bucket, {get_op, Key}).
 
 get_left_op(Bucket) ->
-    gen_server:call(Bucket, get_left_op).
+    get_left_op(Bucket, 0).
 
 get_right_op(Bucket) ->
-    gen_server:call(Bucket, get_right_op).
+    get_right_op(Bucket, 0).
 
 get_left_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_left_op, Level}).
@@ -250,11 +251,17 @@ get_right_op(Bucket, Level) ->
 get_range_op(Bucket) ->
     gen_server:call(Bucket, get_range_op).
 
+set_left_op(Bucket, Left, Level) ->
+    gen_server:call(Bucket, {set_left_op, Left, Level}).
+
+set_right_op(Bucket, Right, Level) ->
+    gen_server:call(Bucket, {set_right_op, Right, Level}).
+
 set_left_op(Bucket, Left) ->
-    gen_server:call(Bucket, {set_left_op, Left}).
+    set_left_op(Bucket, Left, 0).
 
 set_right_op(Bucket, Right) ->
-    gen_server:call(Bucket, {set_right_op, Right}).
+    set_right_op(Bucket, Right, 0).
 
 get_type_op(Bucket) ->
     gen_server:call(Bucket, get_type_op).
@@ -314,8 +321,6 @@ init([Capacity, Type, MembershipVector]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     {ok, #state{store=mio_store:new(Capacity),
-                left=[],
-                right=[],
                 type=Type,
                 min_key=?MIN_KEY,
                 max_key=?MAX_KEY,
@@ -347,23 +352,17 @@ handle_call({sg_search_op, Key}, From, State) ->
 handle_call({get_op, Key}, _From, State) ->
     {reply, mio_store:get(Key, State#state.store), State};
 
-handle_call(get_left_op, _From, State) ->
-    {reply, State#state.left, State};
-
-handle_call(get_right_op, _From, State) ->
-    {reply, State#state.right, State};
-
 handle_call({get_left_op, Level}, _From, State) ->
     {reply, neighbor(State, left, Level), State};
 
 handle_call({get_right_op, Level}, _From, State) ->
     {reply, neighbor(State, right, Level), State};
 
-handle_call({set_left_op, Left}, _From, State) ->
-    {reply, ok, State#state{left=Left}};
+handle_call({set_left_op, Left, Level}, _From, State) ->
+    {reply, ok, set_left(State, Level, Left)};
 
-handle_call({set_right_op, Right}, _From, State) ->
-    {reply, ok, State#state{right=Right}};
+handle_call({set_right_op, Right, Level}, _From, State) ->
+    {reply, ok, set_right(State, Level, Right)};
 
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#state{type=Type}};
@@ -467,25 +466,25 @@ insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     case {State#state.type, InsertState} of
         {c_o_l, overflow} ->
-            insert_c_o_l_overflow(State, Self, State#state.right);
+            insert_c_o_l_overflow(State, Self, neighbor(State, right, 0));
         {c_o_c_l, overflow} ->
-            insert_c_o_c_l_overflow(State, Self, State#state.right);
+            insert_c_o_c_l_overflow(State, Self, neighbor(State, right, 0));
         {c_o_c_r, overflow} ->
             %% C1-O2-C3 -> C1-O2 | C3'-O4
             %%   or
             %% C1-O2$-C3 -> C1-O2$ | C3'-O4
-            split_c_o_c_by_r(State, get_left_op(State#state.left), State#state.left, Self);
+            split_c_o_c_by_r(State, get_left_op(neighbor(State, left, 0)), neighbor(State, left, 0), Self);
         {alone, full} ->
             %% O$ -> [C] -> C-O*
             insert_alone_full(State, Self);
         {c_o_r, full} ->
             %% C1-O2$ -> C1-O*-C2
-            make_c_o_c(State, State#state.left, Self);
+            make_c_o_c(State, neighbor(State, left, 0), Self);
         %% Insertion to left o
         {c_o_c_m, full} ->
             %%  C1-O2$-C3
             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-            split_c_o_c_by_m(State, State#state.left, Self, State#state.right);
+            split_c_o_c_by_m(State, neighbor(State, left, 0), Self, neighbor(State, right, 0));
         _ -> []
     end,
     gen_server:reply(From, ok).
@@ -639,3 +638,9 @@ neighbor(State, Direction, Level) ->
         left ->
             neighbor_on_level(State#state.lefts, Level)
     end.
+
+set_right(State, Level, Bucket) ->
+    State#state{rights=mio_util:lists_set_nth(Level + 1, Bucket, State#state.rights)}.
+
+set_left(State, Level, Bucket) ->
+    State#state{lefts=mio_util:lists_set_nth(Level + 1, Bucket, State#state.lefts)}.
