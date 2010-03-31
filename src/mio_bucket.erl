@@ -338,12 +338,7 @@ handle_call({sg_search_op, Key}, From, State) ->
     {noreply, State};
 
 handle_call({get_op, Key}, _From, State) ->
-    case mio_store:get(Key, State#state.store) of
-        none ->
-            {reply, {error, not_found}, State};
-        Value ->
-            {reply, {ok, Value}, State}
-    end;
+    {reply, mio_store:get(Key, State#state.store), State};
 
 handle_call(get_left_op, _From, State) ->
     {reply, State#state.left, State};
@@ -610,12 +605,7 @@ sg_search_op_call(From, State, Self, Key) ->
     SearchLevel = length(State#state.rights) - 1, %% Level is 0 origin
     case Key =< my_key(State) of
         true ->
-            case mio_store:get(Key, State#state.store) of
-                none ->
-                    gen_server:reply(From ,{error, not_found});
-                Value ->
-                    gen_server:reply(From ,{ok, Value})
-            end;
+            gen_server:reply(From,mio_store:get(Key, State#state.store));
         _ ->
             exit(hige)
     end.

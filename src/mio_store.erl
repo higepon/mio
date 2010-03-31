@@ -78,9 +78,9 @@ set(Key, Value, Store) ->
 get(Key, Store) ->
     case gb_trees:lookup(Key, Store#store.tree) of
         none ->
-            none;
+            {error, not_found};
         {value, Value} ->
-            Value
+            {ok, Value}
     end.
 
 %%--------------------------------------------------------------------
