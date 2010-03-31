@@ -631,6 +631,27 @@ sg_search_o(_Config) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
     {error, not_found} = mio_bucket:sg_search_op(Bucket, "key").
 
+sg_c_o(_Config) ->
+    %% make c-o
+    Bucket = setup_full_bucket(3),
+
+    %% check on level 0
+    RightBucket = mio_bucket:get_right_op(Bucket),
+
+    %% check on level 1
+    case mio_bucket:get_right_op(Bucket, 1) of
+        %% They have other membership_vector
+        [] ->
+            [] = mio_bucket:get_left_op(RightBucket, []),
+            [] = mio_bucket:get_right_op(RightBucket, []);
+        %% They are linked on Level1
+        RightBucket ->
+            RightBucket = mio_bucket:get_right_op(Bucket, 1),
+            [] = mio_bucket:get_left_op(Bucket, 1),
+            [] = mio_bucket:get_right_op(RightBucket, 1),
+            Bucket = mio_bucket:get_left_op(RightBucket, 1)
+    end.
+
 %% Helper
 setup_full_bucket(Capacity) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
@@ -679,5 +700,6 @@ all() ->
      insert_c_o_c_7,
      insert_c_o_c_8,
      insert_c_o_c_9,
-     sg_search_o
+     sg_search_o,
+     sg_c_o
     ].
