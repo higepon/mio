@@ -55,6 +55,8 @@
          set_max_key_op/2, set_min_key_op/2,
          %% Skip Graph layer
          sg_search_op/2
+         %% For testability
+%%         change_gen_mvector_op/1
         ]).
 
 %% gen_server callbacks
@@ -64,7 +66,7 @@
 %% gen_server calls for spawn
 -export([sg_search_op_call/4]).
 
--record(state, {store, type, min_key, max_key, lefts, rights, membership_vector}).
+-record(state, {store, type, min_key, max_key, lefts, rights, membership_vector, gen_mvector}).
 
 %%====================================================================
 %%  Skip Graph layer
@@ -326,7 +328,8 @@ init([Capacity, Type, MembershipVector]) ->
                 max_key=?MAX_KEY,
                 lefts=EmptyNeighbors,
                 rights=EmptyNeighbors,
-                membership_vector=MembershipVector
+                membership_vector=MembershipVector,
+                gen_mvector=fun mio_mvector:generate/1
                }}.
 
 %%--------------------------------------------------------------------
@@ -490,7 +493,8 @@ insert_op_call(From, State, Self, Key, Value)  ->
     gen_server:reply(From, ok).
 
 make_empty_bucket(State, Type) ->
-    mio_sup:make_bucket(mio_store:capacity(State#state.store), Type).
+    MaxLevel = length(State#state.membership_vector),
+    mio_sup:make_bucket(mio_store:capacity(State#state.store), Type, apply(State#state.gen_mvector, [MaxLevel])).
 
 make_c_o_c(State, Left, Right) ->
     {EmptyBucketMinKey, _} = get_largest_op(Left),
