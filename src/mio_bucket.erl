@@ -59,6 +59,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+%% gen_server calls for spawn
+-export([sg_search_op_call/4]).
+
 -record(state, {store, left, right, type, min_key, max_key}).
 
 %%====================================================================
@@ -324,8 +327,10 @@ handle_call(is_empty_op, _From, State) ->
 handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#state.store), State};
 
-handle_call({sg_search_op, _Key}, _From, State) ->
-    {reply, {error, not_found}, State};
+handle_call({sg_search_op, Key}, From, State) ->
+    Self = self(),
+    spawn_link(?MODULE, sg_search_op_call, [From, State, Self, Key]),
+    {noreply, State};
 
 handle_call({get_op, Key}, _From, State) ->
     case mio_store:get(Key, State#state.store) of
@@ -590,3 +595,25 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     {NewRightMaxKey, _} = get_largest_op(Right),
     set_max_key_op(Right, NewRightMaxKey),
     set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey).
+
+%% Skip Graph Layer
+sg_search_op_call(From, State, Self, Key) ->
+    gen_server:reply(From, {error, not_found}).
+%%     SearchLevel = case Level of
+%%                       [] ->
+%%                           length(State#state.right) - 1; %% Level is 0 origin
+%%                       _ -> Level
+%%                   end,
+%%     MyKey = State#state.key,
+%%     Found = string:equal(MyKey, Key),
+%%     if
+%%         %% Found!
+%%         Found ->
+%%             MyValue = State#state.value,
+%%             MyExpireTime = State#state.expire_time,
+%%             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
+%%         MyKey < Key ->
+%%             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
+%%         true ->
+%%             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
+%%     end.
