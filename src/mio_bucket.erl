@@ -454,13 +454,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-link_op(Left, Right) ->
+link_on_level0(Left, Right) ->
     ok = set_right_op(Left, Right),
     ok = set_left_op(Right, Left).
 
 link3_op(Left, Middle, Right) ->
-    link_op(Left, Middle),
-    link_op(Middle, Right).
+    link_on_level0(Left, Middle),
+    link_on_level0(Middle, Right).
 
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
@@ -535,8 +535,11 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
 
 insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-    link_op(Self, EmptyBucket),
+    link_on_level0(Self, EmptyBucket),
     set_type_op(Self, c_o_l),
+
+    MaxLevel = length(State#state.membership_vector),
+    link_on_level_ge1(Self, MaxLevel),
 
     %% range partition
     {LargestKey, _} = get_largest_op(Self),
@@ -621,6 +624,9 @@ sg_search_op_call(From, State, Self, Key) ->
         _ ->
             exit(hige)
     end.
+
+link_on_level_ge1(Self, MaxLevel) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %%% Internal functions

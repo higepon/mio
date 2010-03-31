@@ -642,8 +642,8 @@ sg_c_o(_Config) ->
     case mio_bucket:get_right_op(Bucket, 1) of
         %% They have other membership_vector
         [] ->
-            [] = mio_bucket:get_left_op(RightBucket, 0),
-            [] = mio_bucket:get_right_op(RightBucket, 0);
+            [] = mio_bucket:get_left_op(RightBucket, 1),
+            [] = mio_bucket:get_right_op(RightBucket, 1);
         %% They are linked on Level1
         RightBucket ->
             RightBucket = mio_bucket:get_right_op(Bucket, 1),
