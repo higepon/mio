@@ -55,12 +55,15 @@ start_node(Key, Value, MembershipVector, Expire) ->
                                                temporary, brutal_kill, worker, [mio_node]}).
 
 make_bucket(Capacity, Type) ->
+    MembershipVector = mio_mvector:generate(3),
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
-                                               {mio_bucket, start_link, [[Capacity, Type]]},
+                                               {mio_bucket, start_link, [[Capacity, Type, MembershipVector]]},
                                                temporary, brutal_kill, worker, [mio_bucket]}).
 make_bucket(Capacity) ->
+    %% todo : MaxLevel = 3
+    MembershipVector = mio_mvector:generate(3),
     {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
-                                               {mio_bucket, start_link, [[Capacity, alone]]},
+                                               {mio_bucket, start_link, [[Capacity, alone, MembershipVector]]},
                                                temporary, brutal_kill, worker, [mio_bucket]}).
 
 

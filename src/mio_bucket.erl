@@ -62,7 +62,7 @@
 %% gen_server calls for spawn
 -export([sg_search_op_call/4]).
 
--record(state, {store, left, right, type, min_key, max_key}).
+-record(state, {store, left, right, type, min_key, max_key, lefts, rights, membership_vector}).
 
 %%====================================================================
 %%  Skip Graph layer
@@ -303,13 +303,18 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Capacity, Type]) ->
+init([Capacity, Type, MembershipVector]) ->
+    Length = length(MembershipVector),
+    EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     {ok, #state{store=mio_store:new(Capacity),
                 left=[],
                 right=[],
                 type=Type,
                 min_key=?MIN_KEY,
-                max_key=?MAX_KEY
+                max_key=?MAX_KEY,
+                lefts=EmptyNeighbors,
+                rights=EmptyNeighbors,
+                membership_vector=MembershipVector
                }}.
 
 %%--------------------------------------------------------------------
