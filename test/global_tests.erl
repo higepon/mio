@@ -1,23 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% File    : global_SUITE.erl
+%%% File    : global_tests.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description :
 %%%
 %%% Created : 21 Nov 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(global_SUITE).
+-module(global_tests).
+-include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
-
-init_per_suite(Config) ->
-    ok = application:start(mio),
-    Config.
-
-end_per_suite(_Config) ->
-    ok = application:stop(mio),
-    ok.
-
-global_lock(_Config) ->
+global_lock_test() ->
     spawn(fun() ->
                   true = global:set_lock({x, self()}, [node() | nodes()], infinity),
                   timer:sleep(10000)
@@ -26,5 +17,3 @@ global_lock(_Config) ->
     false = global:set_lock({x, self()}, [node() | nodes()], 0),
     ok.
 
-all() ->
-    [global_lock].

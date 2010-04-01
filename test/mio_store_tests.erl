@@ -5,11 +5,10 @@
 %%%
 %%% Created : 5 Mar 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_store_SUITE).
+-module(mio_store_tests).
+-include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
-
-basic(_Config) ->
+basic_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -19,14 +18,14 @@ basic(_Config) ->
     {ok, value_b} = mio_store:get(key_b, B3),
     {ok, value_c} = mio_store:get(key_c, B3).
 
-not_found(_Config) ->
+not_found_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
     {full, B3} = mio_store:set(key_c, value_c, B2),
     {error, not_found} = mio_store:get(key_d, B3).
 
-remove(_Config) ->
+remove_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -36,7 +35,7 @@ remove(_Config) ->
     B4 = mio_store:remove(key_a, B3),
     {error, not_found} = mio_store:get(key_a, B4).
 
-overflow(_Config) ->
+overflow_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -47,7 +46,7 @@ overflow(_Config) ->
 
     {ok, value_d} = mio_store:get(key_d, B4).
 
-full(_Config) ->
+full_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -55,7 +54,7 @@ full(_Config) ->
     {full, B3} = mio_store:set(key_c, value_c, B2),
     true = mio_store:is_full(B3).
 
-take_smallest(_Config) ->
+take_smallest_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -67,7 +66,7 @@ take_smallest(_Config) ->
     B5 = mio_store:new(3),
     none = mio_store:take_smallest(B5).
 
-take_largest(_Config) ->
+take_largest_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
@@ -79,13 +78,3 @@ take_largest(_Config) ->
     B5 = mio_store:new(3),
     none = mio_store:take_largest(B5).
 
-all() ->
-    [
-     basic,
-     not_found,
-     remove,
-     overflow,
-     full,
-     take_smallest,
-     take_largest
-    ].

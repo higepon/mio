@@ -5,25 +5,55 @@
 %%%
 %%% Created : 30 Jun 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_node_SUITE).
+-module(mio_node_tests).
 
--compile(export_all).
 -include("../include/mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(MEMCACHED_PORT, 11211).
 -define(MEMCACHED_HOST, "127.0.0.1").
 
-init_per_suite(Config) ->
+setup_mio() ->
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    true = register(mio_node, NodePid),
-    Config.
+    true = register(mio_node, NodePid).
 
-end_per_suite(_Config) ->
-    ok = application:stop(mio),
-    ok.
+teardown_mio(_) ->
+    ok = application:stop(mio).
+
+sg_test_() ->
+    {foreach, fun setup_mio/0, fun teardown_mio/1,
+     [
+      [?_test(test_set_nth())],
+      [?_test(get_call())],
+      [?_test(search_not_found())],
+      [?_test(search_level2_simple())],
+      [?_test(search_level2_1())],
+      [?_test(search_level2_2())],
+      [?_test(search_level2_3())],
+      [?_test(link_op())],
+      [?_test(buddy_op())],
+      [?_test(delete_op())],
+      [?_test(insert_op_self())],
+      [?_test(insert_op_two_nodes())],
+      [?_test(insert_op_two_nodes_2())],
+      [?_test(insert_op_two_nodes_3())],
+      [?_test(insert_op_three_nodes())],
+      [?_test(insert_op_three_nodes_2())],
+      [?_test(insert_op_three_nodes_3())],
+      [?_test(insert_op_many_nodes())],
+      [?_test(range_search_asc_op())],
+      [?_test(range_search_desc_op())],
+      [?_test(overwrite_value())],
+      [?_test(overwrite_value2())],
+      [?_test(overwrite_value3())],
+      [?_test(handle_info())],
+      [?_test(terminate_node())],
+      [?_test(node_on_level())]
+     ]
+    }.
+
 
 %% Helper
 search_op(StartNode, Key) ->
@@ -36,13 +66,13 @@ search_op(StartNode, Key) ->
         timeout -> ng
     end.
 
-get_call(_Config) ->
+get_call() ->
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     {myKey, myValue, _, _, _} = gen_server:call(mio_node, get_op),
     ok.
 
 %% very simple case: there is only one node.
-search_level2_simple(_Config) ->
+search_level2_simple() ->
     {ok, Node} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     {_, myKey, myValue, _} = mio_node:search_op(Node, myKey),
 
@@ -51,7 +81,7 @@ search_level2_simple(_Config) ->
     [[{_, myKey, myValue, [1, 0]}]] = mio_debug:dump_op(Node, 1),
     ok.
 
-search_level2_1(_Config) ->
+search_level2_1() ->
     %% We want to test search-op without insert op.
     %%   setup predefined nodes as follows.
     %%     level1 [3] [5]
@@ -72,7 +102,7 @@ search_level2_1(_Config) ->
     {ok, value5} = search_op(Node5, key5),
     ok.
 
-search_level2_2(_Config) ->
+search_level2_2() ->
     %% We want to test search-op without insert op.
     %%   setup predefined nodes as follows.
     %%     level1 [3 <-> 9] [5]
@@ -108,7 +138,7 @@ search_level2_2(_Config) ->
     {_, key5, value5, _} = mio_node:search_op(Node5, key8),
     ok.
 
-search_level2_3(_Config) ->
+search_level2_3() ->
     %% We want to test search-op without insert op.
     %%   setup predefined nodes as follows.
     %%     level1 [3 <-> 7 <-> 9] [5 <-> 8]
@@ -175,7 +205,7 @@ search_level2_3(_Config) ->
     {_, key7, value7, _} = mio_node:search_op(Node9, key6),
     ok.
 
-test_set_nth(_Config) ->
+test_set_nth() ->
     [1, 3] = mio_util:lists_set_nth(2, 3, [1, 2]),
     [0, 2] = mio_util:lists_set_nth(1, 0, [1, 2]),
 
@@ -199,7 +229,7 @@ test_set_nth(_Config) ->
                   MVectors)]),
     ok.
 
-link_op(_Config) ->
+link_op() ->
     {ok, Node2} = mio_sup:start_node(key2, value2, mio_mvector:make([0, 0])),
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
@@ -213,7 +243,7 @@ link_op(_Config) ->
     [[{_, key2, value2, [0, 0]}, {_, key3, value3, [0, 0]}, {_, key5, value5, [1, 1]}]] = mio_debug:dump_op(Node3, 0),
     ok.
 
-buddy_op(_Config) ->
+buddy_op() ->
 %%     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
 %%     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
 %%     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([0, 1])),
@@ -233,7 +263,7 @@ buddy_op(_Config) ->
 %%     {key7, value7, _, _, _} = gen_server:call(Buddy3, get_op),
     ok.
 
-delete_op(_Config) ->
+delete_op() ->
     [Node3, _, Node7, _] = setup_nodes_for_range_search_op(),
     [[{_, key3, _, _}, {_, key5, _, _}, {_, key7, _, _}, {_, key9, _, _}]] = mio_debug:dump_op(Node3, 0),
     [[{_, key3, _, _}, {_, key9, _, _}], [{_, key5, _, _}, {_, key7, _, _}]] = mio_debug:dump_op(Node3, 1),
@@ -271,11 +301,11 @@ delete_op(_Config) ->
 %%     end,
     ok.
 
-insert_op_self(_Config) ->
+insert_op_self() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     ok = mio_node:insert_op(Node3, Node3).
 
-insert_op_two_nodes(_Config) ->
+insert_op_two_nodes() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
@@ -290,7 +320,7 @@ insert_op_two_nodes(_Config) ->
     [[{_, key3,value3,[0,0]}], [{_, key5,value5,[1,1]}]] = mio_debug:dump_op(Node5, 1),
     ok.
 
-insert_op_two_nodes_2(_Config) ->
+insert_op_two_nodes_2() ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
     ok = mio_node:insert_op(Node7, Node7),
@@ -300,7 +330,7 @@ insert_op_two_nodes_2(_Config) ->
     [[{_, key5, value5, [1, 1]}, {_, key7, value7, [1, 0]}]] = mio_debug:dump_op(Node5, 1),
     ok.
 
-insert_op_two_nodes_3(_Config) ->
+insert_op_two_nodes_3() ->
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node6} = mio_sup:start_node(key6, value6, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
@@ -316,7 +346,7 @@ insert_op_two_nodes_3(_Config) ->
     ok = mio_node:insert_op(Node5, Node6),
     ok.
 
-insert_op_three_nodes(_Config) ->
+insert_op_three_nodes() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -348,7 +378,7 @@ insert_op_three_nodes(_Config) ->
     ok.
 
 %% for buddy-op coverage
-insert_op_three_nodes_2(_Config) ->
+insert_op_three_nodes_2() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
@@ -379,7 +409,7 @@ insert_op_three_nodes_2(_Config) ->
     [[{_, key3,value3,[0, 0]}], [{_, key5,value5,[1, 1]}, {_, key7,value7,[1, 1]}]] = mio_debug:dump_op(Node5, 1),
     ok.
 
-insert_op_three_nodes_3(_Config) ->
+insert_op_three_nodes_3() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 1])),
@@ -411,7 +441,7 @@ insert_op_three_nodes_3(_Config) ->
     ok.
 
 
-insert_op_many_nodes(_Config) ->
+insert_op_many_nodes() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -451,7 +481,7 @@ setup_nodes_for_range_search_op() ->
     ok = mio_node:insert_op(Node9, Node7),
     [Node3, Node5, Node7, Node9].
 
-range_search_asc_op(_Config) ->
+range_search_asc_op() ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
     [{_, key5, value5, _}, {_, key7, value7, _}] = mio_node:range_search_asc_op(Node3, key3, key9, 10),
@@ -463,7 +493,7 @@ range_search_asc_op(_Config) ->
     [] = mio_node:range_search_asc_op(Node3, key99, key999, 1),
     ok.
 
-range_search_desc_op(_Config) ->
+range_search_desc_op() ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
 
     [{_, key7, value7, _}] = mio_node:range_search_desc_op(Node3, key3, key9, 1),
@@ -474,7 +504,7 @@ range_search_desc_op(_Config) ->
     [] = mio_node:range_search_desc_op(Node3, key1, key2, 1),
     ok.
 
-search_closest(_Config) ->
+search_closest() ->
     [Node3, Node5, Node7, Node9] = setup_nodes_for_range_search_op(),
 
     %% search always returns left closest key
@@ -484,7 +514,7 @@ search_closest(_Config) ->
     {_, key7, value7, _} = mio_node:search_op(Node9, key8),
     ok.
 
-overwrite_value(_Config) ->
+overwrite_value() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -500,7 +530,7 @@ overwrite_value(_Config) ->
     ok.
 
 % for coverage we need this test.
-overwrite_value2(_Config) ->
+overwrite_value2() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -514,7 +544,7 @@ overwrite_value2(_Config) ->
     ok.
 
 % for coverage we need this test.
-overwrite_value3(_Config) ->
+overwrite_value3() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     {ok, Node7} = mio_sup:start_node(key7, value7, mio_mvector:make([1, 0])),
@@ -528,7 +558,7 @@ overwrite_value3(_Config) ->
     ok.
 
 
-search_not_found(_Config) ->
+search_not_found() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     {ok, Node5} = mio_sup:start_node(key5, value5, mio_mvector:make([1, 1])),
     ok = mio_node:insert_op(Node3, Node3),
@@ -536,11 +566,11 @@ search_not_found(_Config) ->
     ng =  search_op(Node5, key4),
     ok.
 
-handle_info(_Config) ->
+handle_info() ->
     {ok, Node3} = mio_sup:start_node(key3, value3, mio_mvector:make([0, 0])),
     Node3 ! "hello".
 
-terminate_node(_Config) ->
+terminate_node() ->
     [Node3, _, _, _] = setup_nodes_for_range_search_op(),
     %% this causes error, mio_node:terminate will be called
     try gen_server:call(Node3, {buddy_op, xxx, xxxx, xxx}) of
@@ -551,38 +581,8 @@ terminate_node(_Config) ->
         error:_ -> []
     end.
 
-node_on_level(_Config) ->
+node_on_level() ->
     mio_node:node_on_level([], 0).
-
-all() ->
-    [
-     test_set_nth,
-     get_call,
-     search_not_found,
-     search_level2_simple,
-     search_level2_1,
-     search_level2_2,
-     search_level2_3,
-     link_op,
-     buddy_op,
-     delete_op,
-     insert_op_self,
-     insert_op_two_nodes,
-     insert_op_two_nodes_2,
-     insert_op_two_nodes_3,
-     insert_op_three_nodes,
-     insert_op_three_nodes_2,
-     insert_op_three_nodes_3,
-     insert_op_many_nodes,
-     range_search_asc_op,
-     range_search_desc_op,
-     overwrite_value,
-     overwrite_value2,
-     overwrite_value3,
-     handle_info,
-     terminate_node,
-     node_on_level
-     ].
 
 %%--------------------------------------------------------------------
 %%% Internal functions

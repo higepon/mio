@@ -8,7 +8,7 @@ TEST_DIR=test
 EBIN_DIR=ebin
 INCLUDE_DIR=include
 LOG_PREFIX=mio.log
-TEST_SOURCES= test/mio_bucket_tests.erl
+TEST_SOURCES= test/mio_bucket_tests.erl test/global_tests.erl test/mio_tests.erl test/mio_lock_tests.erl test/mio_mvector_tests.erl test/mio_store_tests.erl test/mio_node_tests.erl
 TEST_BEAMS=$(patsubst $(TEST_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(TEST_SOURCES))
 SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
 BEAMS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(SOURCES))
@@ -41,14 +41,31 @@ $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
 $(EBIN_DIR)/mio_bucket_tests.beam: $(TEST_DIR)/mio_bucket_tests.erl $(INCLUDE_DIR)/mio.hrl
 	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
+$(EBIN_DIR)/global_tests.beam: $(TEST_DIR)/global_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
+$(EBIN_DIR)/mio_tests.beam: $(TEST_DIR)/mio_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_lock_tests.beam: $(TEST_DIR)/mio_lock_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_mvector_tests.beam: $(TEST_DIR)/mio_mvector_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_store_tests.beam: $(TEST_DIR)/mio_store_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_node_tests.beam: $(TEST_DIR)/mio_node_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
 
 VERBOSE_TEST ?= false
 
 check: all
 # include option for ct:run_test is not recognized.
-	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
+#	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
+	@erl -pa `pwd`/ebin -eval 'eunit:test([mio_bucket_tests, global, mio_tests, mio_lock, mio_mvector, mio_store, mio_node]).' -s init stop
 
 check_one: all
 	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {suite, [$(TEST_NAME)_SUITE]}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""

@@ -5,36 +5,49 @@
 %%%
 %%% Created : 2 Aug 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_SUITE).
-
--compile(export_all).
+-module(mio_tests).
 -include("../include/mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
 -define(MEMCACHED_PORT, 11211).
 -define(MEMCACHED_HOST, "127.0.0.1").
 
-init_per_testcase(_Name, Config) ->
-    application:set_env(mio, port, ?MEMCACHED_PORT),
+setup_mio() ->
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-    Config.
+    {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
+    true = register(mio_node, NodePid).
 
-end_per_testcase(_Name, _Config) ->
+teardown_mio(_) ->
     ok = application:stop(mio).
 
-set_and_get(_Config) ->
+mio_test_() ->
+    {foreach, fun setup_mio/0, fun teardown_mio/1,
+     [
+      [?_test(set_and_get())],
+      [?_test(set_and_get_alphabet_key())],
+      [?_test(delete())],
+      [?_test(expiration())],
+      [?_test(range_search())],
+      [?_test(range_search_alphabet())],
+      [?_test(range_search_expiration())]
+     ]
+    }.
+
+set_and_get() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1234", "myvalue"),
     {ok, "myvalue"} = memcached:get(Conn, "1234"),
     ok = memcached:disconnect(Conn).
 
-set_and_get_alphabet_key(_Config) ->
+set_and_get_alphabet_key() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "mykey", "myvalue"),
     {ok, "myvalue"} = memcached:get(Conn, "mykey"),
     ok = memcached:disconnect(Conn).
 
 
-delete(_Config) ->
+delete() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1234", "myvalue"),
     {ok, "myvalue"} = memcached:get(Conn, "1234"),
@@ -42,7 +55,7 @@ delete(_Config) ->
     {error, not_found} = memcached:get(Conn, "1234"),
     ok = memcached:disconnect(Conn).
 
-expiration(_Config) ->
+expiration() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1234", "myvalue", 0, 1),
     {ok, "myvalue"} = memcached:get(Conn, "1234"),
@@ -50,7 +63,7 @@ expiration(_Config) ->
     {error, not_found} = memcached:get(Conn, "1234"),
     ok = memcached:disconnect(Conn).
 
-range_search(_Config) ->
+range_search() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
     ok = memcached:set(Conn, "2001", "Japan"),
@@ -62,7 +75,7 @@ range_search(_Config) ->
     {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"]),
     ok = memcached:disconnect(Conn).
 
-range_search_alphabet(_Config) ->
+range_search_alphabet() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "Higepon", "Hello"),
     ok = memcached:set(Conn, "John", "Japan"),
@@ -75,7 +88,7 @@ range_search_alphabet(_Config) ->
     ok = memcached:disconnect(Conn).
 
 
-range_search_expiration(_Config) ->
+range_search_expiration() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
     ok = memcached:set(Conn, "2001", "Japan", 0, 1),
@@ -87,13 +100,3 @@ range_search_expiration(_Config) ->
     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
     ok = memcached:disconnect(Conn).
 
-all() ->
-    [
-     set_and_get,
-     set_and_get_alphabet_key,
-     delete,
-     expiration,
-     range_search,
-     range_search_alphabet,
-     range_search_expiration
-    ].
