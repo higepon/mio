@@ -1,4 +1,4 @@
-TARGETS = $(BEAMS) $(APP)
+TARGETS = $(BEAMS) $(TEST_BEAMS) $(APP)
 
 APP_NAME=mio
 VERSION=0.0.1
@@ -8,6 +8,8 @@ TEST_DIR=test
 EBIN_DIR=ebin
 INCLUDE_DIR=include
 LOG_PREFIX=mio.log
+TEST_SOURCES= test/mio_bucket_tests.erl
+TEST_BEAMS=$(patsubst $(TEST_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(TEST_SOURCES))
 SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
 BEAMS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(SOURCES))
 APP=$(EBIN_DIR)/mio.app
@@ -35,6 +37,12 @@ $(APP): $(SOURCE_DIR)/mio.app
 
 $(EBIN_DIR)/%.beam: $(SOURCE_DIR)/%.erl $(INCLUDE_DIR)/mio.hrl
 	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_bucket_tests.beam: $(TEST_DIR)/mio_bucket_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+
+
 
 VERBOSE_TEST ?= false
 

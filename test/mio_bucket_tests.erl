@@ -1,32 +1,52 @@
 %%%-------------------------------------------------------------------
-%%% File    : mio_bucket_SUITE.erl
+%%% File    : mio_bucket_tests.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
 %%% Description :
 %%%
-%%% Created : 10 Mar 2010 by higepon <higepon@labs.cybozu.co.jp>
+%%% Created : 1 Apr 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_bucket_SUITE).
-
--compile(export_all).
+-module(mio_bucket_tests).
 -include("../include/mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(MEMCACHED_PORT, 11211).
 -define(MEMCACHED_HOST, "127.0.0.1").
 
-init_per_suite(Config) ->
+setup_mio() ->
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    true = register(mio_node, NodePid),
-    Config.
+    true = register(mio_node, NodePid).
 
-end_per_suite(_Config) ->
-    ok = application:stop(mio),
-    ok.
+teardown_mio(_) ->
+    ok = application:stop(mio).
+
+sg_test_() ->
+    {foreach, fun setup_mio/0, fun teardown_mio/1,
+     [
+      [?_test(insert())],
+      [?_test(insert_c_o_1())],
+      [?_test(insert_c_o_2())],
+      [?_test(insert_c_o_3())],
+      [?_test(insert_c_o_4())],
+      [?_test(insert_c_o_5())],
+      [?_test(insert_c_o_6())],
+      [?_test(insert_c_o_c_1())],
+      [?_test(insert_c_o_c_2())],
+      [?_test(insert_c_o_c_3())],
+      [?_test(insert_c_o_c_4())],
+      [?_test(insert_c_o_c_5())],
+      [?_test(insert_c_o_c_6())],
+      [?_test(insert_c_o_c_7())],
+      [?_test(insert_c_o_c_8())],
+      [?_test(insert_c_o_c_9())],
+      [?_test(sg_search_o())],
+      [?_test(sg_c_o())]
+     ]
+    }.
 
 %% 0$ -> C-O*
-insert(_Config) ->
+insert() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     ok = case mio_bucket:get_right_op(Bucket) of
@@ -36,14 +56,14 @@ insert(_Config) ->
                  left = get_left_type(Bucket),
                  right = get_right_type(RightBucket),
                  Bucket = mio_bucket:get_left_op(RightBucket),
-
                  check_range(Bucket, ?MIN_KEY, "key3"),
                  check_range(RightBucket, "key3", ?MAX_KEY),
                  ok
          end.
 
+
 %% C1-O2 -> C1'-O2'
-insert_c_o_1(_Config) ->
+insert_c_o_1() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
 
@@ -64,7 +84,7 @@ insert_c_o_1(_Config) ->
     {ok, value3} = mio_bucket:get_op(Right, "key3").
 
 %% C1-O2 -> C1'-O2'
-insert_c_o_2(_Config) ->
+insert_c_o_2() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     {MinKey, MaxKey} = mio_bucket:get_range_op(Bucket),
@@ -85,7 +105,7 @@ insert_c_o_2(_Config) ->
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
 %% C1-O2 -> C1-O2'
-insert_c_o_3(_Config) ->
+insert_c_o_3() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -101,7 +121,7 @@ insert_c_o_3(_Config) ->
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
 %% C1-O2$ -> C1-O*-C2
-insert_c_o_4(_Config) ->
+insert_c_o_4() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -141,7 +161,7 @@ insert_c_o_4(_Config) ->
 
 %% C1-O2$ -> C1'-O*-C2
 %% Insertion to C1
-insert_c_o_5(_Config) ->
+insert_c_o_5() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -187,7 +207,7 @@ insert_c_o_5(_Config) ->
 
 %% C1-O2$ -> C1'-O*-C2
 %% Insertion to C1
-insert_c_o_6(_Config) ->
+insert_c_o_6() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     Right = mio_bucket:get_right_op(Bucket),
@@ -224,9 +244,9 @@ insert_c_o_6(_Config) ->
 
 %%  C1-O2-C3
 %%    Insertion to C1 : C1'-O2'-C3
-insert_c_o_c_1(_Config) ->
+insert_c_o_c_1() ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
 
     {LMin, LMax} = mio_bucket:get_range_op(Left),
     {MMin, MMax} = mio_bucket:get_range_op(Middle),
@@ -254,9 +274,9 @@ insert_c_o_c_1(_Config) ->
 
 %%  C1-O2-C3
 %%    Insertion to C1 : C1'-O2'-C3
-insert_c_o_c_2(_Config) ->
+insert_c_o_c_2() ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
 
     {LMin, LMax} = mio_bucket:get_range_op(Left),
     {MMin, MMax} = mio_bucket:get_range_op(Middle),
@@ -288,9 +308,9 @@ insert_c_o_c_2(_Config) ->
 
 %%  C1-O2-C3
 %%    Insertion to C3 : C1-O2 | C3'-O4
-insert_c_o_c_3(_Config) ->
+insert_c_o_c_3() ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
 
     %% insert!
     ok = mio_bucket:insert_op(Right, "key7", value7),
@@ -335,9 +355,9 @@ insert_c_o_c_3(_Config) ->
 
 %%  C1-O2-C3
 %%    Insertion to C3 : C1-O2'-C3'
-insert_c_o_c_4(_Config) ->
+insert_c_o_c_4() ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
 
     %% insert!
     ok = mio_bucket:insert_op(Right, "key22", value22),
@@ -383,9 +403,9 @@ insert_c_o_c_4(_Config) ->
 
 %%  C1-O2-C3
 %%    Insertion to O2 : C1-O2'-C3
-insert_c_o_c_5(_Config) ->
+insert_c_o_c_5() ->
     %% setup C1-O2-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
 
     {LMin, LMax} = mio_bucket:get_range_op(Left),
     {MMin, MMax} = mio_bucket:get_range_op(Middle),
@@ -419,9 +439,9 @@ insert_c_o_c_5(_Config) ->
 
 %%  C1-O2$-C3
 %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-insert_c_o_c_6(_Config) ->
+insert_c_o_c_6() ->
     %% setup C1-O2$-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
     ok = mio_bucket:insert_op(Middle, "key21", value21),
     ok = mio_bucket:insert_op(Middle, "key22", value22),
 
@@ -469,9 +489,9 @@ insert_c_o_c_6(_Config) ->
 
 %%  C1-O2$-C3
 %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-insert_c_o_c_7(_Config) ->
+insert_c_o_c_7() ->
     %% setup C1-O2$-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
     ok = mio_bucket:insert_op(Middle, "key21", value21),
     ok = mio_bucket:insert_op(Middle, "key22", value22),
 
@@ -520,9 +540,9 @@ insert_c_o_c_7(_Config) ->
 
 %%  C1-O2$-C3
 %%    Insertion to O2$ : C1-C2-C3 -> C1-O2' | C3'-O4
-insert_c_o_c_8(_Config) ->
+insert_c_o_c_8() ->
     %% setup C1-O2$-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
     ok = mio_bucket:insert_op(Middle, "key21", value21),
     ok = mio_bucket:insert_op(Middle, "key22", value22),
 
@@ -575,9 +595,9 @@ insert_c_o_c_8(_Config) ->
 
 %%  C1-O2$-C3
 %%      Insertion to C3  : C1-O2$ | C3'-O4
-insert_c_o_c_9(_Config) ->
+insert_c_o_c_9() ->
     %% setup C1-O2$-C3
-    {Left, Middle, Right} = insert_c_o_5(_Config),
+    {Left, Middle, Right} = insert_c_o_5(),
     ok = mio_bucket:insert_op(Middle, "key21", value21),
     ok = mio_bucket:insert_op(Middle, "key22", value22),
 
@@ -626,28 +646,28 @@ insert_c_o_c_9(_Config) ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
-sg_search_o(_Config) ->
+sg_search_o() ->
     Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
     {error, not_found} = mio_bucket:sg_search_op(Bucket, "key").
 
-sg_c_o(_Config) ->
+sg_c_o() ->
     %% make c-o
     {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
-    ok = mio_bucket:insert_op(Bucket, "key1", value1),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
     ok = mio_bucket:insert_op(Bucket, "key2", value2),
     ok = mio_bucket:insert_op(Bucket, "key3", value3),
 
     %% check on level 0
     RightBucket = mio_bucket:get_right_op(Bucket),
-    [] = mio_bucket:get_left_op(Bucket),
-    Bucket = mio_bucket:get_left_op(RightBucket),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket)),
+    ?assertEqual([], mio_bucket:get_left_op(RightBucket)),
 
     %% check on level 1
-    RightBucket = mio_bucket:get_right_op(Bucket, 1),
-    [] = mio_bucket:get_left_op(Bucket, 1),
-    Bucket = mio_bucket:get_left_op(RightBucket, 1).
+    ?assertEqual(RightBucket, mio_bucket:get_right_op(Bucket, 1)),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket, 1)),
+    ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket, 1)).
 
 %% Helper
 setup_full_bucket(Capacity) ->
@@ -679,24 +699,3 @@ get_right_type(Bucket) ->
 check_range(Bucket, ExpectedMin, ExpectedMax) ->
     {ExpectedMin, ExpectedMax} = mio_bucket:get_range_op(Bucket).
 
-all() ->
-    [
-     insert,
-     insert_c_o_1,
-     insert_c_o_2,
-     insert_c_o_3,
-     insert_c_o_4,
-     insert_c_o_5,
-     insert_c_o_6,
-     insert_c_o_c_1,
-     insert_c_o_c_2,
-     insert_c_o_c_3,
-     insert_c_o_c_4,
-     insert_c_o_c_5,
-     insert_c_o_c_6,
-     insert_c_o_c_7,
-     insert_c_o_c_8,
-     insert_c_o_c_9,
-     sg_search_o,
-     sg_c_o
-    ].
