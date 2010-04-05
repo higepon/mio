@@ -769,9 +769,6 @@ handle_call({insert_op, Key, Value}, From, State) ->
 handle_call(get_range_op, _From, State) ->
     {reply, {State#state.min_key, State#state.max_key}, State};
 
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State};
 
 %% Read Only Operations start
 handle_call({search_op, Key, Level}, From, State) ->
@@ -790,11 +787,11 @@ handle_call(get_inserted_op, _From, State) ->
 handle_call(get_deleted_op, _From, State) ->
     {reply, State#state.deleted, State};
 
-handle_call({get_right_op, Level}, From, State) ->
+handle_call({sg_get_right_op, Level}, From, State) ->
     spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
     {noreply, State};
 
-handle_call({get_left_op, Level}, From, State) ->
+handle_call({sg_get_left_op, Level}, From, State) ->
     spawn_link(?MODULE, get_neighbor_op_call, [From, State, left, Level]),
     {noreply, State};
 
@@ -1085,8 +1082,8 @@ delete_op_call(From, Self, State) ->
 delete_loop_(_Self, Level) when Level < 0 ->
     [];
 delete_loop_(Self, Level) ->
-    {RightNode, RightKey} = gen_server:call(Self, {get_right_op, Level}),
-    {LeftNode, LeftKey}  = gen_server:call(Self, {get_left_op, Level}),
+    {RightNode, RightKey} = gen_server:call(Self, {sg_get_right_op, Level}),
+    {LeftNode, LeftKey}  = gen_server:call(Self, {sg_get_left_op, Level}),
     LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, [LeftKey, RightKey]),
 
     ?CHECK_SANITY(Self, Level),
