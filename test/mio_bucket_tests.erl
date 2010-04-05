@@ -663,7 +663,7 @@ sg_c_o() ->
     RightBucket = mio_bucket:get_right_op(Bucket),
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
-    ?assertEqual([], mio_bucket:get_left_op(RightBucket)),
+    ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
 
     %% check on level 1
     ?assertEqual(RightBucket, mio_bucket:get_right_op(Bucket, 1)),
