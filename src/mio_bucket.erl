@@ -997,12 +997,10 @@ set_op_call(State, NewValue) ->
     {reply, dummy_todo, State}.
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
-    io:format("hige ~p:~p", [?LINE, Level]),
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
     %% N.B.
     %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
     IsInserted = node_on_level(State#state.inserted, Level),
-    io:format("hige ~p:~p:~p:~p", [?LINE, Level, IsSameMV, IsInserted]),
     if
         IsSameMV andalso IsInserted ->
             MyKey = my_key(State),
@@ -1013,11 +1011,8 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
         true ->
             case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
                 [] ->
-                        io:format("here we2"),
                     gen_server:reply(From, not_found);
                 NeighborNode ->
-                        io:format("here we"),
-
                     gen_server:reply(From, buddy_op(NeighborNode, MembershipVector, Direction, Level))
             end
     end.
@@ -1322,7 +1317,6 @@ check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeigh
 buddy_op_proxy([], [], _MyMV, _Level) ->
     not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
-    io:format("hige ~p", [?LINE]),
     case buddy_op(LeftOnLower, MyMV, left, Level) of
         not_found ->
             not_found;
@@ -1330,16 +1324,13 @@ buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
             {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey}
     end;
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
-    io:format("hige ~p", [?LINE]),
     case buddy_op(RightOnLower, MyMV, right, Level) of
         not_found ->
-    io:format("hige ~p:~p", [?LINE, Level]),
             not_found;
         {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
             {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey}
     end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
-    io:format("hige ~p", [?LINE]),
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
         not_found ->
             buddy_op_proxy([], RightOnLower, MyMV, Level);
@@ -1378,12 +1369,10 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
-    io:format("my key=~p~n", [MyKey]),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
     case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
         not_found ->
-    io:format("hige ~p", [?LINE]),
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
@@ -1393,14 +1382,12 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
-    io:format("hige ~p", [?LINE]),
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1);
         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
         {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
-    io:format("hige ~p", [?LINE]),
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right),
             ?CHECK_SANITY(Self, Level),
@@ -1449,7 +1436,6 @@ check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
     check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, sg_get_left_op, fun(X, Y) -> X < Y end).
 
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
-    io:format("~p", [gen_server:call(Buddy, {GetNeighborOp, Level})]),
     {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
