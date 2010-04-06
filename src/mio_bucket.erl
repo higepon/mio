@@ -658,10 +658,11 @@ search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
     {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
-    case Key < FoundKey of
+    case Key =< FoundKey of
         true ->
             get_op(FoundNode, Key);
         _ ->
+            io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
             ?assert(false),
             {error, not_found}
     end.
