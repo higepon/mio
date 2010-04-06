@@ -672,14 +672,14 @@ c_o_same_mv() ->
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket, 1)),
 
     %% search
+    ?assertEqual({error, not_found}, mio_bucket:search_op(Bucket, "key0")),
     ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
     ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")),
+    ?assertEqual({error, not_found}, mio_bucket:search_op(RightBucket, "key0")),
     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")).
-
-
 
 c_o_different_mv() ->
     %% make c-o
@@ -699,7 +699,18 @@ c_o_different_mv() ->
     ?assertEqual([], mio_bucket:get_right_op(Bucket, 1)),
     ?assertEqual([], mio_bucket:get_left_op(Bucket, 1)),
     ?assertEqual([], mio_bucket:get_right_op(RightBucket, 1)),
-    ?assertEqual([], mio_bucket:get_left_op(RightBucket, 1)).
+    ?assertEqual([], mio_bucket:get_left_op(RightBucket, 1)),
+
+    %% search
+    ?assertEqual({error, not_found}, mio_bucket:search_op(Bucket, "key0")),
+    ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
+    ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
+    ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")),
+    ?assertEqual({error, not_found}, mio_bucket:search_op(RightBucket, "key0")),
+    ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
+    ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
+    ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")).
+
 
 %% Helper
 setup_full_bucket(Capacity) ->
