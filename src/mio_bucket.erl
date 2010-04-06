@@ -648,7 +648,8 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
-    gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity).
+    {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
+    {error, not_found}.
 
 %%--------------------------------------------------------------------
 %%  buddy operation

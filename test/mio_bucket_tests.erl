@@ -40,8 +40,8 @@ sg_test_() ->
       [?_test(insert_c_o_c_7())],
       [?_test(insert_c_o_c_8())],
       [?_test(insert_c_o_c_9())],
-      [?_test(sg_search_o())],
-      [?_test(sg_c_o())]
+      [?_test(search_o())],
+      [?_test(c_o())]
      ]
     }.
 
@@ -646,12 +646,12 @@ insert_c_o_c_9() ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
-sg_search_o() ->
+search_o() ->
     Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
-    {error, not_found} = mio_bucket:sg_search_op(Bucket, "key").
+    {error, not_found} = mio_bucket:search_op(Bucket, "key").
 
-sg_c_o() ->
+c_o() ->
     %% make c-o
     {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
