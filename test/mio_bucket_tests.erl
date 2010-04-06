@@ -50,12 +50,12 @@ insert() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
     ok = case mio_bucket:get_right_op(Bucket) of
-             [] -> ng;
+             [] -> ?assert(false);
              RightBucket ->
-                 true = mio_bucket:is_empty_op(RightBucket),
-                 left = get_left_type(Bucket),
-                 right = get_right_type(RightBucket),
-                 Bucket = mio_bucket:get_left_op(RightBucket),
+                 ?assert(mio_bucket:is_empty_op(RightBucket)),
+                 ?assertEqual(left, get_left_type(Bucket)),
+                 ?assertEqual(right, get_right_type(RightBucket)),
+                 ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
                  check_range(Bucket, ?MIN_KEY, "key3"),
                  check_range(RightBucket, "key3", ?MAX_KEY),
                  ok
@@ -676,10 +676,10 @@ setup_full_bucket(Capacity) ->
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
     ok = mio_bucket:insert_op(Bucket, "key1", value1),
-    ok = mio_bucket:insert_op(Bucket, "key2", value2),
-    [] = mio_bucket:get_left_op(Bucket),
-    [] = mio_bucket:get_right_op(Bucket),
-    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key2", value2)),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket)),
+    ?assertEqual([], mio_bucket:get_right_op(Bucket)),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key3", value3)),
 
     %% set dummy type.
     {ok, Right } = mio_sup:make_bucket(Capacity, right),

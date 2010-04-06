@@ -36,6 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_bucket).
 -include("mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 -behaviour(gen_server).
 
 %% API
@@ -484,6 +485,7 @@ insert_alone_full(State, Self) ->
     %% range partition
     {LargestKey, _} = get_largest_op(Self),
     set_max_key_op(Self, LargestKey),
+
     set_range_op(EmptyBucket, LargestKey, State#state.max_key).
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
@@ -703,11 +705,6 @@ handle_call(is_empty_op, _From, State) ->
 handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#state.store), State};
 
-handle_call({sg_search_op, Key}, From, State) ->
-    Self = self(),
-    spawn_link(?MODULE, sg_search_op_call, [From, State, Self, Key]),
-    {noreply, State};
-
 handle_call({get_op, Key}, _From, State) ->
     {reply, mio_store:get(Key, State#state.store), State};
 
@@ -717,11 +714,11 @@ handle_call({get_left_op, Level}, _From, State) ->
 handle_call({get_right_op, Level}, _From, State) ->
     {reply, neighbor_node(State, right, Level), State};
 
-%% handle_call({set_left_op, Left, Level}, _From, State) ->
-%%     {reply, ok, set_left(State, Level, Left)};
+handle_call({set_left_op, Left, Level}, _From, State) ->
+    {reply, ok, set_left(State, Level, Left, dummy_left_key)};
 
-%% handle_call({set_right_op, Right, Level}, _From, State) ->
-%%     {reply, ok, set_right(State, Level, Right)};
+handle_call({set_right_op, Right, Level}, _From, State) ->
+    {reply, ok, set_right(State, Level, Right, dummy_right_key)};
 
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#state{type=Type}};
@@ -802,6 +799,7 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
 
 %% Write Operations start
 handle_call({insert_op, Introducer}, From, State) ->
+
     Self = self(),
     spawn_link(?MODULE, insert_op_call, [From, State, Self, Introducer]),
     {noreply, State};
