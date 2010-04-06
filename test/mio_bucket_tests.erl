@@ -41,7 +41,8 @@ sg_test_() ->
       [?_test(insert_c_o_c_8())],
       [?_test(insert_c_o_c_9())],
       [?_test(search_o())],
-      [?_test(c_o())]
+      [?_test(c_o_same_mv())],
+      [?_test(c_o_different_mv())]
      ]
     }.
 
@@ -651,7 +652,7 @@ search_o() ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
     {error, not_found} = mio_bucket:search_op(Bucket, "key").
 
-c_o() ->
+c_o_same_mv() ->
     %% make c-o
     {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
@@ -669,6 +670,26 @@ c_o() ->
     ?assertEqual(RightBucket, mio_bucket:get_right_op(Bucket, 1)),
     ?assertEqual([], mio_bucket:get_left_op(Bucket, 1)),
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket, 1)).
+
+c_o_different_mv() ->
+    %% make c-o
+    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
+    mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [0, 1] end),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
+    ok = mio_bucket:insert_op(Bucket, "key2", value2),
+    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+
+    %% check on level 0
+    RightBucket = mio_bucket:get_right_op(Bucket),
+    ?assertMatch(X when X =/= [], RightBucket),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket)),
+    ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
+
+    %% check on level 1
+    ?assertEqual([], mio_bucket:get_right_op(Bucket, 1)),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket, 1)),
+    ?assertEqual([], mio_bucket:get_right_op(RightBucket, 1)),
+    ?assertEqual([], mio_bucket:get_left_op(RightBucket, 1)).
 
 %% Helper
 setup_full_bucket(Capacity) ->
@@ -699,4 +720,3 @@ get_right_type(Bucket) ->
 
 check_range(Bucket, ExpectedMin, ExpectedMax) ->
     {ExpectedMin, ExpectedMax} = mio_bucket:get_range_op(Bucket).
-
