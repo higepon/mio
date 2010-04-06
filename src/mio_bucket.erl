@@ -649,7 +649,13 @@ search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
     {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
-    {error, not_found}.
+    case Key < FoundKey of
+        true ->
+            get_op(FoundNode, Key);
+        _ ->
+            ?assert(false),
+            {error, not_found}
+    end.
 
 %%--------------------------------------------------------------------
 %%  buddy operation
