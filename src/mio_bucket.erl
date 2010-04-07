@@ -514,26 +514,24 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     ok = set_type_op(Left, c_o_l),
     PrevRight = get_right_op(Right),
 
-    %% C3'-O4 | C ...
-    link3_op(Right, EmptyBucket, PrevRight),
-
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
     full = just_insert_op(Right, LargeMKey, LargeMValue),
 
     %% range partition
+    {_, PrevRightMax} = get_range_op(PrevRight),
     {LeftMax, _} = get_largest_op(Left),
-    set_max_key_op(Left, LeftMax),
-
     {MiddleMax, _} = get_largest_op(Middle),
-    set_range_op(Middle, LeftMax, MiddleMax),
-
     {_, OldRightMax} = get_range_op(Right),
     {RightMax, _} = get_largest_op(Right),
+    set_max_key_op(Left, LeftMax),
+    set_range_op(Middle, LeftMax, MiddleMax),
     set_range_op(Right, MiddleMax, RightMax),
-    set_range_op(EmptyBucket, RightMax, OldRightMax).
+    set_range_op(EmptyBucket, RightMax, OldRightMax),
 
+    %% C3'-O4 | C ...
+    link_three_nodes({Right, RightMax}, {EmptyBucket, OldRightMax}, {PrevRight, PrevRightMax}, 0).
 
 %% Insertion to the Middle causes overflow
 split_c_o_c_by_m(State, Left, Middle, Right) ->
