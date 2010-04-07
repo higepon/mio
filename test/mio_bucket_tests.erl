@@ -42,7 +42,8 @@ sg_test_() ->
       [?_test(insert_c_o_c_9())],
       [?_test(search_o())],
       [?_test(c_o_same_mv())],
-      [?_test(c_o_different_mv())]
+      [?_test(c_o_different_mv())],
+      [?_test(c_o_search1())]
      ]
     }.
 
@@ -707,6 +708,22 @@ c_o_different_mv() ->
     ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
     ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")),
     ?assertEqual({error, not_found}, mio_bucket:search_op(RightBucket, "key0")),
+    ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
+    ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
+    ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")),
+    {Bucket, RightBucket}.
+
+c_o_search1() ->
+    {Bucket, RightBucket} = c_o_different_mv(),
+    %% insert
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
+
+    %% search
+    ?assertEqual({ok, value0}, mio_bucket:search_op(Bucket, "key0")),
+    ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
+    ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
+    ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")),
+    ?assertEqual({ok, value0}, mio_bucket:search_op(RightBucket, "key0")),
     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")).
