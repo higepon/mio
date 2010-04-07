@@ -683,15 +683,9 @@ c_o_same_mv() ->
     ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")).
 
 c_o_different_mv() ->
-    %% make c-o
-    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
-    mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [0, 1] end),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
-    ok = mio_bucket:insert_op(Bucket, "key2", value2),
-    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    {Bucket, RightBucket} = make_c_o_different_mv(),
 
     %% check on level 0
-    RightBucket = mio_bucket:get_right_op(Bucket),
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
@@ -714,7 +708,7 @@ c_o_different_mv() ->
     {Bucket, RightBucket}.
 
 c_o_search1() ->
-    {Bucket, RightBucket} = c_o_different_mv(),
+    {Bucket, RightBucket} = make_c_o_different_mv(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
 
@@ -730,6 +724,18 @@ c_o_search1() ->
 
 
 %% Helper
+
+%% C [key1, key2, key3]
+%% O []
+make_c_o_different_mv() ->
+    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
+    mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [0, 1] end),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
+    ok = mio_bucket:insert_op(Bucket, "key2", value2),
+    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    RightBucket = mio_bucket:get_right_op(Bucket),
+    {Bucket, RightBucket}.
+
 setup_full_bucket(Capacity) ->
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
     [] = mio_bucket:get_left_op(Bucket),
