@@ -484,22 +484,24 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
 insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
     {LargestKey, _} = get_largest_op(Self),
-    link_right_op(Self, 0, EmptyBucket, State#state.max_key),
-    link_left_op(EmptyBucket, 0, Self, LargestKey),
-    gen_server:call(EmptyBucket, {set_inserted_op, 0}),
-%%    link_on_level0(Self, EmptyBucket),
+    SelfMaxKey = LargestKey,
+    {EmptyMinKey, EmptyMaxKey} = {LargestKey, State#state.max_key},
 
+    %% Change type
     set_type_op(Self, c_o_l),
 
-    MaxLevel = length(State#state.membership_vector),
+    %% link on Level 0
+    link_right_op(Self, 0, EmptyBucket, SelfMaxKey),
+    link_left_op(EmptyBucket, 0, Self, EmptyMaxKey),
+    gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
+    %% link on Level >= 1
+    MaxLevel = length(State#state.membership_vector),
     link_on_level_ge1(EmptyBucket, MaxLevel),
 
     %% range partition
-
-    set_max_key_op(Self, LargestKey),
-
-    set_range_op(EmptyBucket, LargestKey, State#state.max_key).
+    set_max_key_op(Self, SelfMaxKey),
+    set_range_op(EmptyBucket, EmptyMinKey, EmptyMaxKey).
 
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
