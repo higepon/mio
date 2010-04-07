@@ -576,17 +576,20 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     ok = set_type_op(Left, c_o_l),
     PrevRight = get_right_op(Right),
 
-    %% C3'-O4 | C ...
-    link3_op(Right, EmptyBucket, PrevRight),
-
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
     %% range partition
+    {_, PrevRightMaxKey} = get_range_op(PrevRight),
     {_, OldMaxKey} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
     set_max_key_op(Right, NewRightMaxKey),
-    set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey).
+    set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey),
+    EmptyMaxKey = OldMaxKey,
+
+    %% C3'-O4 | C ...
+    link_three_nodes({Right, NewRightMaxKey}, {EmptyBucket, EmptyMaxKey}, {PrevRight, PrevRightMaxKey}, 0).
+
 
 my_key(State) ->
     State#state.max_key.
