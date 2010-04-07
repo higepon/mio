@@ -727,10 +727,10 @@ setup_full_bucket(Capacity) ->
     {ok, Right } = mio_sup:make_bucket(Capacity, right),
     {ok, Left } = mio_sup:make_bucket(Capacity, left),
 
-    ok = mio_bucket:set_left_op(Bucket, Left),
-    ok = mio_bucket:set_right_op(Left, Bucket),
-    ok = mio_bucket:set_right_op(mio_bucket:get_right_op(Bucket), Right),
-    ok = mio_bucket:set_left_op(Right, mio_bucket:get_right_op(Bucket)),
+    ok = mio_bucket:link_left_op(Bucket, 0, Left, dummy_left_key),
+    ok = mio_bucket:link_right_op(Left, 0, Bucket, "key3"),
+    ok = mio_bucket:link_right_op(mio_bucket:get_right_op(Bucket), 0, Right, dummy_right_key),
+    ok = mio_bucket:link_left_op(Right, 0, mio_bucket:get_right_op(Bucket), "key3"),
     Bucket.
 
 get_left_type(Bucket) ->

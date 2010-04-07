@@ -44,8 +44,6 @@
          get_op/2,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
-         set_left_op/2, set_right_op/2,
-         set_left_op/3, set_right_op/3,
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
@@ -264,18 +262,6 @@ get_right_op(Bucket, Level) ->
 get_range_op(Bucket) ->
     gen_server:call(Bucket, get_range_op).
 
-set_left_op(Bucket, Left, Level) ->
-    gen_server:call(Bucket, {set_left_op, Left, Level}).
-
-set_right_op(Bucket, Right, Level) ->
-    gen_server:call(Bucket, {set_right_op, Right, Level}).
-
-set_left_op(Bucket, Left) ->
-    set_left_op(Bucket, Left, 0).
-
-set_right_op(Bucket, Right) ->
-    set_right_op(Bucket, Right, 0).
-
 get_type_op(Bucket) ->
     gen_server:call(Bucket, get_type_op).
 
@@ -401,14 +387,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-link_on_level0(Left, Right) ->
-    ok = set_right_op(Left, Right),
-    ok = set_left_op(Right, Left).
-
-link3_op(Left, Middle, Right) ->
-    link_on_level0(Left, Middle),
-    link_on_level0(Middle, Right).
-
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     case {State#state.type, InsertState} of
