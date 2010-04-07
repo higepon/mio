@@ -483,8 +483,12 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
 
 insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    {LargestKey, _} = get_largest_op(Self),
+    link_right_op(Self, 0, EmptyBucket, State#state.max_key),
+    link_left_op(EmptyBucket, 0, Self, LargestKey),
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
-    link_on_level0(Self, EmptyBucket),
+%%    link_on_level0(Self, EmptyBucket),
+
     set_type_op(Self, c_o_l),
 
     MaxLevel = length(State#state.membership_vector),
@@ -492,10 +496,11 @@ insert_alone_full(State, Self) ->
     link_on_level_ge1(EmptyBucket, MaxLevel),
 
     %% range partition
-    {LargestKey, _} = get_largest_op(Self),
+
     set_max_key_op(Self, LargestKey),
 
     set_range_op(EmptyBucket, LargestKey, State#state.max_key).
+
 
 prepare_for_split_c_o_c(State, Left, Middle, Right) ->
     ?ASSERT_NOT_NIL(Left),
@@ -1037,13 +1042,16 @@ search_op_call(From, State, Self, Key, Level) ->
             MyExpireTime = State#state.expire_time,
             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
         MyKey < Key ->
+            io:format("~p~n", [?LINE]),
             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
         true ->
+            io:format("~p~n", [?LINE]),
             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
     end.
 
 %% Not Found.
 do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
+            io:format("~p~n", [?LINE]),
     MyKey = my_key(State),
     MyValue = dummy_todo,
     MyExpireTime = State#state.expire_time,
@@ -1051,13 +1059,17 @@ do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 
 do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
     case neighbor_node(State, Direction, Level) of
         [] ->
+            io:format("~p Level=~p~n", [?LINE, Level]),
             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
         NextNode ->
             NextKey = neighbor_key(State, Direction, Level),
+            io:format("~p ~p ~p~n", [?LINE, NextKey, Key]),
             case CompareFun(NextKey, Key) of
                 true ->
+            io:format("~p~n", [?LINE]),
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
                 _ ->
+            io:format("~p~n", [?LINE]),
                     do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
             end
     end.
