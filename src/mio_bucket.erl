@@ -545,8 +545,6 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     ok = set_type_op(Left, c_o_l),
     PrevRight = get_right_op(Right),
 
-    %% C3'-O4 | C ...
-    link3_op(Right, EmptyBucket, PrevRight),
 
     {LargeKey, LargeValue} = take_largest_op(Middle),
     overflow = just_insert_op(Right, LargeKey, LargeValue),
@@ -554,6 +552,7 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
 
     %% range partition
+    {_, PrevRightMaxKey} = get_range_op(PrevRight),
     {LeftMax, _} = get_largest_op(Left),
     set_max_key_op(Left, LeftMax),
 
@@ -561,9 +560,13 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     set_range_op(Middle, LeftMax, MiddleMax),
 
     {_, OldRightMax} = get_range_op(Right),
-    {RightMax, _} = get_largest_op(Right),
-    set_range_op(Right, MiddleMax, RightMax),
-    set_range_op(EmptyBucket, RightMax, OldRightMax).
+    {RightMaxKey, _} = get_largest_op(Right),
+    set_range_op(Right, MiddleMax, RightMaxKey),
+    EmptyMaxKey = OldRightMax,
+    set_range_op(EmptyBucket, RightMaxKey, OldRightMax),
+    %% C3'-O4 | C ...
+    link_three_nodes({Right, RightMaxKey}, {EmptyBucket, EmptyMaxKey}, {PrevRight, PrevRightMaxKey}, 0).
+
 
 %% Insertion to the Right causes overflow
 split_c_o_c_by_r(State, Left, Middle, Right) ->
