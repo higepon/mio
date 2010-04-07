@@ -39,6 +39,9 @@
 -include_lib("eunit/include/eunit.hrl").
 -behaviour(gen_server).
 
+-define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
+-define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
+
 %% API
 -export([start_link/1,
          get_op/2,
@@ -644,11 +647,15 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
+    ?LOGF(""),
     {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
+    ?LOGF(""),
     case Key =< FoundKey of
         true ->
+            ?LOGF(""),
             get_op(FoundNode, Key);
         _ ->
+            ?LOGF(""),
             io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
             ?assert(false),
             {error, not_found}
@@ -1010,27 +1017,33 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
 search_op_call(From, State, Self, Key, Level) ->
+    ?LOGF(""),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
                       _ -> Level
                   end,
     MyKey = my_key(State),
+    ?LOGF(""),
     Found = string:equal(MyKey, Key),
     if
         %% Found!
         Found ->
+            ?LOGF(""),
             MyValue = dummy_todo,
             MyExpireTime = State#state.expire_time,
             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
         MyKey < Key ->
+            ?LOGF(""),
             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
         true ->
+            ?LOGF(""),
             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
     end.
 
 %% Not Found.
 do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
+    ?LOGF(""),
     MyKey = my_key(State),
     MyValue = dummy_todo,
     MyExpireTime = State#state.expire_time,
@@ -1038,13 +1051,17 @@ do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 
 do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
     case neighbor_node(State, Direction, Level) of
         [] ->
+            ?LOGF(""),
             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
         NextNode ->
+            ?LOGF(""),
             NextKey = neighbor_key(State, Direction, Level),
             case CompareFun(NextKey, Key) of
                 true ->
+                    ?LOGF(""),
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
                 _ ->
+                    ?LOGF(""),
                     do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
             end
     end.
