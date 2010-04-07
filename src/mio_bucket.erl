@@ -1044,16 +1044,13 @@ search_op_call(From, State, Self, Key, Level) ->
             MyExpireTime = State#state.expire_time,
             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
         MyKey < Key ->
-            io:format("~p~n", [?LINE]),
             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
         true ->
-            io:format("~p~n", [?LINE]),
             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
     end.
 
 %% Not Found.
 do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
-            io:format("~p~n", [?LINE]),
     MyKey = my_key(State),
     MyValue = dummy_todo,
     MyExpireTime = State#state.expire_time,
@@ -1061,17 +1058,13 @@ do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 
 do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
     case neighbor_node(State, Direction, Level) of
         [] ->
-            io:format("~p Level=~p~n", [?LINE, Level]),
             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
         NextNode ->
             NextKey = neighbor_key(State, Direction, Level),
-            io:format("~p ~p ~p~n", [?LINE, NextKey, Key]),
             case CompareFun(NextKey, Key) of
                 true ->
-            io:format("~p~n", [?LINE]),
                     gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
                 _ ->
-            io:format("~p~n", [?LINE]),
                     do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
             end
     end.
