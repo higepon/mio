@@ -450,11 +450,12 @@ make_c_o_c(State, Left, Right) ->
     %%    O*(C1_stored_max, O2_min)
     %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
+    {_, RightMaxKey} = get_range_op(Right),
     set_range_op(EmptyBucket, EmptyBucketMinKey, EmptyBucketMaxKey),
     set_min_key_op(Right, EmptyBucketMaxKey),
     set_max_key_op(Left, NewLeftMaxKey),
 
-    link3_op(Left, EmptyBucket, Right),
+    link_three_nodes({Left, NewLeftMaxKey}, {EmptyBucket, EmptyBucketMaxKey}, {Right, RightMaxKey}, 0),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
 
