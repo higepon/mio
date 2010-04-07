@@ -520,18 +520,20 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     full = just_insert_op(Right, LargeMKey, LargeMValue),
 
     %% range partition
-    {_, PrevRightMax} = get_range_op(PrevRight),
-    {LeftMax, _} = get_largest_op(Left),
-    {MiddleMax, _} = get_largest_op(Middle),
-    {_, OldRightMax} = get_range_op(Right),
-    {RightMax, _} = get_largest_op(Right),
-    set_max_key_op(Left, LeftMax),
-    set_range_op(Middle, LeftMax, MiddleMax),
-    set_range_op(Right, MiddleMax, RightMax),
-    set_range_op(EmptyBucket, RightMax, OldRightMax),
+    {_, PrevRightMaxKey} = get_range_op(PrevRight),
+    {LeftMaxKey, _} = get_largest_op(Left),
+    {MiddleMaxKey, _} = get_largest_op(Middle),
+    {_, OldRightMaxKey} = get_range_op(Right),
+    {RightMaxKey, _} = get_largest_op(Right),
+    {EmptyMinKey, EmptyMaxKey} = {RightMaxKey, OldRightMaxKey},
+    MiddleMinKey = LeftMaxKey,
+    set_max_key_op(Left, LeftMaxKey),
+    set_range_op(Middle, MiddleMinKey, MiddleMaxKey),
+    set_range_op(Right, MiddleMaxKey, RightMaxKey),
+    set_range_op(EmptyBucket, EmptyMinKey, OldRightMaxKey),
 
     %% C3'-O4 | C ...
-    link_three_nodes({Right, RightMax}, {EmptyBucket, OldRightMax}, {PrevRight, PrevRightMax}, 0).
+    link_three_nodes({Right, RightMaxKey}, {EmptyBucket, EmptyMaxKey}, {PrevRight, PrevRightMaxKey}, 0).
 
 %% Insertion to the Middle causes overflow
 split_c_o_c_by_m(State, Left, Middle, Right) ->
