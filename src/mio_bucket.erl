@@ -504,21 +504,6 @@ insert_alone_full(State, Self) ->
     set_max_key_op(Self, SelfMaxKey),
     set_range_op(EmptyBucket, EmptyMinKey, EmptyMaxKey).
 
-
-prepare_for_split_c_o_c(State, Left, Middle, Right) ->
-    ?ASSERT_NOT_NIL(Left),
-    ?ASSERT_NOT_NIL(Middle),
-    ?ASSERT_NOT_NIL(Right),
-    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
-    ok = set_type_op(Right, c_o_l),
-    ok = set_type_op(Middle, c_o_r),
-    ok = set_type_op(Left, c_o_l),
-    PrevRight = get_right_op(Right),
-
-    %% C3'-O4 | C ...
-    link3_op(Right, EmptyBucket, PrevRight),
-    EmptyBucket.
-
 adjust_range_c_o_c_o(Left, Middle, Right, MostRight) ->
     {LeftMax, _} = get_largest_op(Left),
     set_max_key_op(Left, LeftMax),
@@ -535,7 +520,15 @@ adjust_range_c_o_c_o(Left, Middle, Right, MostRight) ->
 split_c_o_c_by_l(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
     %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    ok = set_type_op(Right, c_o_l),
+    ok = set_type_op(Middle, c_o_r),
+    ok = set_type_op(Left, c_o_l),
+    PrevRight = get_right_op(Right),
+
+    %% C3'-O4 | C ...
+    link3_op(Right, EmptyBucket, PrevRight),
+
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
@@ -549,7 +542,15 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
 split_c_o_c_by_m(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
     %%    Insertion to O2$  : C1-C2-C3 -> C1-O2' | C3'-O4
-    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    ok = set_type_op(Right, c_o_l),
+    ok = set_type_op(Middle, c_o_r),
+    ok = set_type_op(Left, c_o_l),
+    PrevRight = get_right_op(Right),
+
+    %% C3'-O4 | C ...
+    link3_op(Right, EmptyBucket, PrevRight),
+
     {LargeKey, LargeValue} = take_largest_op(Middle),
     overflow = just_insert_op(Right, LargeKey, LargeValue),
     {LargeRKey, LargeRValue} = take_largest_op(Right),
@@ -560,7 +561,15 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 
 %% Insertion to the Right causes overflow
 split_c_o_c_by_r(State, Left, Middle, Right) ->
-    EmptyBucket = prepare_for_split_c_o_c(State, Left, Middle, Right),
+    {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
+    ok = set_type_op(Right, c_o_l),
+    ok = set_type_op(Middle, c_o_r),
+    ok = set_type_op(Left, c_o_l),
+    PrevRight = get_right_op(Right),
+
+    %% C3'-O4 | C ...
+    link3_op(Right, EmptyBucket, PrevRight),
+
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
