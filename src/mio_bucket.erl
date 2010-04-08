@@ -448,6 +448,9 @@ insert_c_o_l_overflow(State, Left, Right) ->
             make_c_o_c(State, Left, Right);
         _ ->
             %% C1-O -> C1'-O'
+            {NewMaxKey, _} = get_largest_op(Left),
+            set_max_key_op(Left, NewMaxKey),
+            set_min_key_op(Right, NewMaxKey),
             []
     end.
 
@@ -1016,8 +1019,8 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
 %%  Search operation
 %%    Search operation never change the State
 %%--------------------------------------------------------------------
-search_op_call(From, State, Self, Key, Level) ->
-    ?LOGF(""),
+search_op_call(From, State, Self, SearchKey, Level) ->
+    ?LOGF("SearchKey=~p MyKey=~p", [SearchKey, my_key(State)]),
     SearchLevel = case Level of
                       [] ->
                           length(State#state.right) - 1; %% Level is 0 origin
@@ -1025,20 +1028,25 @@ search_op_call(From, State, Self, Key, Level) ->
                   end,
     MyKey = my_key(State),
     ?LOGF(""),
-    Found = string:equal(MyKey, Key),
+    %% 
+    MayBeInThisBucket = case neighbor_key(State, left, 0) of
+                            [] ->
+                                SearchKey =< my_key(State);
+                            LeftKey ->
+                                LeftKey < SearchKey andalso SearchKey =< my_key(State)
+                        end,
     if
-        %% Found!
-        Found ->
+        MayBeInThisBucket ->
             ?LOGF(""),
             MyValue = dummy_todo,
             MyExpireTime = State#state.expire_time,
             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-        MyKey < Key ->
+        MyKey < SearchKey ->
             ?LOGF(""),
-            do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, Key);
+            do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, SearchKey);
         true ->
             ?LOGF(""),
-            do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, Key)
+            do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, SearchKey)
     end.
 
 %% Not Found.
