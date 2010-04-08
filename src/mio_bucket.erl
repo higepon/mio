@@ -39,18 +39,20 @@
 -include_lib("eunit/include/eunit.hrl").
 -behaviour(gen_server).
 
-%% -define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
-%% -define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
+-define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
+-define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 
--define(LOGF(Msg), []).
--define(LOGF(Msg, Args), []).
+%% -define(LOGF(Msg), []).
+%% -define(LOGF(Msg, Args), []).
 
 
 %% API
 -export([start_link/1,
          get_op/2,
+         %% todo merge
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
+         sg_get_right_op/2, sg_get_left_op/2,
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
@@ -262,6 +264,13 @@ get_right_op(Bucket) ->
 
 get_left_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_left_op, Level}).
+
+sg_get_right_op(Bucket, Level) ->
+    gen_server:call(Bucket, {sg_get_right_op, Level}).
+
+sg_get_left_op(Bucket, Level) ->
+    gen_server:call(Bucket, {sg_get_left_op, Level}).
+
 
 get_right_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_right_op, Level}).
@@ -480,8 +489,8 @@ insert_alone_full(State, Self) ->
     set_type_op(Self, c_o_l),
 
     %% link on Level 0
-    link_right_op(Self, 0, EmptyBucket, SelfMaxKey),
-    link_left_op(EmptyBucket, 0, Self, EmptyMaxKey),
+    link_right_op(Self, 0, EmptyBucket, EmptyMaxKey),
+    link_left_op(EmptyBucket, 0, Self, SelfMaxKey),
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
     %% link on Level >= 1
@@ -1035,8 +1044,10 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     %% 
     MayBeInThisBucket = case neighbor_key(State, left, 0) of
                             [] ->
+                                ?LOGF(""),
                                 SearchKey =< my_key(State);
                             LeftKey ->
+                                ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < SearchKey, SearchKey =< my_key(State)]),
                                 LeftKey < SearchKey andalso SearchKey =< my_key(State)
                         end,
     if

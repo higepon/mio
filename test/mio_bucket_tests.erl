@@ -688,6 +688,11 @@ c_o_different_mv() ->
     %% check on level 0
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
+    ?assertEqual({RightBucket, ?MAX_KEY}, mio_bucket:sg_get_right_op(Bucket, 0)),
+    ?assertEqual({[], []}, mio_bucket:sg_get_left_op(Bucket, 0)),
+    ?assertEqual({[], []}, mio_bucket:sg_get_right_op(RightBucket, 0)),
+    ?assertEqual({Bucket, "key3"}, mio_bucket:sg_get_left_op(RightBucket, 0)),
+
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
 
     %% check on level 1
@@ -705,6 +710,7 @@ c_o_different_mv() ->
     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_bucket:search_op(RightBucket, "key3")),
+
     {Bucket, RightBucket}.
 
 search_c_o_1() ->
@@ -717,7 +723,7 @@ search_c_o_1() ->
     ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
     ?assertEqual({?MIN_KEY, "key2"}, mio_bucket:get_range_op(Bucket)).
-%%     ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")),
+%%    ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")).
 %%     ?assertEqual({ok, value0}, mio_bucket:search_op(RightBucket, "key0")),
 %%     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
 %%     ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),
