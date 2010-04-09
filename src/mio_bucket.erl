@@ -257,6 +257,7 @@ get_op(Bucket, Key) ->
 ?LOGF("~p:~p", [Bucket, Key]),
     gen_server:call(Bucket, {get_op, Key}).
 
+get_key_op([]) -> [];
 get_key_op(Bucket) ->
     gen_server:call(Bucket, get_key_op).
 

@@ -24,7 +24,7 @@ teardown_mio(_) ->
 sg_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
-%%       [?_test(insert())],
+       [?_test(insert())],
 %%       [?_test(insert_c_o_1())],
 %%       [?_test(insert_c_o_2())],
 %%       [?_test(insert_c_o_3())],
