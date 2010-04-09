@@ -1067,7 +1067,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
        true ->
             case {neighbor_node(State, left, SearchLevel), SearchLevel} of
                 {[], 0} ->
-                    gen_server:reply(From, {error, not_found});
+                    gen_server:reply(From, get_op(Self, SearchKey));
                 {[], _} ->
                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
                 {LeftNode, _} ->
