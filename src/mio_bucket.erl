@@ -254,6 +254,7 @@ set_gen_mvector_op(Bucket, Fun) ->
     gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
 
 get_op(Bucket, Key) ->
+?LOGF("~p:~p", [Bucket, Key]),
     gen_server:call(Bucket, {get_op, Key}).
 
 get_key_op(Bucket) ->
@@ -739,6 +740,7 @@ handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#state.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
+    ?LOGF(""),
     {reply, mio_store:get(Key, State#state.store), State};
 
 handle_call(get_key_op, _From, State) ->
@@ -804,6 +806,7 @@ handle_call({search_op, Key, Level}, From, State) ->
     {noreply, State};
 
 handle_call(get_op, From, State) ->
+?LOGF(""),
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
@@ -1057,7 +1060,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
                 {[], _} ->
                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
                 {RightNode, _} ->
-                    gen_server:call(RightNode, {search_op, SearchKey, SearchLevel})
+                    gen_server:reply(From, gen_server:call(RightNode, {search_op, SearchKey, SearchLevel}))
             end;
        SearchKey =:= MyKey ->
             gen_server:reply(From, get_op(Self, SearchKey));
@@ -1071,9 +1074,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
                     LeftKey = get_key_op(LeftNode),
                     ?LOGF("LeftKey=~p~n", [LeftKey]),
                     if SearchKey =< LeftKey ->
-                            gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel});
+                            gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
                        SearchLevel =:= 0 ->
-
+?LOGF(""),
                             gen_server:reply(From, get_op(Self, SearchKey));
                        true ->
                             search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
