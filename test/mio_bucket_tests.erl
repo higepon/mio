@@ -722,7 +722,7 @@ search_c_o_1() ->
 %%     ?assertEqual({ok, value0}, mio_bucket:search_op(Bucket, "key0")),
 %%     ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
 %%     ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
-%%     ?assertEqual({?MIN_KEY, "key2"}, mio_bucket:get_range_op(Bucket)),
+   ?assertEqual({?MIN_KEY, "key2"}, mio_bucket:get_range_op(Bucket)),
    ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")).
 %%     ?assertEqual({ok, value0}, mio_bucket:search_op(RightBucket, "key0")),
 %%     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),

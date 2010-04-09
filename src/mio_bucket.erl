@@ -660,49 +660,27 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%--------------------------------------------------------------------
 %%  Search operation
 %%
-%%  Condition : SearchKey > NodeKey && right exists
-%%    Level ge 1 : to the right on the same level
-%%    Level 0    : to the right on the same level
-%%
-%%  Condition : SearchKey > NodeKey && right not exists
-%%    Level ge 1 : to the lower level
-%%    Level 0    : not found (On mio this case can't be happen, since it handles ?MAX_KEY)
-%%
-%%  Condition : SearchKey = NodeKey
-%%    Level ge 1 : Search on the bucket and return
-%%    Level 0    : Search on the bucket and return
-%%
-%%  Condition : SearchKey < NodeKey && left exist && SearchKey <= LeftKey
-%%    Level ge 1 : to the left on the same level
-%%    Level 0    : to the left on the same level
-%%
-%%  Condition : SearchKey < NodeKey && left exist && SearchKey > LeftKey
-%%    Level ge 1 : to the lower level
-%%    Level 0    : Search on the bucket and return
-%%
-%%  Condition : SearchKey < NodeKey && left not exist
-%%    Level ge 1 : to the lower level
-%%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
-%%
 %%--------------------------------------------------------------------
 
-search_op(StartNode, Key) ->
-    %% If Level is not specified, the start node checkes his max level and use it
+search_op(StartNode, SearchKey) ->
     StartLevel = [],
-    ?LOGF(""),
-    {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
-    ?LOGF(""),
-    case Key =< FoundKey of
-        true ->
-            ?LOGF(""),
-            get_op(FoundNode, Key);
-        _ ->
+    gen_server:call(StartNode, {search_op, SearchKey, StartLevel}, infinity).
+%%     %% If Level is not specified, the start node checkes his max level and use it
+
+%%     ?LOGF(""),
+%%     {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
+%%     ?LOGF(""),
+%%     case Key =< FoundKey of
+%%         true ->
 %%             ?LOGF(""),
-%%             io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
-%%             ?assert(false),
-%%             {error, not_found}
-            get_op(FoundNode, Key)
-    end.
+%%             get_op(FoundNode, Key);
+%%         _ ->
+%% %%             ?LOGF(""),
+%% %%             io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
+%% %%             ?assert(false),
+%% %%             {error, not_found}
+%%             get_op(FoundNode, Key)
+%%     end.
 
 %%--------------------------------------------------------------------
 %%  buddy operation
@@ -1055,81 +1033,135 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
             end
     end.
 
+start_level(State, []) ->
+    length(State#state.right) - 1; %% Level is 0 origin
+start_level(_State, Level) ->
+    Level.
+
 %%--------------------------------------------------------------------
 %%  Search operation
-%%    Search operation never change the State
+%%
+%%  Condition : SearchKey > NodeKey && right exists
+%%    Level ge 1 : to the right on the same level
+%%    Level 0    : to the right on the same level
+%%
+%%  Condition : SearchKey > NodeKey && right not exists
+%%    Level ge 1 : to the lower level
+%%    Level 0    : not found (On mio this case can't be happen, since it handles ?MAX_KEY)
+%%
+%%  Condition : SearchKey = NodeKey
+%%    Level ge 1 : Search on the bucket and return
+%%    Level 0    : Search on the bucket and return
+%%
+%%  Condition : SearchKey < NodeKey && left exist && SearchKey <= LeftKey
+%%    Level ge 1 : to the left on the same level
+%%    Level 0    : to the left on the same level
+%%
+%%  Condition : SearchKey < NodeKey && left exist && SearchKey > LeftKey
+%%    Level ge 1 : to the lower level
+%%    Level 0    : Search on the bucket and return
+%%
+%%  Condition : SearchKey < NodeKey && left not exist
+%%    Level ge 1 : to the lower level
+%%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
+
 %%--------------------------------------------------------------------
 search_op_call(From, State, Self, SearchKey, Level) ->
-    ?LOGF("SearchKey=~p MyKey=~p", [SearchKey, my_key(State)]),
-    SearchLevel = case Level of
-                      [] ->
-                          length(State#state.right) - 1; %% Level is 0 origin
-                      _ -> Level
-                  end,
+    SearchLevel = start_level(State, Level),
     MyKey = my_key(State),
-    ?LOGF(""),
-    %%
-    MayBeInThisBucket = case neighbor_key(State, left, 0) of
-                            [] ->
-                                ?LOGF(""),
-                                SearchKey =< my_key(State);
-                            LeftKey ->
-                                ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < SearchKey, SearchKey =< my_key(State)]),
-                                LeftKey < SearchKey andalso SearchKey =< my_key(State)
-                        end,
-    if
-        MayBeInThisBucket ->
-            ?LOGF(""),
-            MyValue = dummy_todo,
-            MyExpireTime = State#state.expire_time,
-            gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-        MyKey < SearchKey ->
-            ?LOGF(""),
-            do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, SearchKey);
-        true ->
-            ?LOGF(""),
-            do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, SearchKey)
-    end.
+    ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
+    if SearchKey > MyKey ->
+            case {neighbor_node(State, right, SearchLevel), SearchLevel} of
+                {[], 0} ->
+                    gen_server:reply(From, {error, not_found});
+                {[], _} ->
+                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
+                {RightNode, _} ->
+                    gen_server:call(RightNode, {search_op, SearchKey, SearchLevel})
+            end;
+       SearchKey =:= MyKey ->
+            gen_server:reply(From, get_op(Self, SearchKey));
+       true ->
+            case {neighbor_node(State, left, SearchLevel), SearchLevel} of
+                {[], 0} ->
+                    gen_server:reply(From, {error, not_found});
+                {[], _} ->
+                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
+                {LeftNode, _} ->
+                    LeftKey = neighbor_key(State, left, SearchLevel),
+                    ?LOGF("LeftKey=~p~n", [LeftKey]),
+                    if SearchKey =< LeftKey ->
+                            gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel});
+                       SearchLevel =:= 0 ->
 
-%% Not Found.
-do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
-    ?LOGF(""),
-    MyKey = my_key(State),
-    MyValue = dummy_todo,
-    MyExpireTime = State#state.expire_time,
-    gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
-do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
-    case neighbor_node(State, Direction, Level) of
-        [] ->
-            ?LOGF(""),
-            do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
-        NextNode ->
-            ?LOGF(""),
-            NextKey = neighbor_key(State, Direction, Level),
-            ?LOGF("SearachKey=~p, MyKey=~p", [Key, my_key(State)]),
-            MayBeInThisBucket = case neighbor_key(State, left, Level) of
-                                    [] ->
-                                        ?LOGF(""),
-                                        Key =< my_key(State);
-                                    LeftKey ->
-                                        ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < Key, Key =< my_key(State)]),
-                                        LeftKey < Key andalso Key =< my_key(State)
-                               end,
-            if MayBeInThisBucket ->
-                    MyValue = dummy_todo,
-                    MyExpireTime = State#state.expire_time,
-                    gen_server:reply(From, {Self, my_key(State), MyValue, MyExpireTime});
-               true ->
-                    case not CompareFun(NextKey, Key) of
-                        true ->
-                            ?LOGF(""),
-                            gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
-                        _ ->
-                            ?LOGF(""),
-                            do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
+                            gen_server:reply(From, get_op(Self, SearchKey));
+                       true ->
+                            search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
                     end
             end
     end.
+%%     %%
+%%     MayBeInThisBucket = case neighbor_key(State, left, 0) of
+%%                             [] ->
+%%                                 ?LOGF(""),
+%%                                 SearchKey =< my_key(State);
+%%                             LeftKey ->
+%%                                 ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < SearchKey, SearchKey =< my_key(State)]),
+%%                                 LeftKey < SearchKey andalso SearchKey =< my_key(State)
+%%                         end,
+%%     if
+%%         MayBeInThisBucket ->
+%%             ?LOGF(""),
+%%             MyValue = dummy_todo,
+%%             MyExpireTime = State#state.expire_time,
+%%             gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
+%%         MyKey < SearchKey ->
+%%             ?LOGF(""),
+%%             do_search(From, Self, State, right, fun(X, Y) -> X =< Y end, SearchLevel, SearchKey);
+%%         true ->
+%%             ?LOGF(""),
+%%             do_search(From, Self, State, left, fun(X, Y) -> X >= Y end, SearchLevel, SearchKey)
+%%     end.
+
+%% Not Found.
+%% do_search(From, Self, State, _Direction, _CompareFun, Level, _Key) when Level < 0 ->
+%%     ?LOGF(""),
+%%     MyKey = my_key(State),
+%%     MyValue = dummy_todo,
+%%     MyExpireTime = State#state.expire_time,
+%%     gen_server:reply(From, {Self, MyKey, MyValue, MyExpireTime});
+%% do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
+%%     case neighbor_node(State, Direction, Level) of
+%%         [] ->
+%%             ?LOGF(""),
+%%             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key);
+%%         NextNode ->
+%%             ?LOGF(""),
+%%             NextKey = neighbor_key(State, Direction, Level),
+%%             ?LOGF("SearachKey=~p, MyKey=~p", [Key, my_key(State)]),
+%%             MayBeInThisBucket = case neighbor_key(State, left, Level) of
+%%                                     [] ->
+%%                                         ?LOGF(""),
+%%                                         Key =< my_key(State);
+%%                                     LeftKey ->
+%%                                         ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < Key, Key =< my_key(State)]),
+%%                                         LeftKey < Key andalso Key =< my_key(State)
+%%                                end,
+%%             if MayBeInThisBucket ->
+%%                     MyValue = dummy_todo,
+%%                     MyExpireTime = State#state.expire_time,
+%%                     gen_server:reply(From, {Self, my_key(State), MyValue, MyExpireTime});
+%%                true ->
+%%                     case not CompareFun(NextKey, Key) of
+%%                         true ->
+%%                             ?LOGF(""),
+%%                             gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
+%%                         _ ->
+%%                             ?LOGF(""),
+%%                             do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
+%%                     end
+%%             end
+%%     end.
 
 %%--------------------------------------------------------------------
 %%  delete operation
