@@ -24,25 +24,25 @@ teardown_mio(_) ->
 sg_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
-      [?_test(insert())],
-      [?_test(insert_c_o_1())],
-      [?_test(insert_c_o_2())],
-      [?_test(insert_c_o_3())],
-      [?_test(insert_c_o_4())],
-      [?_test(insert_c_o_5())],
-      [?_test(insert_c_o_6())],
-      [?_test(insert_c_o_c_1())],
-      [?_test(insert_c_o_c_2())],
-      [?_test(insert_c_o_c_3())],
-      [?_test(insert_c_o_c_4())],
-      [?_test(insert_c_o_c_5())],
-      [?_test(insert_c_o_c_6())],
-      [?_test(insert_c_o_c_7())],
-      [?_test(insert_c_o_c_8())],
-      [?_test(insert_c_o_c_9())],
-      [?_test(search_o())],
-      [?_test(c_o_same_mv())],
-      [?_test(c_o_different_mv())],
+%%       [?_test(insert())],
+%%       [?_test(insert_c_o_1())],
+%%       [?_test(insert_c_o_2())],
+%%       [?_test(insert_c_o_3())],
+%%       [?_test(insert_c_o_4())],
+%%       [?_test(insert_c_o_5())],
+%%       [?_test(insert_c_o_6())],
+%%       [?_test(insert_c_o_c_1())],
+%%       [?_test(insert_c_o_c_2())],
+%%       [?_test(insert_c_o_c_3())],
+%%       [?_test(insert_c_o_c_4())],
+%%       [?_test(insert_c_o_c_5())],
+%%       [?_test(insert_c_o_c_6())],
+%%       [?_test(insert_c_o_c_7())],
+%%       [?_test(insert_c_o_c_8())],
+%%       [?_test(insert_c_o_c_9())],
+%%       [?_test(search_o())],
+%%       [?_test(c_o_same_mv())],
+%%       [?_test(c_o_different_mv())],
       [?_test(search_c_o_1())]
      ]
     }.
@@ -719,11 +719,11 @@ search_c_o_1() ->
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
 
     %% search
-    ?assertEqual({ok, value0}, mio_bucket:search_op(Bucket, "key0")),
-    ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
-    ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
-    ?assertEqual({?MIN_KEY, "key2"}, mio_bucket:get_range_op(Bucket)).
-%%    ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")).
+%%     ?assertEqual({ok, value0}, mio_bucket:search_op(Bucket, "key0")),
+%%     ?assertEqual({ok, value1}, mio_bucket:search_op(Bucket, "key1")),
+%%     ?assertEqual({ok, value2}, mio_bucket:search_op(Bucket, "key2")),
+%%     ?assertEqual({?MIN_KEY, "key2"}, mio_bucket:get_range_op(Bucket)),
+   ?assertEqual({ok, value3}, mio_bucket:search_op(Bucket, "key3")).
 %%     ?assertEqual({ok, value0}, mio_bucket:search_op(RightBucket, "key0")),
 %%     ?assertEqual({ok, value1}, mio_bucket:search_op(RightBucket, "key1")),
 %%     ?assertEqual({ok, value2}, mio_bucket:search_op(RightBucket, "key2")),

@@ -658,8 +658,34 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
     end.
 
 %%--------------------------------------------------------------------
-%%  search operation
+%%  Search operation
+%%
+%%  Condition : SearchKey > NodeKey && right exists
+%%    Level ge 1 : to the right on the same level
+%%    Level 0    : to the right on the same level
+%%
+%%  Condition : SearchKey > NodeKey && right not exists
+%%    Level ge 1 : to the lower level
+%%    Level 0    : not found (On mio this case can't be happen, since it handles ?MAX_KEY)
+%%
+%%  Condition : SearchKey = NodeKey
+%%    Level ge 1 : Search on the bucket and return
+%%    Level 0    : Search on the bucket and return
+%%
+%%  Condition : SearchKey < NodeKey && left exist && SearchKey <= LeftKey
+%%    Level ge 1 : to the left on the same level
+%%    Level 0    : to the left on the same level
+%%
+%%  Condition : SearchKey < NodeKey && left exist && SearchKey > LeftKey
+%%    Level ge 1 : to the lower level
+%%    Level 0    : Search on the bucket and return
+%%
+%%  Condition : SearchKey < NodeKey && left not exist
+%%    Level ge 1 : to the lower level
+%%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
+%%
 %%--------------------------------------------------------------------
+
 search_op(StartNode, Key) ->
     %% If Level is not specified, the start node checkes his max level and use it
     StartLevel = [],
@@ -671,10 +697,11 @@ search_op(StartNode, Key) ->
             ?LOGF(""),
             get_op(FoundNode, Key);
         _ ->
-            ?LOGF(""),
-            io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
-            ?assert(false),
-            {error, not_found}
+%%             ?LOGF(""),
+%%             io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
+%%             ?assert(false),
+%%             {error, not_found}
+            get_op(FoundNode, Key)
     end.
 
 %%--------------------------------------------------------------------
@@ -1041,7 +1068,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
                   end,
     MyKey = my_key(State),
     ?LOGF(""),
-    %% 
+    %%
     MayBeInThisBucket = case neighbor_key(State, left, 0) of
                             [] ->
                                 ?LOGF(""),
@@ -1079,13 +1106,28 @@ do_search(From, Self, State, Direction, CompareFun, Level, Key) ->
         NextNode ->
             ?LOGF(""),
             NextKey = neighbor_key(State, Direction, Level),
-            case CompareFun(NextKey, Key) of
-                true ->
-                    ?LOGF(""),
-                    gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
-                _ ->
-                    ?LOGF(""),
-                    do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
+            ?LOGF("SearachKey=~p, MyKey=~p", [Key, my_key(State)]),
+            MayBeInThisBucket = case neighbor_key(State, left, Level) of
+                                    [] ->
+                                        ?LOGF(""),
+                                        Key =< my_key(State);
+                                    LeftKey ->
+                                        ?LOGF("~p ~p ~p~n", [LeftKey, LeftKey < Key, Key =< my_key(State)]),
+                                        LeftKey < Key andalso Key =< my_key(State)
+                               end,
+            if MayBeInThisBucket ->
+                    MyValue = dummy_todo,
+                    MyExpireTime = State#state.expire_time,
+                    gen_server:reply(From, {Self, my_key(State), MyValue, MyExpireTime});
+               true ->
+                    case not CompareFun(NextKey, Key) of
+                        true ->
+                            ?LOGF(""),
+                            gen_server:reply(From, gen_server:call(NextNode, {search_op, Key, Level}, infinity));
+                        _ ->
+                            ?LOGF(""),
+                            do_search(From, Self, State, Direction, CompareFun, Level - 1, Key)
+                    end
             end
     end.
 
