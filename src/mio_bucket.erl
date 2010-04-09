@@ -50,6 +50,7 @@
 -export([start_link/1,
          get_op/2,
          %% todo merge
+         get_key_op/1,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
          sg_get_right_op/2, sg_get_left_op/2,
@@ -63,9 +64,9 @@
          set_max_key_op/2, set_min_key_op/2,
          %% Skip Graph layer
 stats_op/2,
-         search_op_call/5, buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
+         search_op_call/5, buddy_op_call/6, get_op_call/2, %%get_neighbor_op_call/4,
          insert_op_call/4, delete_op_call/3,
-         search_op/2, link_right_op/4, link_left_op/4,
+         search_op/2, link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
          check_invariant_level_0_left/5,
@@ -82,7 +83,6 @@ stats_op/2,
          terminate/2, code_change/3]).
 
 -record(state, {store, type, min_key, max_key, left, right, membership_vector, gen_mvector,
-                left_keys, right_keys,
                 expire_time, inserted, deleted
                }).
 
@@ -256,6 +256,9 @@ set_gen_mvector_op(Bucket, Fun) ->
 get_op(Bucket, Key) ->
     gen_server:call(Bucket, {get_op, Key}).
 
+get_key_op(Bucket) ->
+    gen_server:call(Bucket, get_key_op).
+
 get_left_op(Bucket) ->
     get_left_op(Bucket, 0).
 
@@ -350,8 +353,6 @@ init([Capacity, Type, MembershipVector]) ->
                 left=EmptyNeighbors,
                 right=EmptyNeighbors,
                 membership_vector=MembershipVector,
-                left_keys=EmptyNeighbors,
-                right_keys=EmptyNeighbors,
                 expire_time=0,
                 inserted=Insereted,
                 deleted=false,
@@ -489,8 +490,8 @@ insert_alone_full(State, Self) ->
     set_type_op(Self, c_o_l),
 
     %% link on Level 0
-    link_right_op(Self, 0, EmptyBucket, EmptyMaxKey),
-    link_left_op(EmptyBucket, 0, Self, SelfMaxKey),
+    link_right_op(Self, 0, EmptyBucket),
+    link_left_op(EmptyBucket, 0, Self),
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
     %% link on Level >= 1
@@ -691,15 +692,15 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
-link_right_op([], _Level, _Right, _RightKey) ->
+link_right_op([], _Level, _Right) ->
     ok;
-link_right_op(Node, Level, Right, RightKey) ->
-    gen_server:call(Node, {link_right_op, Level, Right, RightKey}).
+link_right_op(Node, Level, Right) ->
+    gen_server:call(Node, {link_right_op, Level, Right}).
 
-link_left_op([], _Level, _Left, _LeftKey) ->
+link_left_op([], _Level, _Left) ->
     ok;
-link_left_op(Node, Level, Left, LeftKey) ->
-    gen_server:call(Node, {link_left_op, Level, Left, LeftKey}).
+link_left_op(Node, Level, Left) ->
+    gen_server:call(Node, {link_left_op, Level, Left}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -740,17 +741,14 @@ handle_call(is_full_op, _From, State) ->
 handle_call({get_op, Key}, _From, State) ->
     {reply, mio_store:get(Key, State#state.store), State};
 
+handle_call(get_key_op, _From, State) ->
+    {reply, my_key(State), State};
+
 handle_call({get_left_op, Level}, _From, State) ->
     {reply, neighbor_node(State, left, Level), State};
 
 handle_call({get_right_op, Level}, _From, State) ->
     {reply, neighbor_node(State, right, Level), State};
-
-handle_call({set_left_op, Left, Level}, _From, State) ->
-    {reply, ok, set_left(State, Level, Left, dummy_left_key)};
-
-handle_call({set_right_op, Right, Level}, _From, State) ->
-    {reply, ok, set_right(State, Level, Right, dummy_right_key)};
 
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#state{type=Type}};
@@ -816,14 +814,6 @@ handle_call(get_inserted_op, _From, State) ->
 handle_call(get_deleted_op, _From, State) ->
     {reply, State#state.deleted, State};
 
-handle_call({sg_get_right_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
-    {noreply, State};
-
-handle_call({sg_get_left_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_neighbor_op_call, [From, State, left, Level]),
-    {noreply, State};
-
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
@@ -841,14 +831,14 @@ handle_call(delete_op, From, State) ->
     spawn_link(?MODULE, delete_op_call, [From, Self, State]),
     {noreply, State};
 
-handle_call({set_op, NewValue}, _From, State) ->
-    set_op_call(State, NewValue);
+%% handle_call({set_op, NewValue}, _From, State) ->
+%%     set_op_call(State, NewValue);
 
-handle_call({link_right_op, Level, RightNode, RightKey}, _From, State) ->
-    {reply, ok, set_right(State, Level, RightNode, RightKey)};
+handle_call({link_right_op, Level, RightNode}, _From, State) ->
+    {reply, ok, set_right(State, Level, RightNode)};
 
-handle_call({link_left_op, Level, LeftNode, LeftKey}, _From, State) ->
-    {reply, ok, set_left(State, Level, LeftNode, LeftKey)};
+handle_call({link_left_op, Level, LeftNode}, _From, State) ->
+    {reply, ok, set_left(State, Level, LeftNode)};
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
     {reply, ok, State#state{expire_time=ExpireTime}};
@@ -983,34 +973,24 @@ reverse_direction(Direction) ->
             right
     end.
 
-neighbor_key(State, Direction, Level) ->
-    case Direction of
-        right ->
-            node_on_level(State#state.right_keys, Level);
-        left ->
-            node_on_level(State#state.left_keys, Level)
-    end.
+set_right(State, Level, Node) ->
+    State#state{right=mio_util:lists_set_nth(Level + 1, Node, State#state.right)}.
 
-set_right(State, Level, Node, Key) ->
-    NewState = State#state{right_keys=mio_util:lists_set_nth(Level + 1, Key, State#state.right_keys)},
-    NewState#state{right=mio_util:lists_set_nth(Level + 1, Node, NewState#state.right)}.
-
-set_left(State, Level, Node, Key) ->
-    NewState = State#state{left_keys=mio_util:lists_set_nth(Level + 1, Key, State#state.left_keys)},
-    NewState#state{left=mio_util:lists_set_nth(Level + 1, Node, NewState#state.left)}.
+set_left(State, Level, Node) ->
+    State#state{left=mio_util:lists_set_nth(Level + 1, Node, State#state.left)}.
 
 %%--------------------------------------------------------------------
 %%% Implementation of genserver:call
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {my_key(State), dummy_value_todo, State#state.membership_vector, State#state.left, State#state.right}).
-get_neighbor_op_call(From, State, Direction, Level) ->
-    NeighborNode = neighbor_node(State, Direction, Level),
-    NeighborKey = neighbor_key(State, Direction, Level),
-    gen_server:reply(From, {NeighborNode, NeighborKey}).
+%% get_neighbor_op_call(From, State, Direction, Level) ->
+%%     NeighborNode = neighbor_node(State, Direction, Level),
+%%     NeighborKey = neighbor_key(State, Direction, Level),
+%%     gen_server:reply(From, {NeighborNode, NeighborKey}).
 
-set_op_call(State, NewValue) ->
-    {reply, dummy_todo, State}.
+%% set_op_call(State, NewValue) ->
+%%     {reply, dummy_todo, State}.
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
@@ -1021,8 +1001,8 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
         IsSameMV andalso IsInserted ->
             MyKey = my_key(State),
             ReverseDirection = reverse_direction(Direction),
-            MyNeighborKey = neighbor_key(State, ReverseDirection, Level),
             MyNeighbor = neighbor_node(State, ReverseDirection, Level),
+            MyNeighborKey = get_key_op(MyNeighbor),
             gen_server:reply(From, {ok, Self, MyKey, MyNeighbor, MyNeighborKey});
         true ->
             case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
@@ -1088,7 +1068,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
                 {[], _} ->
                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
                 {LeftNode, _} ->
-                    LeftKey = neighbor_key(State, left, SearchLevel),
+                    LeftKey = get_key_op(LeftNode),
                     ?LOGF("LeftKey=~p~n", [LeftKey]),
                     if SearchKey =< LeftKey ->
                             gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel});
@@ -1203,8 +1183,8 @@ delete_loop_(Self, Level) ->
 
     ?CHECK_SANITY(Self, Level),
 
-    ok = link_left_op(RightNode, Level, LeftNode, LeftKey),
-    ok = link_right_op(LeftNode, Level, RightNode, RightKey),
+    ok = link_left_op(RightNode, Level, LeftNode),
+    ok = link_right_op(LeftNode, Level, RightNode),
 
     ?CHECK_SANITY(Self, Level),
     unlock(LockedNodes, ?LINE),
@@ -1246,18 +1226,18 @@ lock_or_exit(Nodes, Line, Info) ->
             Nodes
     end.
 
-link_three_nodes({LeftNode, LeftKey}, {CenterNode, CenterKey}, {RightNode, RightKey}, Level) ->
+link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left] -> [Center]  [Right]
-    link_right_op(LeftNode, Level, CenterNode, CenterKey),
+    link_right_op(LeftNode, Level, CenterNode),
 
     %% [Left]    [Center] <- [Right]
-    link_left_op(RightNode, Level, CenterNode, CenterKey),
+    link_left_op(RightNode, Level, CenterNode),
 
     %% [Left] <- [Center]    [Right]
-    link_left_op(CenterNode, Level, LeftNode, LeftKey),
+    link_left_op(CenterNode, Level, LeftNode),
 
     %% [Left]    [Center] -> [Right]
-    link_right_op(CenterNode, Level, RightNode, RightKey).
+    link_right_op(CenterNode, Level, RightNode).
 
 %%--------------------------------------------------------------------
 %%  Insert operation
