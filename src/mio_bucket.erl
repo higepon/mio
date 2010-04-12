@@ -845,15 +845,6 @@ handle_call({set_inserted_op, Level}, _From, State) ->
 handle_call(set_inserted_op, _From, State) ->
     {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}};
 
-
-handle_call({sg_get_right_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
-    {noreply, State};
-
-handle_call({sg_get_left_op, Level}, From, State) ->
-    spawn_link(?MODULE, get_neighbor_op_call, [From, State, left, Level]),
-    {noreply, State};
-
 handle_call(Args, _From, State) ->
     io:format("Unknown handle call on mio_bucket : ~p:State=~p", [Args, State]).
 
@@ -1330,8 +1321,7 @@ do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, Check
     MyKey = my_key(State),
     dynomite_prof:start_prof(do_link_on_level_0_hoge),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
-    NeighborRightOrLeft = apply(?MODULE, GetNeighborOp, 0),
-%%    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
+    NeighborRightOrLeft = apply(?MODULE, GetNeighborOp, [Self, 0]),
     dynomite_prof:stop_prof(do_link_on_level_0_hoge),
     dynomite_prof:start_prof(do_link_on_level_0_hoge1),
 
@@ -1523,12 +1513,14 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, 
 %%   done: link process is done. link on higher level is not necessary.
 %%   ok: invariant is satified, you can link safely on this level.
 check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
-    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyRight, sg_get_right_op, fun(X, Y) -> X > Y end).
+    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyRight, get_right_op, fun(X, Y) -> X > Y end).
 check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
-    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, sg_get_left_op, fun(X, Y) -> X < Y end).
+    check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, get_left_op, fun(X, Y) -> X < Y end).
 
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
-    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
+    RealBuddyNeighbor = apply(?MODULE, GetNeighborOp, [Buddy, Level]),
+    RealBuddyNeighborKey = get_key_op(RealBuddyNeighbor),
+%%    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
     IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
