@@ -43,10 +43,14 @@ sg_test_() ->
       [?_test(search_o())],
       [?_test(c_o_same_mv())],
       [?_test(c_o_different_mv())],
-      [?_test(search_c_o_1())],
-      [?_test(search_c_o_2())],
-      [?_test(search_c_o_3())],
-      [?_test(search_c_o_4())]
+      [?_test(search_c_o_1_same())],
+      [?_test(search_c_o_1_different())],
+      [?_test(search_c_o_2_same())],
+      [?_test(search_c_o_2_different())],
+      [?_test(search_c_o_3_same())],
+      [?_test(search_c_o_3_different())],
+      [?_test(search_c_o_4_same())],
+      [?_test(search_c_o_4_different())]
      ]
     }.
 
@@ -712,8 +716,14 @@ c_o_different_mv() ->
 
     {Bucket, RightBucket}.
 
-search_c_o_1() ->
-    {Bucket, RightBucket} = make_c_o_different_mv(),
+search_c_o_1_same() ->
+    search_c_o_1(fun make_c_o_same_mv/0).
+
+search_c_o_1_different() ->
+    search_c_o_1(fun make_c_o_different_mv/0).
+
+search_c_o_1(MakeC_O_C_Fun) ->
+    {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
 
@@ -728,8 +738,14 @@ search_c_o_1() ->
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")).
 
-search_c_o_2() ->
-    {Bucket, RightBucket} = make_c_o_different_mv(),
+search_c_o_2_same() ->
+    search_c_o_2(fun make_c_o_same_mv/0).
+
+search_c_o_2_different() ->
+    search_c_o_2(fun make_c_o_different_mv/0).
+
+search_c_o_2(MakeC_O_C_Fun) ->
+    {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key00", value00)),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key01", value01)),
@@ -747,8 +763,14 @@ search_c_o_2() ->
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")).
 
-search_c_o_3() ->
-    {Bucket, RightBucket} = make_c_o_different_mv(),
+search_c_o_3_same() ->
+    search_c_o_3(fun make_c_o_same_mv/0).
+
+search_c_o_3_different() ->
+    search_c_o_3(fun make_c_o_different_mv/0).
+
+search_c_o_3(MakeC_O_C_Fun) ->
+    {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key00", value00)),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key01", value01)),
@@ -781,9 +803,14 @@ search_c_o_3() ->
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Middle, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(Middle, "key3")).
 
+search_c_o_4_same() ->
+    search_c_o_4(fun make_c_o_same_mv/0).
 
-search_c_o_4() ->
-    {Bucket, RightBucket} = make_c_o_different_mv(),
+search_c_o_4_different() ->
+    search_c_o_4(fun make_c_o_different_mv/0).
+
+search_c_o_4(MakeC_O_C_Fun) ->
+    {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key4", value4)),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key5", value5)),
