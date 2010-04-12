@@ -789,9 +789,9 @@ handle_call(get_range_op, _From, State) ->
 
 
 %% Read Only Operations start
-handle_call({search_op, Key, Level}, From, State) ->
+handle_call({search_op, SearchKey, Level}, From, State) ->
     Self = self(),
-    spawn_link(?MODULE, search_op_call, [From, State, Self, Key, Level]),
+    spawn_link(?MODULE, search_op_call, [From, State, Self, SearchKey, Level]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->
