@@ -130,7 +130,18 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     if SearchKey > MyKey ->
             search_op_to_right(From, State, Self, SearchKey, SearchLevel);
        SearchKey =:= MyKey ->
-            gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+            %% We have to right buckt on case [00, 01, 02] -> [] -> [1 2 3],
+            %% since [] has key 1.
+            gen_server:reply(From,
+                             case mio_bucket:get_op(Self, SearchKey) of
+                                 {error, not_found} ->
+                                     case neighbor_node(State, right, 0) of
+                                         [] -> {error, not_found};
+                                         RightNode0 ->
+                                             mio_bucket:get_op(RightNode0, SearchKey)
+                                     end;
+                                 Found -> Found
+                             end);
        true ->
             search_op_to_left(From, State, Self, SearchKey, SearchLevel)
     end.
