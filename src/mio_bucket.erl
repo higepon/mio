@@ -1041,19 +1041,23 @@ start_level(_State, Level) ->
 %%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
 
 %%--------------------------------------------------------------------
+search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
+    case {neighbor_node(State, right, SearchLevel), SearchLevel} of
+        {[], 0} ->
+            gen_server:reply(From, {error, not_found});
+        {[], _} ->
+            search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
+        {RightNode, _} ->
+            gen_server:reply(From, gen_server:call(RightNode, {search_op, SearchKey, SearchLevel}))
+    end.
+
+
 search_op_call(From, State, Self, SearchKey, Level) ->
     SearchLevel = start_level(State, Level),
     MyKey = my_key(State),
     ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
     if SearchKey > MyKey ->
-            case {neighbor_node(State, right, SearchLevel), SearchLevel} of
-                {[], 0} ->
-                    gen_server:reply(From, {error, not_found});
-                {[], _} ->
-                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
-                {RightNode, _} ->
-                    gen_server:reply(From, gen_server:call(RightNode, {search_op, SearchKey, SearchLevel}))
-            end;
+            search_op_to_right(From, State, Self, SearchKey, SearchLevel);
        SearchKey =:= MyKey ->
             gen_server:reply(From, get_op(Self, SearchKey));
        true ->
@@ -1064,11 +1068,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
                 {LeftNode, _} ->
                     LeftKey = get_key_op(LeftNode),
-                    ?LOGF("LeftKey=~p~n", [LeftKey]),
                     if SearchKey =< LeftKey ->
                             gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
                        SearchLevel =:= 0 ->
-?LOGF(""),
                             gen_server:reply(From, get_op(Self, SearchKey));
                        true ->
                             search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
