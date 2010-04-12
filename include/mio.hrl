@@ -1,6 +1,11 @@
 %%-define(PROFILER_ON, true).
 %%-define(DEBUG_ON, true).
 
+-record(node, {store, type, min_key, max_key, left, right, membership_vector, gen_mvector,
+                expire_time, inserted, deleted
+               }).
+
+
 -define(SERVER, ?MODULE).
 -define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 -define(INFO(Msg), ?INFOF(Msg, [])).

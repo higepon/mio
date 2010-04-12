@@ -689,11 +689,11 @@ c_o_different_mv() ->
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
     ?assertEqual(RightBucket, mio_bucket:get_right_op(Bucket, 0)),
-    ?assertEqual(?MAX_KEY, mio_bucket:get_key_op(RightBucket)),
+    ?assertEqual(?MAX_KEY, mio_skip_graph:get_key_op(RightBucket)),
     ?assertEqual([], mio_bucket:get_left_op(Bucket, 0)),
     ?assertEqual([], mio_bucket:get_right_op(RightBucket, 0)),
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket, 0)),
-    ?assertEqual("key3", mio_bucket:get_key_op(Bucket)),
+    ?assertEqual("key3", mio_skip_graph:get_key_op(Bucket)),
 
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
 

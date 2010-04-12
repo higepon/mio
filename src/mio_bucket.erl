@@ -48,9 +48,6 @@
 
 %% API
 -export([start_link/1,
-         get_op/2,
-         %% todo merge
-         get_key_op/1,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
          insert_op/3, just_insert_op/3,
@@ -63,7 +60,8 @@
          set_max_key_op/2, set_min_key_op/2,
          %% Skip Graph layer
 stats_op/2,
-         search_op_call/5, buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
+get_op/2,
+          buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
          insert_op_call/4, delete_op_call/3,
           link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2,
@@ -81,9 +79,6 @@ stats_op/2,
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {store, type, min_key, max_key, left, right, membership_vector, gen_mvector,
-                expire_time, inserted, deleted
-               }).
 
 %%====================================================================
 %%  Skip Graph layer
@@ -252,13 +247,6 @@ stats_op/2,
 set_gen_mvector_op(Bucket, Fun) ->
     gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
 
-get_op(Bucket, Key) ->
-?LOGF("~p:~p", [Bucket, Key]),
-    gen_server:call(Bucket, {get_op, Key}).
-
-get_key_op([]) -> [];
-get_key_op(Bucket) ->
-    gen_server:call(Bucket, get_key_op).
 
 get_left_op(Bucket) ->
     get_left_op(Bucket, 0).
@@ -340,7 +328,7 @@ init([Capacity, Type, MembershipVector]) ->
                         lists:duplicate(Length + 1, false)
                 end,
 
-    {ok, #state{store=mio_store:new(Capacity),
+    {ok, #node{store=mio_store:new(Capacity),
                 type=Type,
                 min_key=?MIN_KEY,
                 max_key=?MAX_KEY,
@@ -400,7 +388,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
-    case {State#state.type, InsertState} of
+    case {State#node.type, InsertState} of
         {c_o_l, overflow} ->
             insert_c_o_l_overflow(State, Self, neighbor_node(State, right, 0));
         {c_o_c_l, overflow} ->
@@ -426,8 +414,8 @@ insert_op_call(From, State, Self, Key, Value)  ->
     gen_server:reply(From, ok).
 
 make_empty_bucket(State, Type) ->
-    MaxLevel = length(State#state.membership_vector),
-    mio_sup:make_bucket(mio_store:capacity(State#state.store), Type, apply(State#state.gen_mvector, [MaxLevel])).
+    MaxLevel = length(State#node.membership_vector),
+    mio_sup:make_bucket(mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel])).
 
 make_c_o_c(State, Left, Right) ->
     {EmptyBucketMinKey, _} = get_largest_op(Left),
@@ -477,7 +465,7 @@ insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
     {LargestKey, _} = get_largest_op(Self),
     SelfMaxKey = LargestKey,
-    {EmptyMinKey, EmptyMaxKey} = {LargestKey, State#state.max_key},
+    {EmptyMinKey, EmptyMaxKey} = {LargestKey, State#node.max_key},
 
     %% Change type
     set_type_op(Self, c_o_l),
@@ -488,7 +476,7 @@ insert_alone_full(State, Self) ->
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
     %% link on Level >= 1
-    MaxLevel = length(State#state.membership_vector),
+    MaxLevel = length(State#node.membership_vector),
     link_on_level_ge1(EmptyBucket, MaxLevel),
 
     %% range partition
@@ -559,8 +547,6 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
 
-my_key(State) ->
-    State#state.max_key.
 
 %% Skip graphs
 
@@ -720,14 +706,14 @@ link_left_op(Node, Level, Left) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(is_empty_op, _From, State) ->
-    {reply, mio_store:is_empty(State#state.store), State};
+    {reply, mio_store:is_empty(State#node.store), State};
 
 handle_call(is_full_op, _From, State) ->
-    {reply, mio_store:is_full(State#state.store), State};
+    {reply, mio_store:is_full(State#node.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
     ?LOGF(""),
-    {reply, mio_store:get(Key, State#state.store), State};
+    {reply, mio_store:get(Key, State#node.store), State};
 
 handle_call(get_key_op, _From, State) ->
     {reply, my_key(State), State};
@@ -739,41 +725,41 @@ handle_call({get_right_op, Level}, _From, State) ->
     {reply, neighbor_node(State, right, Level), State};
 
 handle_call({set_type_op, Type}, _From, State) ->
-    {reply, ok, State#state{type=Type}};
+    {reply, ok, State#node{type=Type}};
 
 handle_call({set_range_op, MinKey, MaxKey}, _From, State) ->
-    {reply, ok, State#state{min_key=MinKey, max_key=MaxKey}};
+    {reply, ok, State#node{min_key=MinKey, max_key=MaxKey}};
 
 handle_call({set_max_key_op, MaxKey}, _From, State) ->
-    {reply, ok, State#state{max_key=MaxKey}};
+    {reply, ok, State#node{max_key=MaxKey}};
 
 handle_call({set_min_key_op, MinKey}, _From, State) ->
-    {reply, ok, State#state{min_key=MinKey}};
+    {reply, ok, State#node{min_key=MinKey}};
 
 handle_call({set_gen_mvector_op, Fun}, _From, State) ->
-    {reply, ok, State#state{gen_mvector=Fun}};
+    {reply, ok, State#node{gen_mvector=Fun}};
 
 handle_call(get_type_op, _From, State) ->
-    {reply, State#state.type, State};
+    {reply, State#node.type, State};
 
 handle_call(take_largest_op, _From, State) ->
-    {Key, Value, NewStore} = mio_store:take_largest(State#state.store),
-    {reply, {Key, Value}, State#state{store=NewStore}};
+    {Key, Value, NewStore} = mio_store:take_largest(State#node.store),
+    {reply, {Key, Value}, State#node{store=NewStore}};
 
 handle_call(get_largest_op, _From, State) ->
-    {reply, mio_store:largest(State#state.store), State};
+    {reply, mio_store:largest(State#node.store), State};
 
 handle_call(get_smallest_op, _From, State) ->
-    {reply, mio_store:smallest(State#state.store), State};
+    {reply, mio_store:smallest(State#node.store), State};
 
 handle_call({just_insert_op, Key, Value}, _From, State) ->
-    case mio_store:set(Key, Value, State#state.store) of
+    case mio_store:set(Key, Value, State#node.store) of
         {overflow, NewStore} ->
-            {reply, overflow, State#state{store=NewStore}};
+            {reply, overflow, State#node{store=NewStore}};
         {full, NewStore} ->
-            {reply, full, State#state{store=NewStore}};
+            {reply, full, State#node{store=NewStore}};
         NewStore ->
-            {reply, ok, State#state{store=NewStore}}
+            {reply, ok, State#node{store=NewStore}}
     end;
 
 handle_call({insert_op, Key, Value}, From, State) ->
@@ -782,13 +768,13 @@ handle_call({insert_op, Key, Value}, From, State) ->
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->
-    {reply, {State#state.min_key, State#state.max_key}, State};
+    {reply, {State#node.min_key, State#node.max_key}, State};
 
 
 %% Read Only Operations start
 handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     Self = self(),
-    spawn_link(?MODULE, search_op_call, [From, State, Self, SearchKey, Level]),
+    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->
@@ -798,10 +784,10 @@ handle_call(get_op, From, State) ->
 
 %% Returns insert is done?
 handle_call(get_inserted_op, _From, State) ->
-    {reply, lists:all(fun(X) -> X end, State#state.inserted), State};
+    {reply, lists:all(fun(X) -> X end, State#node.inserted), State};
 
 handle_call(get_deleted_op, _From, State) ->
-    {reply, State#state.deleted, State};
+    {reply, State#node.deleted, State};
 
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
@@ -830,17 +816,17 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)};
 
 handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
-    {reply, ok, State#state{expire_time=ExpireTime}};
+    {reply, ok, State#node{expire_time=ExpireTime}};
 
 handle_call(set_deleted_op, _From, State) ->
-    {reply, ok, State#state{deleted=true}};
+    {reply, ok, State#node{deleted=true}};
 
 
 handle_call({set_inserted_op, Level}, _From, State) ->
-    {reply, ok, State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)}};
+    {reply, ok, State#node{inserted=mio_util:lists_set_nth(Level + 1, true, State#node.inserted)}};
 
 handle_call(set_inserted_op, _From, State) ->
-    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}};
+    {reply, ok, State#node{inserted=lists:duplicate(length(State#node.inserted) + 1, true)}};
 
 handle_call(Args, _From, State) ->
     io:format("Unknown handle call on mio_bucket : ~p:State=~p", [Args, State]).
@@ -858,8 +844,8 @@ handle_call(Args, _From, State) ->
 %%--------------------------------------------------------------------
 %% handle_cast({dump_side_cast, Direction, Level, ReturnToMe, Accum}, State) ->
 %%     MyKey = my_key(State),
-%%     MyValue = State#state.value,
-%%     MyMVector = State#state.membership_vector,
+%%     MyValue = State#node.value,
+%%     MyMVector = State#node.membership_vector,
 %%     case neighbor_node(State, Direction, Level) of
 %%         [] ->
 %%             Ret = case Direction of
@@ -899,8 +885,8 @@ handle_call(Args, _From, State) ->
 %%     end;
 %% range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, Direction, _IsOutOfRange) ->
 %%     MyKey = my_key(State),
-%%     MyValue = State#state.value,
-%%     MyExpireTime = State#state.expire_time,
+%%     MyValue = State#node.value,
+%%     MyExpireTime = State#node.expire_time,
 %%     if
 %%        Key1 < MyKey andalso MyKey < Key2 ->
 %%             case neighbor_node(State, Direction, 0) of
@@ -944,39 +930,12 @@ handle_call(Args, _From, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-node_on_level(Nodes, Level) ->
-    case Nodes of
-        [] -> [];
-        _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
-    end.
-
-neighbor_node(State, Direction, Level) ->
-    case Direction of
-        right ->
-            node_on_level(State#state.right, Level);
-        left ->
-            node_on_level(State#state.left, Level)
-    end.
-
-reverse_direction(Direction) ->
-    case Direction of
-        right ->
-             left;
-        left ->
-            right
-    end.
-
-set_right(State, Level, Node) ->
-    State#state{right=mio_util:lists_set_nth(Level + 1, Node, State#state.right)}.
-
-set_left(State, Level, Node) ->
-    State#state{left=mio_util:lists_set_nth(Level + 1, Node, State#state.left)}.
 
 %%--------------------------------------------------------------------
 %%% Implementation of genserver:call
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
-    gen_server:reply(From, {my_key(State), dummy_value_todo, State#state.membership_vector, State#state.left, State#state.right}).
+    gen_server:reply(From, {my_key(State), dummy_value_todo, State#node.membership_vector, State#node.left, State#node.right}).
 %% get_neighbor_op_call(From, State, Direction, Level) ->
 %%     NeighborNode = neighbor_node(State, Direction, Level),
 %%     NeighborKey = neighbor_key(State, Direction, Level),
@@ -986,10 +945,10 @@ get_op_call(From, State) ->
 %%     {reply, dummy_todo, State}.
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
-    IsSameMV = mio_mvector:eq(Level, MembershipVector, State#state.membership_vector),
+    IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
     %% N.B.
     %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = node_on_level(State#state.inserted, Level),
+    IsInserted = node_on_level(State#node.inserted, Level),
     if
         IsSameMV andalso IsInserted ->
             MyKey = my_key(State),
@@ -1005,78 +964,7 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
             end
     end.
 
-start_level(State, []) ->
-    length(State#state.right) - 1; %% Level is 0 origin
-start_level(_State, Level) ->
-    Level.
 
-%%--------------------------------------------------------------------
-%%  Search operation
-%%
-%%  Condition : SearchKey > NodeKey && right exists
-%%    Level ge 1 : to the right on the same level
-%%    Level 0    : to the right on the same level
-%%
-%%  Condition : SearchKey > NodeKey && right not exists
-%%    Level ge 1 : to the lower level
-%%    Level 0    : not found (On mio this case can't be happen, since it handles ?MAX_KEY)
-%%
-%%  Condition : SearchKey = NodeKey
-%%    Level ge 1 : Search on the bucket and return
-%%    Level 0    : Search on the bucket and return
-%%
-%%  Condition : SearchKey < NodeKey && left exist && SearchKey <= LeftKey
-%%    Level ge 1 : to the left on the same level
-%%    Level 0    : to the left on the same level
-%%
-%%  Condition : SearchKey < NodeKey && left exist && SearchKey > LeftKey
-%%    Level ge 1 : to the lower level
-%%    Level 0    : Search on the bucket and return
-%%
-%%  Condition : SearchKey < NodeKey && left not exist
-%%    Level ge 1 : to the lower level
-%%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
-
-%%--------------------------------------------------------------------
-search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
-    case {neighbor_node(State, right, SearchLevel), SearchLevel} of
-        {[], 0} ->
-            gen_server:reply(From, {error, not_found});
-        {[], _} ->
-            search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
-        {RightNode, _} ->
-            gen_server:reply(From, mio_skip_graph:search_op(RightNode, SearchKey, SearchLevel))
-    end.
-
-search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
-    case {neighbor_node(State, left, SearchLevel), SearchLevel} of
-        {[], 0} ->
-            gen_server:reply(From, get_op(Self, SearchKey));
-        {[], _} ->
-            search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
-        {LeftNode, _} ->
-            LeftKey = get_key_op(LeftNode),
-            if SearchKey =< LeftKey ->
-                    gen_server:reply(From, mio_skip_graph:search_op(LeftNode, SearchKey, SearchLevel));
-               SearchLevel =:= 0 ->
-                    gen_server:reply(From, get_op(Self, SearchKey));
-               true ->
-                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
-            end
-    end.
-
-
-search_op_call(From, State, Self, SearchKey, Level) ->
-    SearchLevel = start_level(State, Level),
-    MyKey = my_key(State),
-    ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
-    if SearchKey > MyKey ->
-            search_op_to_right(From, State, Self, SearchKey, SearchLevel);
-       SearchKey =:= MyKey ->
-            gen_server:reply(From, get_op(Self, SearchKey));
-       true ->
-            search_op_to_left(From, State, Self, SearchKey, SearchLevel)
-    end.
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -1091,7 +979,7 @@ delete_op_call(From, Self, State) ->
        true ->
             case gen_server:call(Self, get_inserted_op) of
                 true ->
-                    MaxLevel = length(State#state.membership_vector),
+                    MaxLevel = length(State#node.membership_vector),
                     %% My State will not be changed, since I will be killed soon.
                     gen_server:call(Self, set_deleted_op),
                     %% N.B.
@@ -1130,7 +1018,7 @@ delete_loop_(Self, Level) ->
 
 get_neighbor_op_call(From, State, Direction, Level) ->
     NeighborNode = neighbor_node(State, Direction, Level),
-    NeighborKey = get_key_op(NeighborNode),
+    NeighborKey = mio_skip_graph:get_key_op(NeighborNode),
     gen_server:reply(From, {NeighborNode, NeighborKey}).
 
 lock(Nodes, infinity, _Line) ->
@@ -1203,7 +1091,7 @@ insert_op_call(From, State, Self, Introducer) ->
 
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
-            MaxLevel = length(State#state.membership_vector),
+            MaxLevel = length(State#node.membership_vector),
             dynomite_prof:stop_prof(link_on_level_0),
             link_on_level_ge1(Self, MaxLevel)
     end,
@@ -1459,7 +1347,7 @@ check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
 
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
     RealBuddyNeighbor = apply(?MODULE, GetNeighborOp, [Buddy, Level]),
-    RealBuddyNeighborKey = get_key_op(RealBuddyNeighbor),
+    RealBuddyNeighborKey = mio_skip_graph:get_key_op(RealBuddyNeighbor),
 %%    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
@@ -1486,3 +1374,38 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
                     ok
             end
     end.
+
+node_on_level(Nodes, Level) ->
+    case Nodes of
+        [] -> [];
+        _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
+    end.
+
+neighbor_node(State, Direction, Level) ->
+    case Direction of
+        right ->
+            node_on_level(State#node.right, Level);
+        left ->
+            node_on_level(State#node.left, Level)
+    end.
+
+reverse_direction(Direction) ->
+    case Direction of
+        right ->
+             left;
+        left ->
+            right
+    end.
+
+set_right(State, Level, Node) ->
+    State#node{right=mio_util:lists_set_nth(Level + 1, Node, State#node.right)}.
+
+set_left(State, Level, Node) ->
+    State#node{left=mio_util:lists_set_nth(Level + 1, Node, State#node.left)}.
+
+my_key(State) ->
+    State#node.max_key.
+
+get_op(Bucket, Key) ->
+    gen_server:call(Bucket, {get_op, Key}).
+
