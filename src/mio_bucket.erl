@@ -1007,8 +1007,7 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
             MyKey = my_key(State),
             ReverseDirection = reverse_direction(Direction),
             MyNeighbor = neighbor_node(State, ReverseDirection, Level),
-            MyNeighborKey = get_key_op(MyNeighbor),
-            gen_server:reply(From, {ok, Self, MyKey, MyNeighbor, MyNeighborKey});
+            gen_server:reply(From, {ok, Self, MyKey, MyNeighbor});
         true ->
             case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
                 [] ->
@@ -1412,15 +1411,15 @@ buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
     case buddy_op(LeftOnLower, MyMV, left, Level) of
         not_found ->
             not_found;
-        {ok, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
-            {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey}
+        {ok, Buddy, BuddyKey, BuddyRight} ->
+            {ok, left, Buddy, BuddyKey, BuddyRight}
     end;
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
     case buddy_op(RightOnLower, MyMV, right, Level) of
         not_found ->
             not_found;
-        {ok, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
-            {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey}
+        {ok, Buddy, BuddyKey, BuddyLeft} ->
+            {ok, right, Buddy, BuddyKey, BuddyLeft}
     end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
@@ -1473,13 +1472,13 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             dynomite_prof:stop_prof(link_on_level_ge1),
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
-        {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
+        {ok, left, Buddy, BuddyKey, BuddyRight} ->
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, Level, MaxLevel, left, check_invariant_level_ge1_left),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1);
         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-        {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
+        {ok, right, Buddy, BuddyKey, BuddyLeft} ->
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, Level, MaxLevel, right, check_invariant_level_ge1_right),
             ?CHECK_SANITY(Self, Level),
