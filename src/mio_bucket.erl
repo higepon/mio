@@ -715,8 +715,8 @@ handle_call({get_op, Key}, _From, State) ->
     ?LOGF(""),
     {reply, mio_store:get(Key, State#node.store), State};
 
-handle_call(get_key_op, _From, State) ->
-    {reply, my_key(State), State};
+handle_call(skip_graph_get_key_op, _From, State) ->
+    {reply, mio_skip_graph:get_key(State), State};
 
 handle_call({get_left_op, Level}, _From, State) ->
     {reply, neighbor_node(State, left, Level), State};

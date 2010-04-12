@@ -50,8 +50,8 @@
         ]).
 
 %% Exported for handle_call
--export([search_op_call/5
-
+-export([search_op_call/5,
+         get_key/1
 
         ]).
 %%--------------------------------------------------------------------
@@ -59,7 +59,7 @@
 %%--------------------------------------------------------------------
 get_key_op([]) -> [];
 get_key_op(Bucket) ->
-    gen_server:call(Bucket, get_key_op).
+    gen_server:call(Bucket, skip_graph_get_key_op).
 
 
 %%--------------------------------------------------------------------
@@ -125,7 +125,7 @@ search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
 
 search_op_call(From, State, Self, SearchKey, Level) ->
     SearchLevel = start_level(State, Level),
-    MyKey = my_key(State),
+    MyKey = get_key(State),
     ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
     if SearchKey > MyKey ->
             search_op_to_right(From, State, Self, SearchKey, SearchLevel);
@@ -142,7 +142,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 %%--------------------------------------------------------------------
 
 %% My key is max_range.
-my_key(State) ->
+get_key(State) ->
     State#node.max_key.
 
 start_level(State, []) ->
