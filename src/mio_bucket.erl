@@ -1051,6 +1051,23 @@ search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
             gen_server:reply(From, gen_server:call(RightNode, {search_op, SearchKey, SearchLevel}))
     end.
 
+search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
+    case {neighbor_node(State, left, SearchLevel), SearchLevel} of
+        {[], 0} ->
+            gen_server:reply(From, get_op(Self, SearchKey));
+        {[], _} ->
+            search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
+        {LeftNode, _} ->
+            LeftKey = get_key_op(LeftNode),
+            if SearchKey =< LeftKey ->
+                    gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
+               SearchLevel =:= 0 ->
+                    gen_server:reply(From, get_op(Self, SearchKey));
+               true ->
+                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
+            end
+    end.
+
 
 search_op_call(From, State, Self, SearchKey, Level) ->
     SearchLevel = start_level(State, Level),
@@ -1061,21 +1078,22 @@ search_op_call(From, State, Self, SearchKey, Level) ->
        SearchKey =:= MyKey ->
             gen_server:reply(From, get_op(Self, SearchKey));
        true ->
-            case {neighbor_node(State, left, SearchLevel), SearchLevel} of
-                {[], 0} ->
-                    gen_server:reply(From, get_op(Self, SearchKey));
-                {[], _} ->
-                    search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
-                {LeftNode, _} ->
-                    LeftKey = get_key_op(LeftNode),
-                    if SearchKey =< LeftKey ->
-                            gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
-                       SearchLevel =:= 0 ->
-                            gen_server:reply(From, get_op(Self, SearchKey));
-                       true ->
-                            search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
-                    end
-            end
+            search_op_to_left(From, State, Self, SearchKey, SearchLevel)
+%%             case {neighbor_node(State, left, SearchLevel), SearchLevel} of
+%%                 {[], 0} ->
+%%                     gen_server:reply(From, get_op(Self, SearchKey));
+%%                 {[], _} ->
+%%                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
+%%                 {LeftNode, _} ->
+%%                     LeftKey = get_key_op(LeftNode),
+%%                     if SearchKey =< LeftKey ->
+%%                             gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
+%%                        SearchLevel =:= 0 ->
+%%                             gen_server:reply(From, get_op(Self, SearchKey));
+%%                        true ->
+%%                             search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
+%%                     end
+%%             end
     end.
 %%     %%
 %%     MayBeInThisBucket = case neighbor_key(State, left, 0) of
