@@ -45,7 +45,8 @@ sg_test_() ->
       [?_test(c_o_different_mv())],
       [?_test(search_c_o_1())],
       [?_test(search_c_o_2())],
-      [?_test(search_c_o_3())]
+      [?_test(search_c_o_3())],
+      [?_test(search_c_o_4())]
      ]
     }.
 
@@ -759,7 +760,7 @@ search_c_o_3() ->
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key01", value01)),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key02", value02)),
 
-    %% Right become c_o_c_r
+    %% Right becomes c_o_c_r
     ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
 
     %% search
@@ -776,6 +777,32 @@ search_c_o_3() ->
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")).
+
+search_c_o_4() ->
+    {Bucket, RightBucket} = make_c_o_different_mv(),
+    %% insert
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key4", value4)),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key5", value5)),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key6", value6)),
+
+    %% Right becomes c_o_c_r
+    ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
+
+    %% search
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Bucket, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(Bucket, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(Bucket, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(Bucket, "key6")),
+
+    ?assertEqual({?MIN_KEY, "key3"}, mio_bucket:get_range_op(Bucket)),
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(RightBucket, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(RightBucket, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(RightBucket, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(RightBucket, "key6")).
 
 
 %% Helper
