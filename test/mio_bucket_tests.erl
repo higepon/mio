@@ -763,6 +763,9 @@ search_c_o_3() ->
     %% Right becomes c_o_c_r
     ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
 
+    Middle = mio_bucket:get_right_op(Bucket),
+    ?assertEqual(c_o_c_m, mio_bucket:get_type_op(Middle)),
+
     %% search
     ?assertEqual({ok, value00}, mio_skip_graph:search_op(Bucket, "key00")),
     ?assertEqual({ok, value01}, mio_skip_graph:search_op(Bucket, "key01")),
@@ -776,7 +779,14 @@ search_c_o_3() ->
     ?assertEqual({ok, value02}, mio_skip_graph:search_op(RightBucket, "key02")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
-    ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")).
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")),
+    ?assertEqual({ok, value00}, mio_skip_graph:search_op(Middle, "key00")),
+    ?assertEqual({ok, value01}, mio_skip_graph:search_op(Middle, "key01")),
+    ?assertEqual({ok, value02}, mio_skip_graph:search_op(Middle, "key02")),
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Middle, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Middle, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Middle, "key3")).
+
 
 search_c_o_4() ->
     {Bucket, RightBucket} = make_c_o_different_mv(),
@@ -788,6 +798,9 @@ search_c_o_4() ->
     %% Right becomes c_o_c_r
     ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
 
+    Middle = mio_bucket:get_right_op(Bucket),
+    ?assertEqual(c_o_c_m, mio_bucket:get_type_op(Middle)),
+
     %% search
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
@@ -795,6 +808,13 @@ search_c_o_4() ->
     ?assertEqual({ok, value4}, mio_skip_graph:search_op(Bucket, "key4")),
     ?assertEqual({ok, value5}, mio_skip_graph:search_op(Bucket, "key5")),
     ?assertEqual({ok, value6}, mio_skip_graph:search_op(Bucket, "key6")),
+
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Middle, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Middle, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Middle, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(Middle, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(Middle, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(Middle, "key6")),
 
     ?assertEqual({?MIN_KEY, "key3"}, mio_bucket:get_range_op(Bucket)),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(RightBucket, "key1")),
