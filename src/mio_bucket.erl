@@ -439,7 +439,6 @@ make_c_o_c(State, Left, Right) ->
     %%    O*(C1_stored_max, O2_min)
     %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-    {_, RightMaxKey} = get_range_op(Right),
     set_range_op(EmptyBucket, EmptyBucketMinKey, EmptyBucketMaxKey),
     set_min_key_op(Right, EmptyBucketMaxKey),
     set_max_key_op(Left, NewLeftMaxKey),
@@ -507,12 +506,11 @@ prepare_split_c_o_c(State, Left, Middle, Right) ->
     {PrevRight, EmptyBucket}.
 
 adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
-    {_, PrevRightMaxKey} = get_range_op(PrevRight),
     {LeftMaxKey, _} = get_largest_op(Left),
     {MiddleMaxKey, _} = get_largest_op(Middle),
     {_, OldRightMaxKey} = get_range_op(Right),
     {RightMaxKey, _} = get_largest_op(Right),
-    {EmptyMinKey, EmptyMaxKey} = {RightMaxKey, OldRightMaxKey},
+    EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
     set_max_key_op(Left, LeftMaxKey),
     set_range_op(Middle, MiddleMinKey, MiddleMaxKey),
@@ -552,12 +550,10 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
     %% range partition
-    {_, PrevRightMaxKey} = get_range_op(PrevRight),
     {_, OldMaxKey} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
     set_max_key_op(Right, NewRightMaxKey),
     set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey),
-    EmptyMaxKey = OldMaxKey,
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
