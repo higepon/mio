@@ -65,7 +65,7 @@
 stats_op/2,
          search_op_call/5, buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
          insert_op_call/4, delete_op_call/3,
-         search_op/2, link_right_op/3, link_left_op/3,
+          link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
          check_invariant_level_0_left/5,
@@ -581,7 +581,7 @@ insert_op(Introducer, NodeToInsert) ->
 %%  delete operation
 %%--------------------------------------------------------------------
 delete_op(Introducer, Key) ->
-    {FoundNode, FoundKey, _, _} = search_op(Introducer, Key),
+    {FoundNode, FoundKey, _, _} = mio_skip_graph:search_op(Introducer, Key),
     case string:equal(FoundKey, Key) of
         true ->
             delete_op(FoundNode),
@@ -638,7 +638,7 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
                                asc -> {Key1, range_search_asc_op_cast};
                                _ -> {Key2, range_search_desc_op_cast}
                          end,
-    {ClosestNode, _, _, _} = search_op(StartNode, StartKey),
+    {ClosestNode, _, _, _} = mio_skip_graph:search_op(StartNode, StartKey),
     ReturnToMe = self(),
     gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
     receive
@@ -653,9 +653,6 @@ range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
 %%
 %%--------------------------------------------------------------------
 
-search_op(StartNode, SearchKey) ->
-    StartLevel = [],
-    gen_server:call(StartNode, {search_op, SearchKey, StartLevel}, infinity).
 %%     %% If Level is not specified, the start node checkes his max level and use it
 
 %%     ?LOGF(""),
@@ -1216,7 +1213,7 @@ insert_op_call(From, State, Self, Introducer) ->
 
 link_on_level_0(From, State, Self, Introducer) ->
     MyKey = my_key(State),
-    {Neighbor, NeighborKey, _, _} = search_op(Introducer, MyKey),
+    {Neighbor, NeighborKey, _, _} = mio_skip_graph:search_op(Introducer, MyKey),
 
     IsSameKey = string:equal(NeighborKey, MyKey),
     if
