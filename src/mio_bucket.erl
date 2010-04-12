@@ -1320,13 +1320,13 @@ try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     case NeighborKey < my_key(State) of
         true ->
-            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, sg_get_right_op, check_invariant_level_0_left);
+            do_link_on_level_0(From, State, Self, Neighbor, Introducer, sg_get_right_op, check_invariant_level_0_left);
         _ ->
             %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, sg_get_left_op, check_invariant_level_0_right)
+            do_link_on_level_0(From, State, Self, Neighbor, Introducer, sg_get_left_op, check_invariant_level_0_right)
     end.
 
-do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, GetNeighborOp, CheckInvariantFun) ->
+do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, CheckInvariantFun) ->
     dynomite_prof:start_prof(do_link_on_level_0),
     MyKey = my_key(State),
     dynomite_prof:start_prof(do_link_on_level_0_hoge),
@@ -1475,18 +1475,18 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, BuddyKey, BuddyRight, BuddyRightKey} ->
             dynomite_prof:start_prof(link_on_level_ge1),
-            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, BuddyRightKey, Level, MaxLevel, left, check_invariant_level_ge1_left),
+            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, Level, MaxLevel, left, check_invariant_level_ge1_left),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1);
         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
         {ok, right, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey} ->
             dynomite_prof:start_prof(link_on_level_ge1),
-            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, BuddyLeftKey, Level, MaxLevel, right, check_invariant_level_ge1_right),
+            do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, Level, MaxLevel, right, check_invariant_level_ge1_right),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1)
     end.
 
-do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey, Level, MaxLevel, Direction, CheckInvariantFun) ->
+do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, Direction, CheckInvariantFun) ->
     dynomite_prof:start_prof(do_link_level_ge1_lock),
     LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
     dynomite_prof:stop_prof(do_link_level_ge1_lock),
