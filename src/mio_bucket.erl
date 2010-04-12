@@ -1181,9 +1181,9 @@ delete_op_call(From, Self, State) ->
 delete_loop_(_Self, Level) when Level < 0 ->
     [];
 delete_loop_(Self, Level) ->
-    {RightNode, RightKey} = gen_server:call(Self, {sg_get_right_op, Level}),
-    {LeftNode, LeftKey}  = gen_server:call(Self, {sg_get_left_op, Level}),
-    LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, [LeftKey, RightKey]),
+    RightNode = get_right_op(Self, Level),
+    LeftNode = get_left_op(Self, Level),
+    LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, []),
 
     ?CHECK_SANITY(Self, Level),
 
@@ -1319,10 +1319,10 @@ try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
     case NeighborKey < my_key(State) of
         true ->
-            do_link_on_level_0(From, State, Self, Neighbor, Introducer, sg_get_right_op, check_invariant_level_0_left);
+            do_link_on_level_0(From, State, Self, Neighbor, Introducer, get_right_op, check_invariant_level_0_left);
         _ ->
             %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-            do_link_on_level_0(From, State, Self, Neighbor, Introducer, sg_get_left_op, check_invariant_level_0_right)
+            do_link_on_level_0(From, State, Self, Neighbor, Introducer, get_left_op, check_invariant_level_0_right)
     end.
 
 do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, CheckInvariantFun) ->
@@ -1330,7 +1330,8 @@ do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, Check
     MyKey = my_key(State),
     dynomite_prof:start_prof(do_link_on_level_0_hoge),
     %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
-    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
+    NeighborRightOrLeft = apply(?MODULE, GetNeighborOp, 0),
+%%    {NeighborRightOrLeft, _} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
     dynomite_prof:stop_prof(do_link_on_level_0_hoge),
     dynomite_prof:start_prof(do_link_on_level_0_hoge1),
 
