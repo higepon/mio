@@ -657,15 +657,9 @@ search_o() ->
     {error, not_found} = mio_skip_graph:search_op(Bucket, "key").
 
 c_o_same_mv() ->
-    %% make c-o
-    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
-    mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
-    ok = mio_bucket:insert_op(Bucket, "key2", value2),
-    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    {Bucket, RightBucket} = make_c_o_same_mv(),
 
     %% check on level 0
-    RightBucket = mio_bucket:get_right_op(Bucket),
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
@@ -835,6 +829,17 @@ make_c_o_different_mv() ->
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
     ok = mio_bucket:insert_op(Bucket, "key2", value2),
     ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    RightBucket = mio_bucket:get_right_op(Bucket),
+    {Bucket, RightBucket}.
+
+make_c_o_same_mv() ->
+    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
+    mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
+    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
+    ok = mio_bucket:insert_op(Bucket, "key2", value2),
+    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+
+    %% check on level 0
     RightBucket = mio_bucket:get_right_op(Bucket),
     {Bucket, RightBucket}.
 
