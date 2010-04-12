@@ -53,7 +53,6 @@
          get_key_op/1,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
-         sg_get_right_op/2, sg_get_left_op/2,
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
@@ -64,7 +63,7 @@
          set_max_key_op/2, set_min_key_op/2,
          %% Skip Graph layer
 stats_op/2,
-         search_op_call/5, buddy_op_call/6, get_op_call/2, %%get_neighbor_op_call/4,
+         search_op_call/5, buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
          insert_op_call/4, delete_op_call/3,
          search_op/2, link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4, insert_op/2,
@@ -270,13 +269,6 @@ get_right_op(Bucket) ->
 get_left_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_left_op, Level}).
 
-sg_get_right_op(Bucket, Level) ->
-    gen_server:call(Bucket, {sg_get_right_op, Level}).
-
-sg_get_left_op(Bucket, Level) ->
-    gen_server:call(Bucket, {sg_get_left_op, Level}).
-
-
 get_right_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_right_op, Level}).
 
@@ -452,7 +444,7 @@ make_c_o_c(State, Left, Right) ->
     set_min_key_op(Right, EmptyBucketMaxKey),
     set_max_key_op(Left, NewLeftMaxKey),
 
-    link_three_nodes({Left, NewLeftMaxKey}, {EmptyBucket, EmptyBucketMaxKey}, {Right, RightMaxKey}, 0),
+    link_three_nodes(Left, EmptyBucket, Right, 0),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l).
 
@@ -527,7 +519,7 @@ adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     set_range_op(Right, MiddleMaxKey, RightMaxKey),
     set_range_op(EmptyBucket, EmptyMinKey, OldRightMaxKey),
     %% C3'-O4 | C ...
-    link_three_nodes({Right, RightMaxKey}, {EmptyBucket, EmptyMaxKey}, {PrevRight, PrevRightMaxKey}, 0).
+    link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
 
 %% Insertion to the Left causes overflow
@@ -568,7 +560,7 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     EmptyMaxKey = OldMaxKey,
 
     %% C3'-O4 | C ...
-    link_three_nodes({Right, NewRightMaxKey}, {EmptyBucket, EmptyMaxKey}, {PrevRight, PrevRightMaxKey}, 0).
+    link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
 
 my_key(State) ->
@@ -855,7 +847,20 @@ handle_call({set_inserted_op, Level}, _From, State) ->
     {reply, ok, State#state{inserted=mio_util:lists_set_nth(Level + 1, true, State#state.inserted)}};
 
 handle_call(set_inserted_op, _From, State) ->
-    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}}.
+    {reply, ok, State#state{inserted=lists:duplicate(length(State#state.inserted) + 1, true)}};
+
+
+handle_call({sg_get_right_op, Level}, From, State) ->
+    spawn_link(?MODULE, get_neighbor_op_call, [From, State, right, Level]),
+    {noreply, State};
+
+handle_call({sg_get_left_op, Level}, From, State) ->
+    spawn_link(?MODULE, get_neighbor_op_call, [From, State, left, Level]),
+    {noreply, State};
+
+handle_call(Args, _From, State) ->
+    io:format("Unknown handle call on mio_bucket : ~p:State=~p", [Args, State]).
+
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -1197,6 +1202,11 @@ delete_loop_(Self, Level) ->
     delete_loop_(Self, Level - 1).
 
 
+get_neighbor_op_call(From, State, Direction, Level) ->
+    NeighborNode = neighbor_node(State, Direction, Level),
+    NeighborKey = get_key_op(NeighborNode),
+    gen_server:reply(From, {NeighborNode, NeighborKey}).
+
 lock(Nodes, infinity, _Line) ->
     mio_lock:lock(Nodes, infinity);
 lock(Nodes, 100, Line) ->
@@ -1350,9 +1360,9 @@ do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer, GetNeig
             dynomite_prof:stop_prof(do_link_on_level_0_invari),
             case GetNeighborOp of
                 get_right_op ->
-                    link_three_nodes({Neighbor, NeighborKey}, {Self, MyKey}, {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, 0);
+                    link_three_nodes(Neighbor, Self, RealNeighborRightOrLeft, 0);
                 _ ->
-                    link_three_nodes({RealNeighborRightOrLeft, RealNeighborRightOrLeftKey}, {Self, MyKey}, {Neighbor, NeighborKey}, 0)
+                    link_three_nodes(RealNeighborRightOrLeft, Self, Neighbor, 0)
             end,
             unlock(LockedNodes, ?LINE),
             dynomite_prof:stop_prof(do_link_on_level_0),
@@ -1500,9 +1510,9 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, BuddyNeighborKey,
 
             case Direction of
                 right ->
-                    link_three_nodes({BuddyNeighbor, BuddyNeighborKey}, {Self, MyKey}, {Buddy, BuddyKey}, Level);
+                    link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
                 left ->
-                    link_three_nodes({Buddy, BuddyKey}, {Self, MyKey}, {BuddyNeighbor, BuddyNeighborKey}, Level)
+                    link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
             end,
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),

@@ -36,6 +36,9 @@
 %%%-------------------------------------------------------------------
 -module(mio_lock).
 
+-define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
+-define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
+
 %% API
 -export([lock/1, lock/2, unlock/1]).
 

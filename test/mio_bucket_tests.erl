@@ -25,7 +25,7 @@ sg_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
        [?_test(insert())],
-%%       [?_test(insert_c_o_1())],
+     [?_test(insert_c_o_1())]
 %%       [?_test(insert_c_o_2())],
 %%       [?_test(insert_c_o_3())],
 %%       [?_test(insert_c_o_4())],
@@ -43,7 +43,7 @@ sg_test_() ->
 %%       [?_test(search_o())],
 %%       [?_test(c_o_same_mv())],
 %%       [?_test(c_o_different_mv())],
-      [?_test(search_c_o_1())]
+%%      [?_test(search_c_o_1())]
      ]
     }.
 
@@ -757,10 +757,10 @@ setup_full_bucket(Capacity) ->
     {ok, Right } = mio_sup:make_bucket(Capacity, right),
     {ok, Left } = mio_sup:make_bucket(Capacity, left),
 
-    ok = mio_bucket:link_left_op(Bucket, 0, Left, dummy_left_key),
-    ok = mio_bucket:link_right_op(Left, 0, Bucket, "key3"),
-    ok = mio_bucket:link_right_op(mio_bucket:get_right_op(Bucket), 0, Right, dummy_right_key),
-    ok = mio_bucket:link_left_op(Right, 0, mio_bucket:get_right_op(Bucket), "key3"),
+    ok = mio_bucket:link_left_op(Bucket, 0, Left),
+    ok = mio_bucket:link_right_op(Left, 0, Bucket),
+    ok = mio_bucket:link_right_op(mio_bucket:get_right_op(Bucket), 0, Right),
+    ok = mio_bucket:link_left_op(Right, 0, mio_bucket:get_right_op(Bucket)),
     Bucket.
 
 get_left_type(Bucket) ->
