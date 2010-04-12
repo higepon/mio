@@ -786,7 +786,7 @@ handle_call(get_range_op, _From, State) ->
 
 
 %% Read Only Operations start
-handle_call({search_op, SearchKey, Level}, From, State) ->
+handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, search_op_call, [From, State, Self, SearchKey, Level]),
     {noreply, State};
@@ -1045,7 +1045,7 @@ search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
         {[], _} ->
             search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
         {RightNode, _} ->
-            gen_server:reply(From, gen_server:call(RightNode, {search_op, SearchKey, SearchLevel}))
+            gen_server:reply(From, mio_skip_graph:search_op(RightNode, SearchKey, SearchLevel))
     end.
 
 search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
@@ -1057,7 +1057,7 @@ search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
         {LeftNode, _} ->
             LeftKey = get_key_op(LeftNode),
             if SearchKey =< LeftKey ->
-                    gen_server:reply(From, gen_server:call(LeftNode, {search_op, SearchKey, SearchLevel}));
+                    gen_server:reply(From, mio_skip_graph:search_op(LeftNode, SearchKey, SearchLevel));
                SearchLevel =:= 0 ->
                     gen_server:reply(From, get_op(Self, SearchKey));
                true ->

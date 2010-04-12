@@ -38,8 +38,9 @@
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([search_op/2]).
+-export([search_op/2, search_op/3]).
 
 search_op(StartNode, SearchKey) ->
-    StartLevel = [],
-    gen_server:call(StartNode, {search_op, SearchKey, StartLevel}, infinity).
+    search_op(StartNode, SearchKey, []).
+search_op(StartNode, SearchKey, StartLevel) ->
+    gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
