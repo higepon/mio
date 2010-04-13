@@ -52,7 +52,8 @@ sg_test_() ->
       [?_test(search_c_o_4_same())],
       [?_test(search_c_o_4_different())],
       [?_test(search_c_o_c_1())],
-      [?_test(search_c_o_c_2())]
+      [?_test(search_c_o_c_2())],
+      [?_test(search_c_o_c_3())]
      ]
     }.
 
@@ -940,7 +941,40 @@ search_c_o_c_2() ->
     ?assertEqual({ok, value7}, mio_skip_graph:search_op(Right, "key7")).
 
 %% C1-O2-C3
-%%   Insertion to O2 : C1-O2 | C3'-O4
+%%   C1 [key1, key2, key3]
+%%   O2 []
+%%   C3 [key4, key5, key6]
+%%
+%%   Insertion to O2 : C1-O2'-C3
+search_c_o_c_3() ->
+    {Left, Middle, Right} = make_c_o_c(),
+
+    %% insert
+    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key30", value30)),
+
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Left, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Left, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Left, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(Left, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(Left, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(Left, "key6")),
+    ?assertEqual({ok, value30}, mio_skip_graph:search_op(Left, "key30")),
+
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Middle, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Middle, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Middle, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(Middle, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(Middle, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(Middle, "key6")),
+    ?assertEqual({ok, value30}, mio_skip_graph:search_op(Middle, "key30")),
+
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Right, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Right, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Right, "key3")),
+    ?assertEqual({ok, value4}, mio_skip_graph:search_op(Right, "key4")),
+    ?assertEqual({ok, value5}, mio_skip_graph:search_op(Right, "key5")),
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(Right, "key6")),
+    ?assertEqual({ok, value30}, mio_skip_graph:search_op(Right, "key30")).
 
 %% C1-O2$-C3
 %%   Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
