@@ -51,12 +51,18 @@ sg_test_() ->
       [?_test(search_c_o_3_different())],
       [?_test(search_c_o_4_same())],
       [?_test(search_c_o_4_different())],
-      [?_test(search_c_o_c_1())],
-      [?_test(search_c_o_c_2())],
-      [?_test(search_c_o_c_3())],
-      [?_test(search_c_o_c_4())],
-      [?_test(search_c_o_c_5())],
-      [?_test(search_c_o_c_6())]
+      [?_test(search_c_o_c_1_same())],
+      [?_test(search_c_o_c_1_different())],
+      [?_test(search_c_o_c_2_same())],
+      [?_test(search_c_o_c_2_different())],
+      [?_test(search_c_o_c_3_same())],
+      [?_test(search_c_o_c_3_different())],
+      [?_test(search_c_o_c_4_same())],
+      [?_test(search_c_o_c_4_different())],
+      [?_test(search_c_o_c_5_same())],
+      [?_test(search_c_o_c_5_different())],
+      [?_test(search_c_o_c_6_same())],
+      [?_test(search_c_o_c_6_different())]
      ]
     }.
 
@@ -858,8 +864,13 @@ search_c_o_4(MakeC_O_C_Fun) ->
 %%   C3 [key4, key5, key6]
 %%
 %%   Insertion to C1 : C1'-O2'-C3
-search_c_o_c_1() ->
-    {Left, Middle, Right} = make_c_o_c(),
+search_c_o_c_1_same() ->
+    search_c_o_c_1(fun make_c_o_same_mv/0).
+search_c_o_c_1_different() ->
+    search_c_o_c_1(fun make_c_o_different_mv/0).
+
+search_c_o_c_1(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Left, "key0", value0)),
@@ -895,8 +906,13 @@ search_c_o_c_1() ->
 %%   C3 [key4, key5, key6]
 %%
 %%   Insertion to C3 : C1-O2 | C3'-O4
-search_c_o_c_2() ->
-    {Left, Middle, Right} = make_c_o_c(),
+search_c_o_c_2_same() ->
+    search_c_o_c_2(fun make_c_o_same_mv/0).
+search_c_o_c_2_different() ->
+    search_c_o_c_2(fun make_c_o_different_mv/0).
+
+search_c_o_c_2(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Right, "key7", value7)),
@@ -949,8 +965,13 @@ search_c_o_c_2() ->
 %%   C3 [key4, key5, key6]
 %%
 %%   Insertion to O2 : C1-O2'-C3
-search_c_o_c_3() ->
-    {Left, Middle, Right} = make_c_o_c(),
+search_c_o_c_3_same() ->
+    search_c_o_c_3(fun make_c_o_same_mv/0).
+search_c_o_c_3_different() ->
+    search_c_o_c_3(fun make_c_o_different_mv/0).
+
+search_c_o_c_3(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Middle, "key30", value30)),
@@ -985,8 +1006,13 @@ search_c_o_c_3() ->
 %%   C3 [key4, key5, key6]
 %%
 %%   Insertion to O2$ : C1-C2-C3 -> C1-O2' | C3'-O4
-search_c_o_c_4() ->
-    {Left, Middle, Right} = make_c_O_c(),
+search_c_o_c_4_same() ->
+    search_c_o_c_4(fun make_c_o_same_mv/0).
+search_c_o_c_4_different() ->
+    search_c_o_c_4(fun make_c_o_different_mv/0).
+
+search_c_o_c_4(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Middle, "key32", value32)),
@@ -1059,8 +1085,13 @@ search_c_o_c_4() ->
 %%   O4 [key6]
 %%
 %%   Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
-search_c_o_c_5() ->
-    {Left, Middle, Right} = make_c_O_c(),
+search_c_o_c_5_same() ->
+    search_c_o_c_5(fun make_c_o_same_mv/0).
+search_c_o_c_5_different() ->
+    search_c_o_c_5(fun make_c_o_different_mv/0).
+
+search_c_o_c_5(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Left, "key22", value22)),
@@ -1140,8 +1171,13 @@ search_c_o_c_5() ->
 %%   O4 [key6]
 %%
 %%   Insertion to C3  : C1-O2$ | C3'-O4
-search_c_o_c_6() ->
-    {Left, Middle, Right} = make_c_O_c(),
+search_c_o_c_6_same() ->
+    search_c_o_c_6(fun make_c_o_same_mv/0).
+search_c_o_c_6_different() ->
+    search_c_o_c_6(fun make_c_o_different_mv/0).
+
+search_c_o_c_6(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Middle, "key55", value55)),
@@ -1212,17 +1248,19 @@ search_c_o_c_6() ->
 %% C [key1, key2, key3]
 %% O []
 %% C [key4, key5, key6]
-make_c_o_c() ->
-    search_c_o_4(fun make_c_o_different_mv/0).
+make_c_o_c(MakeC_O_C_Fun) ->
+    search_c_o_4(MakeC_O_C_Fun).
+
 
 %% C [key1, key2, key3]
 %% O [key30, key31]
 %% C [key4, key5, key6]
-make_c_O_c() ->
-    {Left, Middle, Right} = make_c_o_c(),
+make_c_O_c(MakeC_O_C_Fun) ->
+    {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
     ?assertEqual(ok, mio_bucket:insert_op(Middle, "key30", value30)),
     ?assertEqual(ok, mio_bucket:insert_op(Middle, "key31", value31)),
     {Left, Middle, Right}.
+
 
 %% C [key1, key2, key3]
 %% O []
