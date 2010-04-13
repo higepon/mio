@@ -136,7 +136,7 @@ get_op/2,
 %%
 %%    (e) C1-O2-C3
 %%      Insertion to C1 : C1'-O2'-C3
-%%      Insertion to C3 : C1-O2'-C3'
+%%      Insertion to C3 : C1-O2 | C3'-O4
 %%      Insertion to O2 : C1-O2 | C3'-O4
 %%        Range partition:
 %%          C1(C1_min, C1_max)
