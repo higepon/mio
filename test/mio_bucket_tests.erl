@@ -843,10 +843,38 @@ search_c_o_4(MakeC_O_C_Fun) ->
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")),
     ?assertEqual({ok, value4}, mio_skip_graph:search_op(RightBucket, "key4")),
     ?assertEqual({ok, value5}, mio_skip_graph:search_op(RightBucket, "key5")),
-    ?assertEqual({ok, value6}, mio_skip_graph:search_op(RightBucket, "key6")).
+    ?assertEqual({ok, value6}, mio_skip_graph:search_op(RightBucket, "key6")),
+    {Bucket, Middle, RightBucket}.
+
+%% C1-O2-C3
+%%   Insertion to C1 : C1'-O2'-C3
+search_c_o_c_1() ->
+    {Left, Middle, Right} = make_c_o_c().
+
+
+%% C1-O2-C3
+%%   Insertion to C3 : C1-O2'-C3'
+
+%% C1-O2-C3
+%%   Insertion to O2 : C1-O2 | C3'-O4
+
+%% C1-O2$-C3
+%%   Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
+
+%% C1-O2$-C3
+%%   Insertion to O2$ : C1-C2-C3 -> C1-O2' | C3'-O4
+
+%% C1-O2$-C3
+%%   Insertion to C3  : C1-O2$ | C3'-O4
 
 
 %% Helper
+
+%% C [key1, key2, key3]
+%% O []
+%% C [key4, key5, key6]
+make_c_o_c() ->
+    search_c_o_4(fun make_c_o_different_mv/0).
 
 %% C [key1, key2, key3]
 %% O []
