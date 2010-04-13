@@ -895,10 +895,10 @@ search_c_o_c_2() ->
     {Left, Middle, Right} = make_c_o_c(),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Left, "key7", value0)),
+    ?assertEqual(ok, mio_bucket:insert_op(Right, "key7", value7)),
 
-    {ok, value7} = mio_bucket:get_op(Right, "key7"),
-    {ok, value4} = mio_bucket:get_op(Middle, "key4"),
+    ?assertEqual({ok, value7}, mio_bucket:get_op(Right, "key7")),
+    ?assertEqual({ok, value4}, mio_bucket:get_op(Middle, "key4")),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Left, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Left, "key2")),
@@ -908,7 +908,6 @@ search_c_o_c_2() ->
     ?assertEqual({ok, value6}, mio_skip_graph:search_op(Left, "key6")),
     ?assertEqual({ok, value7}, mio_skip_graph:search_op(Left, "key7")),
 
-    ?assertEqual({ok, value0}, mio_skip_graph:search_op(Middle, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Middle, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Middle, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(Middle, "key3")),
@@ -917,7 +916,6 @@ search_c_o_c_2() ->
     ?assertEqual({ok, value6}, mio_skip_graph:search_op(Middle, "key6")),
     ?assertEqual({ok, value7}, mio_skip_graph:search_op(Middle, "key7")),
 
-    ?assertEqual({ok, value0}, mio_skip_graph:search_op(Right, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Right, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Right, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(Right, "key3")),
