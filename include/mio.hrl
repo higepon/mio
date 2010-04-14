@@ -1,7 +1,7 @@
 %%-define(PROFILER_ON, true).
 %%-define(DEBUG_ON, true).
 
--record(node, {store, type, min_key, max_key, left, right, membership_vector, gen_mvector,
+-record(node, {store, type, min_key, encompass_min, max_key, encompass_max, left, right, membership_vector, gen_mvector,
                 expire_time, inserted, deleted
                }).
 

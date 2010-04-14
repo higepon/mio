@@ -331,7 +331,9 @@ init([Capacity, Type, MembershipVector]) ->
     {ok, #node{store=mio_store:new(Capacity),
                 type=Type,
                 min_key=?MIN_KEY,
+                encompass_min=false,
                 max_key=?MAX_KEY,
+                encompass_max=false,
                 left=EmptyNeighbors,
                 right=EmptyNeighbors,
                 membership_vector=MembershipVector,
@@ -496,7 +498,7 @@ prepare_split_c_o_c(State, Left, Middle, Right) ->
 adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     {LeftMaxKey, _} = get_largest_op(Left),
     {MiddleMaxKey, _} = get_largest_op(Middle),
-    {_, OldRightMaxKey} = get_range_op(Right),
+    {_, {OldRightMaxKey, _}} = get_range_op(Right),
     {RightMaxKey, _} = get_largest_op(Right),
     EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
@@ -538,7 +540,7 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
     %% range partition
-    {_, OldMaxKey} = get_range_op(Right),
+    {_, {OldMaxKey, _}} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
     set_max_key_op(Right, NewRightMaxKey),
     set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey),
@@ -773,7 +775,7 @@ handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->
-    {reply, {State#node.min_key, State#node.max_key}, State};
+    {reply, {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}, State};
 
 
 %% Read Only Operations start
