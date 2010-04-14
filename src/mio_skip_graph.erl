@@ -44,7 +44,8 @@
 
 %% API
 -export([search_op/2, search_op/3,
-         get_key_op/1
+         get_key_op/1,
+         insert_op/3
 
 
         ]).
@@ -61,6 +62,11 @@ get_key_op([]) -> [];
 get_key_op(Bucket) ->
     gen_server:call(Bucket, skip_graph_get_key_op).
 
+%%--------------------------------------------------------------------
+%%  Insertion operation
+%%--------------------------------------------------------------------
+insert_op(Introducer, Key, Value) ->
+    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
 
 %%--------------------------------------------------------------------
 %%  Search operation
