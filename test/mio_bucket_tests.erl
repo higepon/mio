@@ -109,7 +109,7 @@ insert_c_o_1() ->
 insert_c_o_2() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
-    {{MinKey, _}, {MaxKey, _}} = mio_bucket:get_range_op(Bucket),
+    {{MinKey, false}, {MaxKey, false}} = mio_bucket:get_range_op(Bucket),
 
     %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, "key4", value4),
@@ -174,9 +174,9 @@ insert_c_o_4() ->
     %%  C1(C1_min, C1_stored_max)
     %%  O*(C1_stored_max, O2_min)
     %%  C2(O2_min, O2_max)
-    {{?MIN_KEY, _}, {"key3", _}} = mio_bucket:get_range_op(Bucket),
-    {{"key3", _}, {"key4", _}} = mio_bucket:get_range_op(NewRight),
-    {{"key4", _}, {?MAX_KEY, _}} =  mio_bucket:get_range_op(Right),
+    ?assertEqual({{?MIN_KEY, false}, {"key3", true}}, mio_bucket:get_range_op(Bucket)),
+    ?assertEqual({{"key3",false}, {"key4",false}}, mio_bucket:get_range_op(NewRight)),
+    ?assertEqual({{"key4", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right).
