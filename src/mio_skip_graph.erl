@@ -70,7 +70,8 @@ insert_op(Introducer, Key, Value) ->
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
 
 insert_op_call(From, State, Self, Key, Value) ->
-    gen_server:reply(From, ok).
+    Bucket = search_bucket_op(Self, Key),
+    gen_server:reply(From, mio_bucket:insert_op(Bucket, Key, Value)).
 
 %%--------------------------------------------------------------------
 %%  Search operation
@@ -100,6 +101,8 @@ insert_op_call(From, State, Self, Key, Value) ->
 %%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
 
 %%--------------------------------------------------------------------
+search_bucket_op(StartBucket, SearchKey) ->
+    StartBucket.
 search_op(StartNode, SearchKey) ->
     search_op(StartNode, SearchKey, []).
 search_op(StartNode, SearchKey, StartLevel) ->
