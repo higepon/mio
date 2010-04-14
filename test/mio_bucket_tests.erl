@@ -109,7 +109,7 @@ insert_c_o_1() ->
 insert_c_o_2() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(3),
-    {{MinKey, false}, {MaxKey, false}} = mio_bucket:get_range_op(Bucket),
+    {{MinKey, false}, {MaxKey, true}} = mio_bucket:get_range_op(Bucket),
 
     %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, "key4", value4),

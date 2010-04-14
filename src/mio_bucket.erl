@@ -57,7 +57,7 @@
          get_largest_op/1, get_smallest_op/1,
          insert_op_call/5,
          get_range_op/1, set_range_op/3,
-         set_max_key_op/2, set_min_key_op/2,
+         set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
 stats_op/2,
 get_op/2,
@@ -272,11 +272,11 @@ set_type_op(Bucket, Type) ->
 set_range_op(Bucket, {MinKey, EncompassMin}, {MaxKey, EncompassMax}) ->
     gen_server:call(Bucket, {set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}).
 
-set_max_key_op(Bucket, MaxKey) ->
-    gen_server:call(Bucket, {set_max_key_op, MaxKey}).
+set_max_key_op(Bucket, MaxKey, EncompassMax) ->
+    gen_server:call(Bucket, {set_max_key_op, MaxKey, EncompassMax}).
 
-set_min_key_op(Bucket, MaxKey) ->
-    gen_server:call(Bucket, {set_min_key_op, MaxKey}).
+set_min_key_op(Bucket, MinKey, EncompassMin) ->
+    gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
 
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
@@ -429,9 +429,9 @@ make_c_o_c(State, Left, Right) ->
     %%    O*(C1_stored_max, O2_min)
     %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-    set_range_op(EmptyBucket, {EmptyBucketMinKey, hoge}, {EmptyBucketMaxKey, hoge}),
-    set_min_key_op(Right, EmptyBucketMaxKey),
-    set_max_key_op(Left, NewLeftMaxKey),
+    set_range_op(EmptyBucket, {EmptyBucketMinKey, false}, {EmptyBucketMaxKey, false}),
+    set_min_key_op(Right, EmptyBucketMaxKey, true),
+    set_max_key_op(Left, NewLeftMaxKey, true),
 
     link_three_nodes(Left, EmptyBucket, Right, 0),
     ok = set_type_op(Right, c_o_c_r),
@@ -446,8 +446,8 @@ insert_c_o_l_overflow(State, Left, Right) ->
         _ ->
             %% C1-O -> C1'-O'
             {NewMaxKey, _} = get_largest_op(Left),
-            set_max_key_op(Left, NewMaxKey),
-            set_min_key_op(Right, NewMaxKey),
+            set_max_key_op(Left, NewMaxKey, true),
+            set_min_key_op(Right, NewMaxKey, false),
             []
     end.
 
@@ -482,8 +482,8 @@ insert_alone_full(State, Self) ->
     link_on_level_ge1(EmptyBucket, MaxLevel),
 
     %% range partition
-    set_max_key_op(Self, SelfMaxKey),
-    set_range_op(EmptyBucket, {EmptyMinKey, hoge}, {EmptyMaxKey, hoge}).
+    set_max_key_op(Self, SelfMaxKey, true),
+    set_range_op(EmptyBucket, {EmptyMinKey, false}, {EmptyMaxKey, State#node.encompass_max}).
 
 prepare_split_c_o_c(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
@@ -502,10 +502,10 @@ adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     {RightMaxKey, _} = get_largest_op(Right),
     EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
-    set_max_key_op(Left, LeftMaxKey),
-    set_range_op(Middle, {MiddleMinKey, hoge}, {MiddleMaxKey, hoge}),
-    set_range_op(Right, {MiddleMaxKey, hoge}, {RightMaxKey, hoge}),
-    set_range_op(EmptyBucket, {EmptyMinKey, hoge}, {OldRightMaxKey, hoge}),
+    set_max_key_op(Left, LeftMaxKey, hoge1),
+    set_range_op(Middle, {MiddleMinKey, hoge2}, {MiddleMaxKey, hoge3}),
+    set_range_op(Right, {MiddleMaxKey, hoge4}, {RightMaxKey, hoge5}),
+    set_range_op(EmptyBucket, {EmptyMinKey, hoge6}, {OldRightMaxKey, hoge7}),
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
@@ -542,8 +542,8 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     %% range partition
     {_, {OldMaxKey, _}} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
-    set_max_key_op(Right, NewRightMaxKey),
-    set_range_op(EmptyBucket, {NewRightMaxKey, hoge}, {OldMaxKey, hoge}),
+    set_max_key_op(Right, NewRightMaxKey, hoge8),
+    set_range_op(EmptyBucket, {NewRightMaxKey, hoge9}, {OldMaxKey, hoge10}),
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
@@ -731,11 +731,11 @@ handle_call({set_type_op, Type}, _From, State) ->
 handle_call({set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}, _From, State) ->
     {reply, ok, State#node{min_key=MinKey, encompass_min=EncompassMin, max_key=MaxKey, encompass_max=EncompassMax}};
 
-handle_call({set_max_key_op, MaxKey}, _From, State) ->
-    {reply, ok, State#node{max_key=MaxKey}};
+handle_call({set_max_key_op, MaxKey, EncompassMax}, _From, State) ->
+    {reply, ok, State#node{max_key=MaxKey, encompass_max=EncompassMax}};
 
-handle_call({set_min_key_op, MinKey}, _From, State) ->
-    {reply, ok, State#node{min_key=MinKey}};
+handle_call({set_min_key_op, MinKey, EncompassMin}, _From, State) ->
+    {reply, ok, State#node{min_key=MinKey, encompass_min=EncompassMin}};
 
 handle_call({set_gen_mvector_op, Fun}, _From, State) ->
     {reply, ok, State#node{gen_mvector=Fun}};
