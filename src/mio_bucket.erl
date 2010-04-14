@@ -64,7 +64,7 @@ get_op/2,
           buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
          insert_op_call/4, delete_op_call/3,
           link_right_op/3, link_left_op/3,
-         set_expire_time_op/2, buddy_op/4, insert_op/2,
+         set_expire_time_op/2, buddy_op/4,
          delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
          check_invariant_level_0_left/5,
          check_invariant_level_0_right/5,
@@ -559,9 +559,9 @@ set_expire_time_op(Node, ExpireTime) ->
 %%--------------------------------------------------------------------
 %%  insert operation
 %%--------------------------------------------------------------------
-insert_op(Introducer, NodeToInsert) ->
-    %% Insertion timeout should be infinity since they are serialized and waiting.
-    gen_server:call(NodeToInsert, {insert_op, Introducer}, 5000).
+%% insert_op(Introducer, NodeToInsert) ->
+%%     %% Insertion timeout should be infinity since they are serialized and waiting.
+%%     gen_server:call(NodeToInsert, {insert_op, Introducer}, 5000).
 
 %%--------------------------------------------------------------------
 %%  delete operation
@@ -765,6 +765,11 @@ handle_call({just_insert_op, Key, Value}, _From, State) ->
 handle_call({insert_op, Key, Value}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value]),
+    {noreply, State};
+
+handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, insert_op_call, [From, State, Self, Key, Value]),
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->

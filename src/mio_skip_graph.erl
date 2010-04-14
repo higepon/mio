@@ -52,6 +52,7 @@
 
 %% Exported for handle_call
 -export([search_op_call/5,
+         insert_op_call/5,
          get_key/1
 
         ]).
@@ -67,6 +68,9 @@ get_key_op(Bucket) ->
 %%--------------------------------------------------------------------
 insert_op(Introducer, Key, Value) ->
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
+
+insert_op_call(From, State, Self, Key, Value) ->
+    gen_server:reply(From, ok).
 
 %%--------------------------------------------------------------------
 %%  Search operation
