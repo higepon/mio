@@ -540,10 +540,10 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
     %% range partition
-    {_, {OldMaxKey, _}} = get_range_op(Right),
+    {_, {OldMaxKey, OldEncompassMax}} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
-    set_max_key_op(Right, NewRightMaxKey, hoge8),
-    set_range_op(EmptyBucket, {NewRightMaxKey, hoge9}, {OldMaxKey, hoge10}),
+    set_max_key_op(Right, NewRightMaxKey, true),
+    set_range_op(EmptyBucket, {NewRightMaxKey, false}, {OldMaxKey, OldEncompassMax}),
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).

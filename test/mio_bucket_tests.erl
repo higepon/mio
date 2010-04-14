@@ -218,9 +218,9 @@ insert_c_o_5() ->
     %%  C1(C1_min, C1_stored_max)
     %%  O*(C1_stored_max, O2_min)
     %%  C2(O2_min, O2_max)
-    {{?MIN_KEY, _}, {"key2", _}} = mio_bucket:get_range_op(Bucket),
-    {{"key2", _}, {"key3", _}} = mio_bucket:get_range_op(NewRight),
-    {{"key3", _}, {?MAX_KEY, _}} =  mio_bucket:get_range_op(Right),
+    ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Bucket)),
+    ?assertEqual({{"key2", false}, {"key3", false}}, mio_bucket:get_range_op(NewRight)),
+    ?assertEqual({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right),
@@ -344,14 +344,14 @@ insert_c_o_c_3() ->
     {ok, value1} = mio_bucket:get_op(Left, "key1"),
     {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
-    {{?MIN_KEY, _}, {"key2", _}} = mio_bucket:get_range_op(Left),
+    ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
 
     %% Check O2
     true = mio_bucket:is_empty_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
-    {{"key2", _}, {"key3", _}} = mio_bucket:get_range_op(Middle),
+    ?assertEqual({{"key2", false}, {"key3", false}}, mio_bucket:get_range_op(Middle)),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
@@ -360,7 +360,7 @@ insert_c_o_c_3() ->
     {ok, value4} = mio_bucket:get_op(Right, "key4"),
     {ok, value5} = mio_bucket:get_op(Right, "key5"),
     Middle = mio_bucket:get_left_op(Right),
-    {{"key3", _}, {"key5", _}} = mio_bucket:get_range_op(Right),
+    ?assertEqual({{"key3", true}, {"key5", true}}, mio_bucket:get_range_op(Right)),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
@@ -368,7 +368,7 @@ insert_c_o_c_3() ->
     c_o_r = mio_bucket:get_type_op(MostRight),
     {ok, value7} = mio_bucket:get_op(MostRight, "key7"),
     Right = mio_bucket:get_left_op(MostRight),
-    {{"key5", _}, {?MAX_KEY, _}} = mio_bucket:get_range_op(MostRight),
+    ?assertEqual({{"key5", false}, {?MAX_KEY, false}},mio_bucket:get_range_op(MostRight)),
 
     left = get_left_type(Left),
     right = get_right_type(MostRight),
@@ -391,14 +391,14 @@ insert_c_o_c_4() ->
     {ok, value1} = mio_bucket:get_op(Left, "key1"),
     {ok, value2} = mio_bucket:get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
-    {{?MIN_KEY, _}, {"key2", _}} = mio_bucket:get_range_op(Left),
+    ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
 
     %% Check O2
     true = mio_bucket:is_empty_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
-    {{"key2", _}, {"key3", _}} = mio_bucket:get_range_op(Middle),
+    ?assertEqual({{"key2", false}, {"key22", false}}, mio_bucket:get_range_op(Middle)),
 
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
@@ -407,7 +407,7 @@ insert_c_o_c_4() ->
     {ok, value3} = mio_bucket:get_op(Right, "key3"),
     {ok, value4} = mio_bucket:get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
-    {{"key3", _}, {"key4", _}} = mio_bucket:get_range_op(Right),
+    ?assertEqual({{"key22", true}, {"key4", true}}, mio_bucket:get_range_op(Right)),
 
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
@@ -415,7 +415,7 @@ insert_c_o_c_4() ->
     c_o_r = mio_bucket:get_type_op(MostRight),
     {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
-    {{"key4", _}, {?MAX_KEY, _}} = mio_bucket:get_range_op(MostRight),
+    ?assertEqual({{"key4", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(MostRight)),
 
     left = get_left_type(Left),
     right = get_right_type(MostRight),
