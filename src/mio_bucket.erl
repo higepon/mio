@@ -542,7 +542,9 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     %% range partition
     {_, {OldMaxKey, OldEncompassMax}} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
-    set_max_key_op(Right, NewRightMaxKey, true),
+    {NewMiddleMaxKey, _} = get_smallest_op(Right),
+    set_max_key_op(Middle, NewMiddleMaxKey, false),
+    set_range_op(Right, {NewMiddleMaxKey, true}, {NewRightMaxKey, true}),
     set_range_op(EmptyBucket, {NewRightMaxKey, false}, {OldMaxKey, OldEncompassMax}),
 
     %% C3'-O4 | C ...
