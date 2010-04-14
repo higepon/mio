@@ -498,14 +498,14 @@ prepare_split_c_o_c(State, Left, Middle, Right) ->
 adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     {LeftMaxKey, _} = get_largest_op(Left),
     {MiddleMaxKey, _} = get_largest_op(Middle),
-    {_, {OldRightMaxKey, _}} = get_range_op(Right),
+    {_, {OldRightMaxKey, OldEncompassMax}} = get_range_op(Right),
     {RightMaxKey, _} = get_largest_op(Right),
     EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
-    set_max_key_op(Left, LeftMaxKey, hoge1),
-    set_range_op(Middle, {MiddleMinKey, hoge2}, {MiddleMaxKey, hoge3}),
-    set_range_op(Right, {MiddleMaxKey, hoge4}, {RightMaxKey, hoge5}),
-    set_range_op(EmptyBucket, {EmptyMinKey, hoge6}, {OldRightMaxKey, hoge7}),
+    set_max_key_op(Left, LeftMaxKey, true),
+    set_range_op(Middle, {MiddleMinKey, false}, {MiddleMaxKey, true}),
+    set_range_op(Right, {MiddleMaxKey, false}, {RightMaxKey, true}),
+    set_range_op(EmptyBucket, {EmptyMinKey, false}, {OldRightMaxKey, OldEncompassMax}),
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
