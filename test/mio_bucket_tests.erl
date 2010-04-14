@@ -62,7 +62,8 @@ sg_test_() ->
       [?_test(search_c_o_c_5_same())],
       [?_test(search_c_o_c_5_different())],
       [?_test(search_c_o_c_6_same())],
-      [?_test(search_c_o_c_6_different())]
+      [?_test(search_c_o_c_6_different())],
+      [?_test(skip_graph_insert_1())]
      ]
     }.
 
@@ -1242,6 +1243,11 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
     ?assertEqual({ok, value30}, mio_skip_graph:search_op(Right, "key30")),
     ?assertEqual({ok, value31}, mio_skip_graph:search_op(Right, "key31")),
     ?assertEqual({ok, value55}, mio_skip_graph:search_op(Right, "key55")).
+
+skip_graph_insert_1() ->
+    Capacity = 3,
+    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    ok = mio_skip_graph:insert_op(Bucket, "key1", value1).
 
 %% Helper
 
