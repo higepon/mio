@@ -139,7 +139,7 @@ search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
 search_op_call(From, State, Self, SearchKey, Level) ->
     SearchLevel = start_level(State, Level),
     MyKey = get_key(State),
-    ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
+%%    ?LOGF("SearchKey=~p MyKey=~p Level=~p~n", [SearchKey, MyKey, Level]),
     if SearchKey > MyKey ->
             search_op_to_right(From, State, Self, SearchKey, SearchLevel);
        SearchKey =:= MyKey ->

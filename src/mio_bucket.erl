@@ -269,8 +269,8 @@ get_type_op(Bucket) ->
 set_type_op(Bucket, Type) ->
     gen_server:call(Bucket, {set_type_op, Type}).
 
-set_range_op(Bucket, MinKey, MaxKey) ->
-    gen_server:call(Bucket, {set_range_op, MinKey, MaxKey}).
+set_range_op(Bucket, {MinKey, EncompassMin}, {MaxKey, EncompassMax}) ->
+    gen_server:call(Bucket, {set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}).
 
 set_max_key_op(Bucket, MaxKey) ->
     gen_server:call(Bucket, {set_max_key_op, MaxKey}).
@@ -429,7 +429,7 @@ make_c_o_c(State, Left, Right) ->
     %%    O*(C1_stored_max, O2_min)
     %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-    set_range_op(EmptyBucket, EmptyBucketMinKey, EmptyBucketMaxKey),
+    set_range_op(EmptyBucket, {EmptyBucketMinKey, hoge}, {EmptyBucketMaxKey, hoge}),
     set_min_key_op(Right, EmptyBucketMaxKey),
     set_max_key_op(Left, NewLeftMaxKey),
 
@@ -483,7 +483,7 @@ insert_alone_full(State, Self) ->
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey),
-    set_range_op(EmptyBucket, EmptyMinKey, EmptyMaxKey).
+    set_range_op(EmptyBucket, {EmptyMinKey, hoge}, {EmptyMaxKey, hoge}).
 
 prepare_split_c_o_c(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
@@ -503,9 +503,9 @@ adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
     set_max_key_op(Left, LeftMaxKey),
-    set_range_op(Middle, MiddleMinKey, MiddleMaxKey),
-    set_range_op(Right, MiddleMaxKey, RightMaxKey),
-    set_range_op(EmptyBucket, EmptyMinKey, OldRightMaxKey),
+    set_range_op(Middle, {MiddleMinKey, hoge}, {MiddleMaxKey, hoge}),
+    set_range_op(Right, {MiddleMaxKey, hoge}, {RightMaxKey, hoge}),
+    set_range_op(EmptyBucket, {EmptyMinKey, hoge}, {OldRightMaxKey, hoge}),
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
@@ -543,7 +543,7 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     {_, {OldMaxKey, _}} = get_range_op(Right),
     {NewRightMaxKey, _} = get_largest_op(Right),
     set_max_key_op(Right, NewRightMaxKey),
-    set_range_op(EmptyBucket, NewRightMaxKey, OldMaxKey),
+    set_range_op(EmptyBucket, {NewRightMaxKey, hoge}, {OldMaxKey, hoge}),
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
@@ -714,7 +714,6 @@ handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#node.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
-    ?LOGF(""),
     {reply, mio_store:get(Key, State#node.store), State};
 
 handle_call(skip_graph_get_key_op, _From, State) ->
@@ -729,8 +728,8 @@ handle_call({get_right_op, Level}, _From, State) ->
 handle_call({set_type_op, Type}, _From, State) ->
     {reply, ok, State#node{type=Type}};
 
-handle_call({set_range_op, MinKey, MaxKey}, _From, State) ->
-    {reply, ok, State#node{min_key=MinKey, max_key=MaxKey}};
+handle_call({set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}, _From, State) ->
+    {reply, ok, State#node{min_key=MinKey, encompass_min=EncompassMin, max_key=MaxKey, encompass_max=EncompassMax}};
 
 handle_call({set_max_key_op, MaxKey}, _From, State) ->
     {reply, ok, State#node{max_key=MaxKey}};
@@ -785,7 +784,6 @@ handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     {noreply, State};
 
 handle_call(get_op, From, State) ->
-?LOGF(""),
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
