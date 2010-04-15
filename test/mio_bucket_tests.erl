@@ -270,9 +270,6 @@ insert_c_o_c_1() ->
     %% setup C1-O2-C3
     {Left, Middle, Right} = insert_c_o_5(),
 
-    {{LMin, _}, {LMax, _}} = mio_bucket:get_range_op(Left),
-    {{MMin, _}, {MMax, _}} = mio_bucket:get_range_op(Middle),
-    {{RMin, _}, {RMax, _}} = mio_bucket:get_range_op(Right),
 
     %% insert!
     ok = mio_bucket:insert_op(Left, "key10", value10),
@@ -289,9 +286,6 @@ insert_c_o_c_1() ->
     c_o_c_m = mio_bucket:get_type_op(Middle),
     c_o_c_r = mio_bucket:get_type_op(Right),
 
-    {{LMin, _}, {LMax, _}} = mio_bucket:get_range_op(Left),
-    {{MMin, _}, {MMax, _}} = mio_bucket:get_range_op(Middle),
-    {{RMin, _}, {RMax, _}} = mio_bucket:get_range_op(Right),
     ok.
 
 %%  C1-O2-C3
@@ -703,11 +697,11 @@ c_o_different_mv() ->
     ?assertMatch(X when X =/= [], RightBucket),
     ?assertEqual([], mio_bucket:get_left_op(Bucket)),
     ?assertEqual(RightBucket, mio_bucket:get_right_op(Bucket, 0)),
-    ?assertEqual(?MAX_KEY, mio_skip_graph:get_key_op(RightBucket)),
+    ?assertEqual({?MAX_KEY, false}, mio_skip_graph:get_key_op(RightBucket)),
     ?assertEqual([], mio_bucket:get_left_op(Bucket, 0)),
     ?assertEqual([], mio_bucket:get_right_op(RightBucket, 0)),
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket, 0)),
-    ?assertEqual("key3", mio_skip_graph:get_key_op(Bucket)),
+    ?assertEqual({"key3", true}, mio_skip_graph:get_key_op(Bucket)),
 
     ?assertEqual(Bucket, mio_bucket:get_left_op(RightBucket)),
 
@@ -877,6 +871,7 @@ search_c_o_c_1(MakeC_O_C_Fun) ->
     ?assertEqual(ok, mio_bucket:insert_op(Left, "key0", value0)),
 
     {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
     ?assertEqual({ok, value0}, mio_skip_graph:search_op(Left, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Left, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Left, "key2")),

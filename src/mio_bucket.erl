@@ -272,9 +272,13 @@ set_type_op(Bucket, Type) ->
 set_range_op(Bucket, {MinKey, EncompassMin}, {MaxKey, EncompassMax}) ->
     gen_server:call(Bucket, {set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}).
 
+set_max_key_op([], _MaxKey, _EncompassMax) ->
+    ok;
 set_max_key_op(Bucket, MaxKey, EncompassMax) ->
     gen_server:call(Bucket, {set_max_key_op, MaxKey, EncompassMax}).
 
+set_min_key_op([], _MinKey, _EncompassMin) ->
+    ok;
 set_min_key_op(Bucket, MinKey, EncompassMin) ->
     gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
 
@@ -411,6 +415,22 @@ insert_op_call(From, State, Self, Key, Value)  ->
             %%  C1-O2$-C3
             %%    Insertion to C1  : C1'-C2-C3 -> C1'-O2 | C3'-O4
             split_c_o_c_by_m(State, neighbor_node(State, left, 0), Self, neighbor_node(State, right, 0));
+%%         {c_o_c_m, _} ->
+%%             {Largest, _} = get_largest_op(Self),
+%%             {Smallest, _} = get_smallest_op(Self),
+%%             io:format("Smallest=~p Largest=~p~n", [Smallest, Largest]),
+%%             case Largest =/= State#node.max_key of
+%%                 true ->
+%%                     set_max_key_op(Self, Largest, true),
+%%                     set_min_key_op(neighbor_node(State, right, 0), Largest, false);
+%%                 _ -> []
+%%             end,
+%%             case Smallest =/= State#node.min_key of
+%%                 true ->
+%%                     set_min_key_op(Self, Smallest, true),
+%%                     set_max_key_op(neighbor_node(State, left, 0), Smallest, false);
+%%                 _ -> []
+%%             end;
         _ -> []
     end,
     gen_server:reply(From, ok).
@@ -460,7 +480,9 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
             split_c_o_c_by_l(State, Left, Middle, get_right_op(Middle));
         _ ->
             %% C1-O2-C3 -> C1'-O2'-C3
-            []
+            {LeftMax, _} = get_largest_op(Left),
+            set_max_key_op(Left, LeftMax, true),
+            set_min_key_op(Middle, LeftMax, false)
     end.
 
 insert_alone_full(State, Self) ->

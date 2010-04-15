@@ -113,7 +113,7 @@ prep_stop(_State) ->
 %%    io:format("stats ~p", [dynomite_prof:stats()]),
     %% N.B.
     %% PROFILER_STOP should be placed here, tty may be closed on stop/1 function.
-    ?PROFILER_STOP(),
+%%    ?PROFILER_STOP(),
     ok.
 
 log_file_path() ->
