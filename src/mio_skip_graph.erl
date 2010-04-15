@@ -106,34 +106,36 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_op(StartNode, SearchKey) ->
     search_op(StartNode, SearchKey, []).
 search_op(StartNode, SearchKey, StartLevel) ->
-    gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
+    Bucket = gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity),
+    io:format("<Bucket=~p>", [Bucket]),
+    mio_bucket:get_op(Bucket, SearchKey).
 
 search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
     case {neighbor_node(State, right, SearchLevel), SearchLevel} of
         {[], 0} ->
-            gen_server:reply(From, {error, not_found});
+            gen_server:reply(From, Self);
         {[], _} ->
             search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
         {RightNode, _} ->
-            gen_server:reply(From, mio_skip_graph:search_op(RightNode, SearchKey, SearchLevel))
+            gen_server:reply(From, gen_server:call(RightNode, {skip_graph_search_op, SearchKey, SearchLevel}))
     end.
 
 search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
     case {neighbor_node(State, left, SearchLevel), SearchLevel} of
         {[], 0} ->
-            gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+            gen_server:reply(From, Self);
         {[], _} ->
             search_op_call(From, State, Self, SearchKey, SearchLevel - 1);
         {LeftNode, _} ->
             {LeftKey, Encompassing} = get_key_op(LeftNode),
             if SearchKey < LeftKey ->
-                    gen_server:reply(From, mio_skip_graph:search_op(LeftNode, SearchKey, SearchLevel));
+                    gen_server:reply(From, gen_server:call(LeftNode, {skip_graph_search_op, SearchKey, SearchLevel}));
                SearchKey =:= LeftKey andalso Encompassing ->
-                    gen_server:reply(From, mio_bucket:get_op(LeftNode, SearchKey));
+                    gen_server:reply(From, LeftNode);
                SearchKey =:= LeftKey andalso not Encompassing ->
-                    gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+                    gen_server:reply(From, Self);
                SearchLevel =:= 0 ->
-                    gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+                    gen_server:reply(From, Self);
                true ->
                     search_op_call(From, State, Self, SearchKey, SearchLevel - 1)
             end
@@ -150,21 +152,21 @@ search_op_call(From, State, Self, SearchKey, Level) ->
             search_op_to_right(From, State, Self, SearchKey, SearchLevel);
         %% SearchKey is in this bucket
         SearchKey =:= MyKey andalso Encompassing ->
-            gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+            gen_server:reply(From, Self);
         %% SearchKey is in the right node on level 0.
         SearchKey =:= MyKey andalso not Encompassing ->
             RightNode0 = neighbor_node(State, right, 0),
 %%            ?assert(RightNode0 =/= []),
-            gen_server:reply(From, mio_bucket:get_op(RightNode0, SearchKey));
+            gen_server:reply(From, RightNode0);
        true ->
             EncompassingMin = State#node.encompass_min,
             if
                 %% SearchKey is in this bucket
                 State#node.min_key < SearchKey ->
-                    gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+                    gen_server:reply(From, Self);
                 %% SearchKey is in this bucket
                 State#node.min_key =:= SearchKey andalso EncompassingMin ->
-                    gen_server:reply(From, mio_bucket:get_op(Self, SearchKey));
+                    gen_server:reply(From, Self);
                 %% SearchKey is left side of this node.
                 true ->
                     search_op_to_left(From, State, Self, SearchKey, SearchLevel)
