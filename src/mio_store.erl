@@ -40,7 +40,7 @@
 
 %% API
 -export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
-         capacity/1, is_empty/1, largest/1, smallest/1]).
+         capacity/1, is_empty/1, largest/1, smallest/1, keys/1]).
 
 %%====================================================================
 %% API
@@ -52,6 +52,13 @@
 %%--------------------------------------------------------------------
 new(Capacity) ->
     #store{capacity=Capacity, tree=gb_trees:empty()}.
+
+%%--------------------------------------------------------------------
+%% Function: keys/1
+%% Description: returns list of keys.
+%%--------------------------------------------------------------------
+keys(Store) ->
+    gb_trees:keys(Store#store.tree).
 
 %%--------------------------------------------------------------------
 %% Function: set/3

@@ -45,7 +45,8 @@
 %% API
 -export([search_op/2, search_op/3,
          get_key_op/1,
-         insert_op/3
+         insert_op/3,
+         dump_op/1
 
 
         ]).
@@ -53,6 +54,7 @@
 %% Exported for handle_call
 -export([search_op_call/5,
          insert_op_call/4,
+         dump_op_call/1,
          get_key/1
 
         ]).
@@ -62,6 +64,12 @@
 get_key_op([]) -> [];
 get_key_op(Bucket) ->
     gen_server:call(Bucket, skip_graph_get_key_op).
+
+%%--------------------------------------------------------------------
+%%  Dump operation for Debug.
+%%--------------------------------------------------------------------
+dump_op(StartBucket) ->
+    gen_server:call(StartBucket, skip_graph_dump_op).
 
 %%--------------------------------------------------------------------
 %%  Insertion operation
@@ -173,6 +181,17 @@ search_op_call(From, State, Self, SearchKey, Level) ->
             end
     end.
 
+dump_op_call(State) ->
+    {Key, _} = get_key(State),
+    io:format("Bucket: ~p~n", [Key]),
+    lists:foreach(fun(K) ->
+                          io:format("    ~p~n", [K])
+                  end, mio_store:keys(State#node.store)),
+    case neighbor_node(State, right, 0) of
+        [] -> [];
+        RightBucket ->
+            dump_op(RightBucket)
+    end.
 
 
 %%--------------------------------------------------------------------

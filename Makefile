@@ -21,8 +21,9 @@ ERLC_FLAGS=+warn_unused_vars \
            -v \
            +debug_info \
            +bin_opt_info \
-           +no_strict_record_tests \
-           +native +"{hipe, [o3]}" \
+           +no_strict_record_tests
+
+# +native +"{hipe, [o3]}" \
 
 TARBALL_NAME=$(APP_NAME)-$(VERSION)
 DIST_TMP_DIR=tmp
