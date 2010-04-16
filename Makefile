@@ -68,7 +68,7 @@ VERBOSE_TEST ?= false
 check: all
 # include option for ct:run_test is not recognized.
 #	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
-	@erl -pa `pwd`/ebin -eval 'eunit:test([mio_bucket_tests, global, mio_tests, mio_lock, mio_mvector, mio_store, mio_node]).' -s init stop
+	@erl -pa `pwd`/ebin -eval 'eunit:test([mio_skip_graph_tests, mio_bucket_tests, global, mio_tests, mio_lock, mio_mvector, mio_store, mio_node]).' -s init stop
 
 check_one: all
 	@erl -pa `pwd`/ebin -eval 'ct:run_test([{auto_compile, true}, {suite, [$(TEST_NAME)_SUITE]}, {dir, "./test"}, {logdir, "./log"}, {refresh_logs, "./log"}, {cover, "./src/mio.coverspec"}]).' -s init stop -mio verbose $(VERBOSE_TEST) log_dir "\"/`pwd`/log\""
