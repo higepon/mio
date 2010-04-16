@@ -1242,7 +1242,8 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
 skip_graph_insert_1() ->
     Capacity = 3,
     {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
-    ok = mio_skip_graph:insert_op(Bucket, "key1", value1).
+    ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")).
 
 %% Helper
 
