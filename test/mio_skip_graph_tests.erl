@@ -48,8 +48,8 @@ sg_test_() ->
       [?_test(search_c_o_c_6_same())],
       [?_test(search_c_o_c_6_different())],
       [?_test(insert_o_1())],
-      [?_test(insert_o_2())]
-
+      [?_test(insert_o_2())],
+      [?_test(insert_o_3())]
       ]
      }.
 
@@ -645,6 +645,22 @@ insert_o_2() ->
     ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")).
+
+insert_o_3() ->
+    Capacity = 3,
+    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    ok = mio_skip_graph:insert_op(Bucket, "key2", value2),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
+
+    ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
+
+    ok = mio_skip_graph:insert_op(Bucket, "key3", value3),
+    ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
+    ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(Bucket, "key3")).
+
 
 
 
