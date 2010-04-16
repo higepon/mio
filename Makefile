@@ -8,7 +8,7 @@ TEST_DIR=test
 EBIN_DIR=ebin
 INCLUDE_DIR=include
 LOG_PREFIX=mio.log
-TEST_SOURCES= test/mio_bucket_tests.erl test/global_tests.erl test/mio_tests.erl test/mio_lock_tests.erl test/mio_mvector_tests.erl test/mio_store_tests.erl test/mio_node_tests.erl
+TEST_SOURCES= test/mio_bucket_tests.erl test/mio_skip_graph_tests.erl test/global_tests.erl test/mio_tests.erl test/mio_lock_tests.erl test/mio_mvector_tests.erl test/mio_store_tests.erl test/mio_node_tests.erl
 TEST_BEAMS=$(patsubst $(TEST_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(TEST_SOURCES))
 SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
 BEAMS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam, $(SOURCES))
@@ -57,6 +57,9 @@ $(EBIN_DIR)/mio_store_tests.beam: $(TEST_DIR)/mio_store_tests.erl $(INCLUDE_DIR)
 	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
 $(EBIN_DIR)/mio_node_tests.beam: $(TEST_DIR)/mio_node_tests.erl $(INCLUDE_DIR)/mio.hrl
+	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
+
+$(EBIN_DIR)/mio_skip_graph_tests.beam: $(TEST_DIR)/mio_skip_graph_tests.erl $(INCLUDE_DIR)/mio.hrl
 	erlc -pa $(EBIN_DIR) $(ERLC_FLAGS) -I$(INCLUDE_DIR) -o$(EBIN_DIR) $<
 
 
