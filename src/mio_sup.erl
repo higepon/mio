@@ -135,7 +135,12 @@ init(_Args) ->
             permanent, brutal_kill, worker, [mio_logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
-            permanent, brutal_kill, worker, [mio_memcached]}]}}.
+            permanent, brutal_kill, worker, [mio_memcached]},
+           {mio_memcached2, %% this is just id of specification, will not be registered by register/2.
+            %% temporary
+            {mio_memcached2, start_link, [Port + 100, MaxLevel, BootNode, Verbose]},
+            permanent, brutal_kill, worker, [mio_memcached2]}
+]}}.
 
 
 getRandomId() ->
