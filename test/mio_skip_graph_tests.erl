@@ -720,7 +720,6 @@ insert_many() ->
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
     ok = mio_skip_graph:insert_op(Bucket, "aeaf94f572e71d9c", "aeaf94f572e71d9c"),
-    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "aeaf94f572e71d9c"}, mio_skip_graph:search_op(Bucket, "aeaf94f572e71d9c")),
     ?assertEqual({ok, "d2043d9b37d14ebf"}, mio_skip_graph:search_op(Bucket, "d2043d9b37d14ebf")),
     ?assertEqual({ok, "5580da7ca4202565"}, mio_skip_graph:search_op(Bucket, "5580da7ca4202565")),

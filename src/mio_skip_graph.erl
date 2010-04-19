@@ -78,7 +78,9 @@ insert_op(Introducer, Key, Value) ->
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
 
 insert_op_call(From, Self, Key, Value) ->
-    Bucket = search_bucket_op(Self, Key),
+    StartLevel = [],
+    Bucket = gen_server:call(Self, {skip_graph_search_op, Key, StartLevel}, infinity),
+%%    ?debugFmt("<Bucket=~p: SearchKey=~p ~p~n>Self=~p~n~n", [Bucket, Key, get_key_op(Bucket), get_key_op(Self)]),
     gen_server:reply(From, mio_bucket:insert_op(Bucket, Key, Value)).
 
 %%--------------------------------------------------------------------
@@ -109,13 +111,10 @@ insert_op_call(From, Self, Key, Value) ->
 %%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
 
 %%--------------------------------------------------------------------
-search_bucket_op(StartBucket, SearchKey) ->
-    StartBucket.
 search_op(StartNode, SearchKey) ->
     search_op(StartNode, SearchKey, []).
 search_op(StartNode, SearchKey, StartLevel) ->
     Bucket = gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity),
-    io:format("<Bucket=~p>", [Bucket]),
     mio_bucket:get_op(Bucket, SearchKey).
 
 search_op_to_right(From, State, Self, SearchKey, SearchLevel) ->
@@ -183,9 +182,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 
 dump_op_call(State) ->
     {Key, _} = get_key(State),
-    io:format("Bucket: ~p~n", [Key]),
+    ?debugFmt("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
     lists:foreach(fun(K) ->
-                          io:format("    ~p~n", [K])
+                          ?debugFmt("    ~p~n", [K])
                   end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];
