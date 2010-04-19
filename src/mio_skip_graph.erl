@@ -182,9 +182,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 
 dump_op_call(State) ->
     {Key, _} = get_key(State),
-    ?debugFmt("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
+    io:format("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
     lists:foreach(fun(K) ->
-                          ?debugFmt("    ~p~n", [K])
+                          io:format("    ~p~n", [K])
                   end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];

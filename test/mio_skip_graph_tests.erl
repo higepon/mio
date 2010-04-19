@@ -1160,6 +1160,8 @@ insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")).
+
+
 %% Helper
 
 
