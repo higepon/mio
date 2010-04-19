@@ -55,8 +55,7 @@ sg_test_() ->
      }.
 
 search_o() ->
-    Capacity = 3,
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {ok, Bucket} = make_bucket(alone),
     {error, not_found} = mio_skip_graph:search_op(Bucket, "key").
 
 c_o_same_mv() ->
@@ -632,14 +631,12 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
     ?assertEqual({ok, value55}, mio_skip_graph:search_op(Right, "key55")).
 
 insert_o_1() ->
-    Capacity = 3,
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {ok, Bucket} = make_bucket(alone),
     ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")).
 
 insert_o_2() ->
-    Capacity = 3,
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {ok, Bucket} = make_bucket(alone),
     ok = mio_skip_graph:insert_op(Bucket, "key2", value2),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
 
@@ -648,8 +645,7 @@ insert_o_2() ->
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")).
 
 insert_o_3() ->
-    Capacity = 3,
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {ok, Bucket} = make_bucket(alone),
     ok = mio_skip_graph:insert_op(Bucket, "key2", value2),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
 
@@ -663,8 +659,7 @@ insert_o_3() ->
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(Bucket, "key3")).
 
 insert_many() ->
-    Capacity = 3,
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+    {ok, Bucket} = make_bucket(alone),
     ok = mio_skip_graph:insert_op(Bucket, "d4bd50c13cb2c368", "d4bd50c13cb2c368"),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
     ok = mio_skip_graph:insert_op(Bucket, "7b077f782f5239c6", "7b077f782f5239c6"),
@@ -1203,3 +1198,8 @@ make_c_o_same_mv() ->
     %% check on level 0
     RightBucket = mio_bucket:get_right_op(Bucket),
     {Bucket, RightBucket}.
+
+make_bucket(Type) ->
+    Capacity = 3,
+    MaxLevel = 3,
+    mio_sup:make_bucket(Capacity, Type, MaxLevel).

@@ -46,7 +46,7 @@ sg_test_() ->
 %% 0$ -> C-O*
 insert() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     ok = case mio_bucket:get_right_op(Bucket) of
              [] -> ?assert(false);
              RightBucket ->
@@ -63,7 +63,7 @@ insert() ->
 %% C1-O2 -> C1'-O2'
 insert_c_o_1() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
 
     %% insert to most left of C1
     ok = mio_bucket:insert_op(Bucket, "key0", value0),
@@ -84,7 +84,7 @@ insert_c_o_1() ->
 %% C1-O2 -> C1'-O2'
 insert_c_o_2() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     {{MinKey, false}, {MaxKey, true}} = mio_bucket:get_range_op(Bucket),
 
     %% insert to most left of C1
@@ -105,7 +105,7 @@ insert_c_o_2() ->
 %% C1-O2 -> C1-O2'
 insert_c_o_3() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     Right = mio_bucket:get_right_op(Bucket),
     ok = mio_bucket:insert_op(Right, "key4", value4),
 
@@ -121,7 +121,7 @@ insert_c_o_3() ->
 %% C1-O2$ -> C1-O*-C2
 insert_c_o_4() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
@@ -161,7 +161,7 @@ insert_c_o_4() ->
 %% Insertion to C1
 insert_c_o_5() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
@@ -207,7 +207,7 @@ insert_c_o_5() ->
 %% Insertion to C1
 insert_c_o_6() ->
     %% set up initial bucket
-    Bucket = setup_full_bucket(3),
+    Bucket = setup_full_bucket(),
     Right = mio_bucket:get_right_op(Bucket),
 
     %% right is nearly full
@@ -639,9 +639,8 @@ insert_c_o_c_9() ->
     ok.
 
 
-
-setup_full_bucket(Capacity) ->
-    {ok, Bucket} = mio_sup:make_bucket(Capacity, alone),
+setup_full_bucket() ->
+    {ok, Bucket} = make_bucket(alone),
     [] = mio_bucket:get_left_op(Bucket),
     [] = mio_bucket:get_right_op(Bucket),
     ok = mio_bucket:insert_op(Bucket, "key1", value1),
@@ -651,8 +650,8 @@ setup_full_bucket(Capacity) ->
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key3", value3)),
 
     %% set dummy type.
-    {ok, Right } = mio_sup:make_bucket(Capacity, right),
-    {ok, Left } = mio_sup:make_bucket(Capacity, left),
+    {ok, Right } = make_bucket(right),
+    {ok, Left } = make_bucket(left),
 
     ok = mio_bucket:link_left_op(Bucket, 0, Left),
     ok = mio_bucket:link_right_op(Left, 0, Bucket),
@@ -668,3 +667,8 @@ get_right_type(Bucket) ->
 
 check_range(Bucket, ExpectedMin, ExpectedMax) ->
     {{ExpectedMin, _}, {ExpectedMax, _}} = mio_bucket:get_range_op(Bucket).
+
+make_bucket(Type) ->
+    Capacity = 3,
+    MaxLevel = 3,
+    mio_sup:make_bucket(Capacity, Type, MaxLevel).
