@@ -544,7 +544,10 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     {LargeMKey, LargeMValue} = take_largest_op(Middle),
     full = just_insert_op(Right, LargeMKey, LargeMValue),
 
-    adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket).
+    adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket),
+
+    %% link on Level >= 1
+    link_on_level_ge1(EmptyBucket, State).
 
 %% Insertion to the Middle causes overflow
 split_c_o_c_by_m(State, Left, Middle, Right) ->
@@ -555,7 +558,11 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     {LargeRKey, LargeRValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeRKey, LargeRValue),
 
-    adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket).
+    adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket),
+
+    %% link on Level >= 1
+    link_on_level_ge1(EmptyBucket, State).
+
 
 %% Insertion to the Right causes overflow
 split_c_o_c_by_r(State, Left, Middle, Right) ->
@@ -573,9 +580,9 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     set_range_op(EmptyBucket, {NewRightMaxKey, false}, {OldMaxKey, OldEncompassMax}),
 
     %% C3'-O4 | C ...
-    link_three_nodes(Right, EmptyBucket, PrevRight, 0).
-
-
+    link_three_nodes(Right, EmptyBucket, PrevRight, 0),
+    %% link on Level >= 1
+    link_on_level_ge1(EmptyBucket, State).
 
 %% Skip graphs
 
