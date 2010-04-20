@@ -121,24 +121,33 @@ insert_c_o_3() ->
 %% C1-O2$ -> C1-O*-C2
 insert_c_o_4() ->
     %% set up initial bucket
+?debugHere,
     Bucket = setup_full_bucket(),
+?debugHere,
     Right = mio_bucket:get_right_op(Bucket),
+?debugHere,
 
     %% right is nearly full
+?debugHere,
     ok = mio_bucket:insert_op(Right, "key4", value4),
+?debugHere,
     ok = mio_bucket:insert_op(Right, "key5", value5),
+?debugHere,
     c_o_r = mio_bucket:get_type_op(Right),
-
+?debugHere,
     %% insert!
     ok = mio_bucket:insert_op(Right, "key6", value6),
-
+?debugHere,
     c_o_c_l = mio_bucket:get_type_op(Bucket),
+?debugHere,
     c_o_c_r = mio_bucket:get_type_op(Right),
-
+?debugHere,
     NewRight = mio_bucket:get_right_op(Bucket),
+?debugHere,
     true = mio_bucket:is_empty_op(NewRight),
+?debugHere,
     c_o_c_m = mio_bucket:get_type_op(NewRight),
-
+?debugHere,
     Bucket = mio_bucket:get_left_op(NewRight),
     Right = mio_bucket:get_right_op(NewRight),
     NewRight = mio_bucket:get_left_op(Right),

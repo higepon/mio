@@ -14,7 +14,7 @@
 
 setup_mio() ->
     ok = application:start(mio),
-    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT + 100),
     {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
     true = register(mio_node, NodePid).
 
@@ -124,7 +124,6 @@ search_c_o_1(MakeC_O_C_Fun) ->
     {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
-
     %% search
     ?assertEqual({ok, value0}, mio_skip_graph:search_op(Bucket, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
