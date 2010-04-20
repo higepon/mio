@@ -458,9 +458,7 @@ make_c_o_c(State, Left, Right) ->
     ok = set_type_op(Left, c_o_c_l),
     %% link on Level >= 1
 ?debugHere,
-    MaxLevel = length(State#node.membership_vector),
-?debugHere,
-    link_on_level_ge1(EmptyBucket, MaxLevel),
+    link_on_level_ge1(EmptyBucket, State),
 ?debugHere.    
 
 insert_c_o_l_overflow(State, Left, Right) ->
@@ -506,8 +504,7 @@ insert_alone_full(State, Self) ->
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
     %% link on Level >= 1
-    MaxLevel = length(State#node.membership_vector),
-    link_on_level_ge1(EmptyBucket, MaxLevel),
+    link_on_level_ge1(EmptyBucket, State),
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
@@ -1129,9 +1126,7 @@ insert_op_call(From, State, Self, Introducer) ->
 
             ?CHECK_SANITY(Self, 0),
             %% link on level > 0
-            MaxLevel = length(State#node.membership_vector),
-            dynomite_prof:stop_prof(link_on_level_0),
-            link_on_level_ge1(Self, MaxLevel)
+            link_on_level_ge1(Self, State)
     end,
     dynomite_prof:stop_prof(insert_op_call),
     gen_server:reply(From, ok).
@@ -1287,10 +1282,9 @@ buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     end.
 
 %% link on Level >= 1
-link_on_level_ge1(Self, MaxLevel) ->
-    dynomite_prof:start_prof(link_on_level_ge1_mino),
-    link_on_level_ge1(Self, 1, MaxLevel),
-    dynomite_prof:stop_prof(link_on_level_ge1_mino).
+link_on_level_ge1(Self, State) ->
+    MaxLevel = length(State#node.membership_vector),
+    link_on_level_ge1(Self, 1, MaxLevel).
 
 %% Link on all levels done.
 link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
