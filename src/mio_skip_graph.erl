@@ -77,11 +77,48 @@ dump_op(StartBucket) ->
 insert_op(Introducer, Key, Value) ->
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
 
+lock(Nodes, infinity, _Line) ->
+    mio_lock:lock(Nodes, infinity);
+lock(Nodes, 100, Line) ->
+    ?FATALF("mio_node:lock dead lock Nodes=~p at mio_node:~p", [Nodes, Line]),
+    false;
+lock(Nodes, Times, Line) ->
+    case mio_lock:lock(Nodes) of
+        true ->
+            true;
+        false ->
+            ?INFOF("Lock NG Sleeping ~p~n", [Nodes]),
+            dynomite_prof:start_prof(lock_sleep),
+            mio_util:random_sleep(Times),
+            dynomite_prof:stop_prof(lock_sleep),
+            lock(Nodes, Times + 1, Line)
+    end.
+
+lock(Nodes, Line) ->
+    lock(Nodes, 0, Line).
+
+unlock(Nodes, _Line) ->
+%%    ?INFOF("unlocked ~p at ~p:~p", [Nodes, Line, self()]),
+    mio_lock:unlock(Nodes).
+
+lock_or_exit(Nodes, Line, Info) ->
+    IsLocked = lock(Nodes, Line),
+    if not IsLocked ->
+            ?FATALF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
+            exit(lock_failed);
+       true ->
+            Nodes
+    end.
+
+
 insert_op_call(From, Self, Key, Value) ->
     StartLevel = [],
     Bucket = gen_server:call(Self, {skip_graph_search_op, Key, StartLevel}, infinity),
+%%    LockedNodes = lock_or_exit([Bucket], ?LINE, []),
 %%    ?debugFmt("<Bucket=~p: SearchKey=~p ~p~n>Self=~p~n~n", [Bucket, Key, get_key_op(Bucket), get_key_op(Self)]),
-    gen_server:reply(From, mio_bucket:insert_op(Bucket, Key, Value)).
+    Ret = mio_bucket:insert_op(Bucket, Key, Value),
+%%    unlock(LockedNodes, ?LINE),
+    gen_server:reply(From, Ret).
 
 %%--------------------------------------------------------------------
 %%  Search operation

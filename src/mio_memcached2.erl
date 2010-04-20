@@ -58,7 +58,7 @@ init_start_node(From, MaxLevel, BootNode) ->
     {StartNode}
         = case BootNode of
               false ->
-                  Capacity = 100,
+                  Capacity = 5,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
                   register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket) end)),
                   {Bucket};
@@ -129,8 +129,9 @@ process_request(Sock, StartNode, MaxLevel) ->
                     process_request(Sock, StartNode, MaxLevel);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
+                    ?INFOF("Start set ~p", [self()]),
                     InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
-
+                    ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
 %%                    erlang:garbage_collect(InsertedNode),
@@ -163,12 +164,12 @@ process_request(Sock, StartNode, MaxLevel) ->
 
 
 process_stats(Sock, Node, MaxLevel) ->
-    exit({todo, ?LINE}),
 %%     IsVerbose = not mio_logger:is_verbose(),
 %%     mio_logger:set_verbose(IsVerbose),
 %%    io:format("logger verbose = ~p~n", [IsVerbose]),
-    {Key, Value} = mio_node:stats_op(Node, MaxLevel),
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [Key, Value])).
+%%    {Key, Value} = mio_node:stats_op(Node, MaxLevel),
+    mio_skip_graph:dump_op(Node),
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
 
 
 process_delete(Sock, StartNode, Key) ->
