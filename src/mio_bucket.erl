@@ -459,7 +459,7 @@ make_c_o_c(State, Left, Right) ->
     %% link on Level >= 1
 ?debugHere,
     link_on_level_ge1(EmptyBucket, State),
-?debugHere.    
+?debugHere.
 
 insert_c_o_l_overflow(State, Left, Right) ->
     {LargeKey, LargeValue} = take_largest_op(Left),
@@ -503,12 +503,12 @@ insert_alone_full(State, Self) ->
     link_left_op(EmptyBucket, 0, Self),
     gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
-    %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
-
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
-    set_range_op(EmptyBucket, {EmptyMinKey, false}, {EmptyMaxKey, State#node.encompass_max}).
+    set_range_op(EmptyBucket, {EmptyMinKey, false}, {EmptyMaxKey, State#node.encompass_max}),
+
+    %% link on Level >= 1
+    link_on_level_ge1(EmptyBucket, State).
 
 prepare_split_c_o_c(State, Left, Middle, Right) ->
     %%  C1-O2$-C3
