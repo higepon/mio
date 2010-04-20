@@ -573,8 +573,12 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 
 
 %% Insertion to the Right causes overflow
+%% Right is already locked.
 split_c_o_c_by_r(State, Left, Middle, Right) ->
+    LockedNodes = lock_or_exit([Left, Middle], ?LINE, []),
     {PrevRight, EmptyBucket} = prepare_split_c_o_c(State, Left, Middle, Right),
+    LockedNodes2 = lock_or_exit([PrevRight], ?LINE, []),
+
 
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
@@ -589,8 +593,12 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0),
+
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State).
+    link_on_level_ge1(EmptyBucket, State),
+
+    unlock(LockedNodes, ?LINE),
+    unlock(LockedNodes2, ?LINE).
 
 %% Skip graphs
 
