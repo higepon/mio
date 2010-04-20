@@ -393,6 +393,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 insert_op_call(From, State, Self, Key, Value)  ->
+    LockedNodes = lock_or_exit([Self], ?LINE, [my_key(State)]),
     InsertState = just_insert_op(Self, Key, Value),
     case {State#node.type, InsertState} of
         {c_o_l, overflow} ->
@@ -433,6 +434,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
 %%             end;
         _ -> []
     end,
+    unlock(LockedNodes, ?LINE),
     gen_server:reply(From, ok).
 
 make_empty_bucket(State, Type) ->
