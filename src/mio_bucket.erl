@@ -463,7 +463,9 @@ make_c_o_c(State, Left, Right) ->
     link_on_level_ge1(EmptyBucket, State),
 ?debugHere.
 
+%% Left is already locked
 insert_c_o_l_overflow(State, Left, Right) ->
+    LockedNodes = lock_or_exit([Right], ?LINE, []),
     {LargeKey, LargeValue} = take_largest_op(Left),
     case just_insert_op(Right, LargeKey, LargeValue) of
         full ->
@@ -475,9 +477,12 @@ insert_c_o_l_overflow(State, Left, Right) ->
             set_max_key_op(Left, NewMaxKey, true),
             set_min_key_op(Right, NewMaxKey, false),
             []
-    end.
+    end,
+    unlock(LockedNodes, ?LINE).
 
+%% Left is already locked
 insert_c_o_c_l_overflow(State, Left, Middle) ->
+    LockedNodes = lock_or_exit([Middle], ?LINE, []),
     {LargeKey, LargeValue} = take_largest_op(Left),
     case just_insert_op(Middle, LargeKey, LargeValue) of
         full ->
@@ -489,7 +494,8 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
             {LeftMax, _} = get_largest_op(Left),
             set_max_key_op(Left, LeftMax, true),
             set_min_key_op(Middle, LeftMax, false)
-    end.
+    end,
+    unlock(LockedNodes, ?LINE).
 
 insert_alone_full(State, Self) ->
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_r),
