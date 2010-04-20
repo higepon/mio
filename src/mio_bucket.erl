@@ -470,15 +470,17 @@ insert_c_o_l_overflow(State, Left, Right) ->
     case just_insert_op(Right, LargeKey, LargeValue) of
         full ->
             %% C1-O2$ -> C1'-O*-C2
-            make_c_o_c(State, Left, Right);
+            make_c_o_c(State, Left, Right),
+            unlock(LockedNodes, ?LINE);
         _ ->
             %% C1-O -> C1'-O'
             {NewMaxKey, _} = get_largest_op(Left),
             set_max_key_op(Left, NewMaxKey, true),
             set_min_key_op(Right, NewMaxKey, false),
+            unlock(LockedNodes, ?LINE),
             []
-    end,
-    unlock(LockedNodes, ?LINE).
+    end.
+
 
 %% Left is already locked
 insert_c_o_c_l_overflow(State, Left, Middle) ->
