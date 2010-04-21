@@ -142,7 +142,7 @@ search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
                     gen_server:reply(From, gen_server:call(LeftNode, {skip_graph_search_op, SearchKey, SearchLevel}));
                SearchKey =:= LeftKey andalso Encompassing ->
                     gen_server:reply(From, LeftNode);
-               SearchKey =:= LeftKey andalso not Encompassing ->
+               SearchLevel =/= 0 andalso SearchKey =:= LeftKey andalso not Encompassing ->
                     gen_server:reply(From, Self);
                SearchLevel =:= 0 ->
                     gen_server:reply(From, Self);
@@ -155,7 +155,6 @@ search_op_to_left(From, State, Self, SearchKey, SearchLevel) ->
 search_op_call(From, State, Self, SearchKey, Level) ->
     SearchLevel = start_level(State, Level),
     {MyKey, Encompassing} = get_key(State),
-%%    io:format("MyKey=~p SearchKey=~p Level=~p~n", [MyKey, SearchKey, Level]),
     if
         %% SearchKey is right side of this node.
         SearchKey > MyKey ->
@@ -184,7 +183,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     end.
 
 dump_op_call(State) ->
-    {Key, _} = get_key(State),
+    Key = get_key(State),
     io:format("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
     lists:foreach(fun(K) ->
                           io:format("    ~p~n", [K])
