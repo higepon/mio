@@ -459,9 +459,7 @@ make_c_o_c(State, Left, Right) ->
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l),
     %% link on Level >= 1
-?debugHere,
-    link_on_level_ge1(EmptyBucket, State),
-?debugHere.
+    link_on_level_ge1(EmptyBucket, State).
 
 %% Left is already locked
 insert_c_o_l_overflow(State, Left, Right) ->
@@ -1336,12 +1334,10 @@ link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
 %%
 link_on_level_ge1(Self, Level, MaxLevel) ->
     {MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
-?debugFmt("MyKey=~p Level=~p", [MyKey, Level]),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
     case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
         not_found ->
-?debugHere,
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
@@ -1351,44 +1347,34 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, BuddyKey, BuddyRight} ->
-?debugFmt("BuddyKey=~p", [BuddyKey]),
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyRight, Level, MaxLevel, left, check_invariant_level_ge1_left),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1);
         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
         {ok, right, Buddy, BuddyKey, BuddyLeft} ->
-?debugHere,
             dynomite_prof:start_prof(link_on_level_ge1),
             do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyLeft, Level, MaxLevel, right, check_invariant_level_ge1_right),
             ?CHECK_SANITY(Self, Level),
-?debugHere,
             dynomite_prof:stop_prof(link_on_level_ge1)
     end.
 
 do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, Direction, CheckInvariantFun) ->
-?debugHere,
     dynomite_prof:start_prof(do_link_level_ge1_lock),
-?debugHere,
     LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
-?debugHere,
     dynomite_prof:stop_prof(do_link_level_ge1_lock),
-?debugHere,
     case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
         retry ->
-?debugHere,
             dynomite_prof:start_prof(do_link_level_ge1_retry),
             unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
             dynomite_prof:stop_prof(do_link_level_ge1_retry),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
-?debugHere,
             gen_server:call(Self, set_inserted_op),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level);
         ok ->
-?debugHere,
 
             case Direction of
                 right ->
@@ -1396,12 +1382,10 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, 
                 left ->
                     link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
             end,
-?debugHere,
             gen_server:call(Self, {set_inserted_op, Level}),
             unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             %% Go up to next Level.
-?debugHere,
             link_on_level_ge1(Self, Level + 1, MaxLevel)
     end.
 
@@ -1416,18 +1400,12 @@ check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
     check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, get_left_op, fun(X, Y) -> X < Y end).
 
 check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
-?debugHere,
     RealBuddyNeighbor = apply(?MODULE, GetNeighborOp, [Buddy, Level]),
-?debugFmt("RealBuddyNeighbor=~p", [RealBuddyNeighbor]),
     {RealBuddyNeighborKey, _} = mio_skip_graph:get_key_op(RealBuddyNeighbor),
 %%    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
-?debugHere,
     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
-?debugHere,
     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
-?debugHere,
     IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
-?debugHere,
     %% Invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
     if
@@ -1437,8 +1415,6 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
         %% retry: another key is inserted
         IsInvalidOrder orelse IsNeighborChanged ->
             %%?INFOF("RETRY: check_invariant_ge1 Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
-            ?debugFmt("RETRY: check_invariant_ge1 Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
-?debugHere,
             retry;
         true->
             IsDeleted =
@@ -1446,7 +1422,6 @@ check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp,
                 orelse
                   (BuddyNeighbor =/= [] andalso gen_server:call(BuddyNeighbor, get_deleted_op)),
             if IsDeleted ->
-?debugHere,
                     ?INFO("RETRY: check_invariant_ge1 Neighbor deleted"),
                     retry;
                true ->
