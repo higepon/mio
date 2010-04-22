@@ -193,7 +193,7 @@ in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-%%    ?debugFmt("State=~p Level=~p~n", [State, Level]),
+%%   ?debugFmt("Right State=~p SearchKey=~p Level=~p~n", [State, SearchKey, Level]),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -210,7 +210,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-%%    ?debugFmt("State=~p Level=~p~n", [State, Level]),
+%%   ?debugFmt("Left State=~p SearchKey=~p Level=~p~n", [State, SearchKey, Level]),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
@@ -232,7 +232,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
-            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso MaxEncompass =< SearchKey) of
+            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
                     gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
                 _ ->
