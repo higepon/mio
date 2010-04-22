@@ -36,17 +36,17 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached2).
 -export([start_link/4]).
--export([memcached/3, process_request/3]).
+-export([memcached/3, process_request/4]).
 -export([get_boot_node/0]).
 
 -include("mio.hrl").
 
-boot_node_loop(BootNode) ->
+boot_node_loop(BootNode, Serializer) ->
     receive
-        {From, get} -> From ! {BootNode};
+        {From, get} -> From ! {BootNode, Serializer};
         _ -> []
     end,
-    boot_node_loop(BootNode).
+    boot_node_loop(BootNode, Serializer).
 
 get_boot_node() ->
     boot_node_loop ! {self(), get},
@@ -55,13 +55,14 @@ get_boot_node() ->
     end.
 
 init_start_node(From, MaxLevel, BootNode) ->
-    {StartNode}
+    {StartNode, ReqSerializer}
         = case BootNode of
               false ->
-                  Capacity = 5,
+                  Capacity = 20,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
-                  register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket) end)),
-                  {Bucket};
+                  {ok, Serializer} = mio_sup:start_serializer(),
+                  register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)),
+                  {Bucket, Serializer};
               _ ->
                   case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
                       {badrpc, Reason} ->
@@ -73,7 +74,7 @@ init_start_node(From, MaxLevel, BootNode) ->
 %%                           {Node, MySerializer}
                   end
           end,
-    From ! {ok, StartNode}.
+    From ! {ok, StartNode, ReqSerializer}.
 
 %% supervisor calls this to create new memcached.
 start_link(Port, MaxLevel, BootNode, Verbose) ->
@@ -89,11 +90,11 @@ memcached(Port, MaxLevel, BootNode) ->
     Self = self(),
     spawn_link(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
     receive
-        {ok, StartNode} ->
+        {ok, StartNode, Serializer} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->
-                    mio_accept(Listen, StartNode, MaxLevel);
+                    mio_accept(Listen, StartNode, MaxLevel, Serializer);
                 {error, eaddrinuse} ->
                     ?FATALF("Port ~p is in use", [Port]);
                 {error, Reason} ->
@@ -102,17 +103,17 @@ memcached(Port, MaxLevel, BootNode) ->
     end.
 
 
-mio_accept(Listen, StartNode, MaxLevel) ->
+mio_accept(Listen, StartNode, MaxLevel, Serializer) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_request, [Sock, StartNode, MaxLevel]),
-            mio_accept(Listen, StartNode, MaxLevel);
+            spawn_link(?MODULE, process_request, [Sock, StartNode, MaxLevel, Serializer]),
+            mio_accept(Listen, StartNode, MaxLevel, Serializer);
         Other ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
 
-process_request(Sock, StartNode, MaxLevel) ->
+process_request(Sock, StartNode, MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
@@ -120,38 +121,38 @@ process_request(Sock, StartNode, MaxLevel) ->
             case Token of
                 ["get", Key] ->
                     process_get(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     ?INFOF("Start set ~p", [self()]),
-                    InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
+                    InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
                     ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
 %%                    erlang:garbage_collect(InsertedNode),
 
                     inet:setopts(Sock,[{packet, line}]),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key] ->
                     process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key, _Time] ->
                     process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key, _Time, _NoReply] ->
                     process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["quit"] ->
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
                     process_stats(Sock, StartNode, MaxLevel),
-                    process_request(Sock, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -253,7 +254,7 @@ process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
 %%     ok = gen_tcp:send(Sock, P).
 
 %% See expiry format definition on process_get
-process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
+process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
 %%             MVector = mio_mvector:generate(MaxLevel),
@@ -266,7 +267,8 @@ process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
 %%                                      ExpireDate + UnixTime
 %%                              end,
 %%             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
-            mio_skip_graph:insert_op(Introducer, Key, Value),
+%%            mio_skip_graph:insert_op(Introducer, Key, Value),
+            gen_server:call(Serializer, {insert_op, Introducer, Key, Value}),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2);
 %%            NodeToInsert;

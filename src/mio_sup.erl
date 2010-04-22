@@ -37,7 +37,7 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, terminate_node/1, make_bucket/3]).
+-export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/3]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -69,6 +69,13 @@ start_write_serializer() ->
                                      {getRandomId(),
                                       {mio_write_serializer, start_link, []},
                                       temporary, brutal_kill, worker, [mio_write_serializer]}).
+
+start_serializer() ->
+    {ok, _} = supervisor:start_child(mio_sup,
+                                     {getRandomId(),
+                                      {mio_serializer, start_link, []},
+                                      temporary, brutal_kill, worker, [mio_serializer]}).
+
 
 terminate_node(TargetPid) ->
     lists:any(fun({Id, Pid, _, _}) ->
