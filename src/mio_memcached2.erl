@@ -58,7 +58,7 @@ init_start_node(From, MaxLevel, BootNode) ->
     {StartNode, ReqSerializer}
         = case BootNode of
               false ->
-                  Capacity = 20,
+                  Capacity = 10000,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
                   {ok, Serializer} = mio_sup:start_serializer(),
                   register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)),
@@ -130,9 +130,9 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
                     process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    ?INFOF("Start set ~p", [self()]),
+%%                    ?INFOF("Start set ~p", [self()]),
                     InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
-                    ?INFOF("End set ~p", [self()]),
+%%                    ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
 %%                    erlang:garbage_collect(InsertedNode),

@@ -10,7 +10,8 @@
 -define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 -define(INFO(Msg), ?INFOF(Msg, [])).
 
--define(MIN_KEY, <<16#20>>).
+%%-define(MIN_KEY, <<16#20>>).
+-define(MIN_KEY, "").
 -define(MAX_KEY, <<16#7F>>).
 
 %% ERROR should be always written to stderr.

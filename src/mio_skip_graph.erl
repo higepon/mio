@@ -117,8 +117,13 @@ insert_op_call(From, Self, Key, Value) ->
 search_op(StartNode, SearchKey) ->
     search_op(StartNode, SearchKey, []).
 search_op(StartNode, SearchKey, StartLevel) ->
+    dynomite_prof:start_prof(search_get),
     Bucket = search_bucket_op(StartNode, SearchKey, StartLevel),
-    mio_bucket:get_op(Bucket, SearchKey).
+    dynomite_prof:stop_prof(search_get),
+    dynomite_prof:start_prof(store_get),
+    Ret = mio_bucket:get_op(Bucket, SearchKey),
+    dynomite_prof:stop_prof(store_get),
+    Ret.
 
 search_bucket_op(StartNode, SearchKey, StartLevel) ->
     gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
@@ -166,12 +171,19 @@ search_to_left(From, State, Self, SearchKey, Level) ->
     end.
 
 search_op_call(From, State, Self, SearchKey, Level) ->
+    dynomite_prof:start_prof(in_range),
+    dynomite_prof:start_prof(in_range2),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+%%     io:format("SearchKey=~p, Min=~p, MinEncompass=~p, Max=~p, MaxEncompass=~p ~p ~p~n", [SearchKey, Min, MinEncompass, Max, MaxEncompass, in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass),
+%%                                                                                        [(MinEncompass andalso Min =< SearchKey), (not MinEncompass andalso Min < SearchKey), (MaxEncompass andalso SearchKey =< Max) , (not MaxEncompass andalso SearchKey < Max)]
+%% ]),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
+            dynomite_prof:stop_prof(in_range),
             gen_server:reply(From, Self);
         _ ->
+            dynomite_prof:stop_prof(in_range2),
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
