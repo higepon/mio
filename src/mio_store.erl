@@ -36,7 +36,8 @@
 %%%-------------------------------------------------------------------
 -module(mio_store).
 
--record(store, {capacity, tree, tree2, tree3, tree4}).
+-record(store, {capacity, ets}).
+-include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
@@ -51,14 +52,19 @@
 %% Description: make a store
 %%--------------------------------------------------------------------
 new(Capacity) ->
-    #store{capacity=Capacity, tree=gb_trees:empty()}.
+    Ets = ets:new(store, [private, ordered_set]),
+    #store{capacity=Capacity, ets=Ets}.
 
 %%--------------------------------------------------------------------
 %% Function: keys/1
 %% Description: returns list of keys.
 %%--------------------------------------------------------------------
 keys(Store) ->
-    gb_trees:keys(Store#store.tree).
+    ets:foldl(fun(E, Accum) ->
+                      [E | Accum]
+              end,
+              [],
+              Store#store.ets).
 
 %%--------------------------------------------------------------------
 %% Function: set/3
@@ -67,16 +73,20 @@ keys(Store) ->
 set(Key, Value, Store) ->
     case is_full(Store) of
         true ->
-            New = gb_trees:enter(Key, Value, Store#store.tree),
-            {overflow, Store#store{tree=New, tree2=New, tree3=New, tree4=New}};
-        _ ->
-            New2 = gb_trees:enter(Key, Value, Store#store.tree),
-            NewStore = Store#store{tree=New2, tree2=New2, tree3=New2, tree4=New2},
-            case is_full(NewStore) of
+            case ets:insert_new(Store#store.ets, {Key, Value}) of
+                false ->
+                    ets:insert(Store#store.ets, {Key, Value}),
+                    {full, Store};
                 true ->
-                    {full, NewStore};
+                    {overflow, Store}
+            end;
+        _ ->
+            ets:insert(Store#store.ets, {Key, Value}),
+            case is_full(Store) of
+                true ->
+                    {full, Store};
                 _ ->
-                    NewStore
+                    Store
             end
     end.
 
@@ -85,10 +95,10 @@ set(Key, Value, Store) ->
 %% Description: get value by key
 %%--------------------------------------------------------------------
 get(Key, Store) ->
-    case gb_trees:lookup(Key, Store#store.tree) of
-        none ->
+    case ets:lookup(Store#store.ets, Key) of
+        [] ->
             {error, not_found};
-        {value, Value} ->
+        [{Key, Value}] ->
             {ok, Value}
     end.
 
@@ -97,12 +107,17 @@ get(Key, Store) ->
 %% Description: get value by smallest key and remove it.
 %%--------------------------------------------------------------------
 take_smallest(Store) ->
-    case gb_trees:size(Store#store.tree) of
-        0 ->
+    case ets:first(Store#store.ets) of
+        '$end_of_table' ->
             none;
-        _ ->
-            {Key, Value, NewTree} = gb_trees:take_smallest(Store#store.tree),
-            {Key, Value, Store#store{tree=NewTree}}
+        Key ->
+            case ets:lookup(Store#store.ets, Key) of
+                [] ->
+                    none;
+                [{Key, Value}] ->
+                    true = ets:delete(Store#store.ets, Key),
+                    {Key, Value, Store}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -110,12 +125,17 @@ take_smallest(Store) ->
 %% Description: get value by largest key and remove it.
 %%--------------------------------------------------------------------
 take_largest(Store) ->
-    case gb_trees:size(Store#store.tree) of
-        0 ->
+    case ets:last(Store#store.ets) of
+        '$end_of_table' ->
             none;
-        _ ->
-            {Key, Value, NewTree} = gb_trees:take_largest(Store#store.tree),
-            {Key, Value, Store#store{tree=NewTree}}
+        Key ->
+            case ets:lookup(Store#store.ets, Key) of
+                [] ->
+                    none;
+                [{Key, Value}] ->
+                    true = ets:delete(Store#store.ets, Key),
+                    {Key, Value, Store}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -123,11 +143,16 @@ take_largest(Store) ->
 %% Description: get value by largest key.
 %%--------------------------------------------------------------------
 largest(Store) ->
-    case gb_trees:size(Store#store.tree) of
-        0 ->
+    case ets:last(Store#store.ets) of
+        '$end_of_table' ->
             none;
-        _ ->
-            gb_trees:largest(Store#store.tree)
+        Key ->
+            case ets:lookup(Store#store.ets, Key) of
+                [] ->
+                    none;
+                [{Key, Value}] ->
+                    {Key, Value}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -135,11 +160,16 @@ largest(Store) ->
 %% Description: get value by smallest key.
 %%--------------------------------------------------------------------
 smallest(Store) ->
-    case gb_trees:size(Store#store.tree) of
-        0 ->
+    case ets:first(Store#store.ets) of
+        '$end_of_table' ->
             none;
-        _ ->
-            gb_trees:smallest(Store#store.tree)
+        Key ->
+            case ets:lookup(Store#store.ets, Key) of
+                [] ->
+                    none;
+                [{Key, Value}] ->
+                    {Key, Value}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -147,14 +177,15 @@ smallest(Store) ->
 %% Description: remove value by key
 %%--------------------------------------------------------------------
 remove(Key, Store) ->
-    Store#store{tree=gb_trees:delete_any(Key, Store#store.tree)}.
+    true = ets:delete(Store#store.ets, Key),
+    Store.
 
 %%--------------------------------------------------------------------
 %% Function: is_full/1
 %% Description: returns is store full?
 %%--------------------------------------------------------------------
 is_full(Store) ->
-    Store#store.capacity =:= gb_trees:size(Store#store.tree).
+    Store#store.capacity =:= ets:info(Store#store.ets, size).
 
 %%--------------------------------------------------------------------
 %% Function: capacity
@@ -168,7 +199,7 @@ capacity(Store) ->
 %% Description: returns store is empty
 %%--------------------------------------------------------------------
 is_empty(Store) ->
-    0 =:= gb_trees:size(Store#store.tree).
+    0 =:= ets:info(Store#store.ets, size).
 
 %%====================================================================
 %% Internal functions

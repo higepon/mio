@@ -13,7 +13,6 @@ basic_test() ->
     B1 = mio_store:set(key_b, value_b, B),
     B2 = mio_store:set(key_a, value_a, B1),
     {full, B3} = mio_store:set(key_c, value_c, B2),
-
     {ok, value_a} = mio_store:get(key_a, B3),
     {ok, value_b} = mio_store:get(key_b, B3),
     {ok, value_c} = mio_store:get(key_c, B3).
@@ -77,4 +76,3 @@ take_largest_test() ->
 
     B5 = mio_store:new(3),
     none = mio_store:take_largest(B5).
-
