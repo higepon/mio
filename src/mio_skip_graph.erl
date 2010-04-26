@@ -174,9 +174,6 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     dynomite_prof:start_prof(in_range),
     dynomite_prof:start_prof(in_range2),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
-%%     io:format("SearchKey=~p, Min=~p, MinEncompass=~p, Max=~p, MaxEncompass=~p ~p ~p~n", [SearchKey, Min, MinEncompass, Max, MaxEncompass, in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass),
-%%                                                                                        [(MinEncompass andalso Min =< SearchKey), (not MinEncompass andalso Min < SearchKey), (MaxEncompass andalso SearchKey =< Max) , (not MaxEncompass andalso SearchKey < Max)]
-%% ]),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->

@@ -36,7 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_store).
 
--record(store, {capacity, tree}).
+-record(store, {capacity, tree, tree2, tree3, tree4}).
 
 %% API
 -export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
@@ -67,9 +67,11 @@ keys(Store) ->
 set(Key, Value, Store) ->
     case is_full(Store) of
         true ->
-            {overflow, Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)}};
+            New = gb_trees:enter(Key, Value, Store#store.tree),
+            {overflow, Store#store{tree=New, tree2=New, tree3=New, tree4=New}};
         _ ->
-            NewStore = Store#store{tree=gb_trees:enter(Key, Value, Store#store.tree)},
+            New2 = gb_trees:enter(Key, Value, Store#store.tree),
+            NewStore = Store#store{tree=New2, tree2=New2, tree3=New2, tree4=New2},
             case is_full(NewStore) of
                 true ->
                     {full, NewStore};
