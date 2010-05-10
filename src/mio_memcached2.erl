@@ -58,7 +58,7 @@ init_start_node(From, MaxLevel, BootNode) ->
     {StartNode, ReqSerializer}
         = case BootNode of
               false ->
-                  Capacity = 10000,
+                  Capacity = 1000,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
                   {ok, Serializer} = mio_sup:start_serializer(),
                   register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)),
