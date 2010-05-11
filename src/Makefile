@@ -11,7 +11,7 @@ ERL_COMPILE_FLAGS += \
 	+debug_info +bin_opt_info  +native +"{hipe, [o3]}"
 	#+'{parse_transform, smart_exceptions}' ## should be commented out on release
 
-SOURCES = mio_memcached2 mio_sup mio_node mio_mvector mio_memcached_compat mio_app mio_memcached mio_write_serializer merle2 gen_server2 mio_lock mio_util mio_cover mio_control logger disk_log_h
+SOURCES = mio_memcached2 mio_bootstrap mio_sup mio_node mio_mvector mio_memcached_compat mio_app mio_memcached mio_write_serializer merle2 gen_server2 mio_lock mio_util mio_cover mio_control logger disk_log_h
 
 MODS = ${SOURCES:%=$(EBIN)/%.$(EMULATOR)} $(APP_TARGET)
 
