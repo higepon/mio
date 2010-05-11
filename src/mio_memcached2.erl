@@ -61,19 +61,30 @@ init_start_node(From, MaxLevel, BootNode) ->
                   Capacity = 1000,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
                   {ok, Serializer} = mio_sup:start_serializer(),
-                  case register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)) of
-                      true -> true;
-                      Other ->
-                          throw({"init_start_node failed on register ~p~n", Other})
+                  case mio_sup:start_bootstrap(Bucket, Serializer) of
+                      {ok, _BootStrap} -> ok;
+                      Reason ->
+                          throw({"start_bootstrap can't start: Reason", Reason})
                   end,
+%%                   case register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)) of
+%%                       true -> true;
+%%                       Other ->
+%%                           throw({"init_start_node failed on register ~p~n", Other})
+%%                   end,
                   {Bucket, Serializer};
               _ ->
-                  case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
-                      {badrpc, Reason} ->
-                          throw({"Can't start, introducer node not found", {badrpc, Reason}});
-                      {Bucket, MySerializer} ->
-                          {Bucket, MySerializer}
+                  case mio_bootstrap:get_boot_info(BootNode) of
+                      {ok, BootBucket, Serializer} ->
+                          {BootBucket, Serializer};
+                      Other ->
+                          throw({"Can't start, introducer node not found", Other})
                   end
+%%                   case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
+%%                       {badrpc, Reason} ->
+%%                           throw({"Can't start, introducer node not found", {badrpc, Reason}});
+%%                       {Bucket, MySerializer} ->
+%%                           {Bucket, MySerializer}
+%%                   end
           end,
     From ! {ok, StartNode, ReqSerializer}.
 

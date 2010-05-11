@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, get_boot_info/0]).
+-export([start_link/2, get_boot_info/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,10 +26,10 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(BootBucket, Serializer) ->
-    gen_server:start_link({global, ?SERVER}, ?MODULE, [BootBucket, Serializer], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [BootBucket, Serializer], []).
 
-get_boot_info() ->
-    gen_server:call(?SERVER, get_boot_info).
+get_boot_info(Node) ->
+    gen_server:call({?SERVER, Node}, get_boot_info).
 
 %%====================================================================
 %% gen_server callbacks
@@ -55,11 +55,7 @@ init([BootBucket, Serializer]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(get_boot_info, _From, State) ->
-    Reply = {State#state.boot_bucket, State#state.serializer},
-    {reply, Reply, State};
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
+    Reply = {ok, State#state.boot_bucket, State#state.serializer},
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------

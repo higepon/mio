@@ -37,13 +37,18 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/3]).
+-export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/3, start_bootstrap/2]).
 -include("mio.hrl").
 
 %% supervisor:
 %%   On start up, supervisor starts mio_memcached.
 %%   mio_memcached starts a dummy node using mio_sup:start_node.
 %%   Whenever new node is to create, mio_sup:start_nodes is used.
+
+start_bootstrap(BootBucket, Serializer) ->
+    {ok, _} = supervisor:start_child(mio_sup, {mio_bootstrap,
+                                               {mio_bootstrap, start_link, [BootBucket, Serializer]},
+                                               temporary, brutal_kill, worker, [mio_bootstrap]}).
 
 %% start normal mio_node
 start_node(Key, Value, MembershipVector) ->
