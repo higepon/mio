@@ -49,9 +49,9 @@ boot_node_loop(BootNode, Serializer) ->
     boot_node_loop(BootNode, Serializer).
 
 get_boot_node() ->
-    boot_node_loop ! {self(), get},
+    boot_node_loop2 ! {self(), get},
     receive
-        {BootNode} -> {BootNode}
+        {BootNode, Serializer} -> {BootNode, Serializer}
     end.
 
 init_start_node(From, MaxLevel, BootNode) ->
@@ -61,17 +61,18 @@ init_start_node(From, MaxLevel, BootNode) ->
                   Capacity = 1000,
                   {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
                   {ok, Serializer} = mio_sup:start_serializer(),
-                  register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)),
+                  case register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)) of
+                      true -> true;
+                      Other ->
+                          throw({"init_start_node failed on register ~p~n", Other})
+                  end,
                   {Bucket, Serializer};
               _ ->
                   case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
                       {badrpc, Reason} ->
-                          throw({"Can't start, introducer node not found", {badrpc, Reason}})
-%% todo
-%%                       {Introducer, MySerializer} ->
-%%                           {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
-%%                           mio_node:insert_op(Introducer, Node),
-%%                           {Node, MySerializer}
+                          throw({"Can't start, introducer node not found", {badrpc, Reason}});
+                      {Bucket, MySerializer} ->
+                          {Bucket, MySerializer}
                   end
           end,
     From ! {ok, StartNode, ReqSerializer}.
@@ -120,6 +121,7 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
 %%            ?INFO(Token),
             case Token of
                 ["get", Key] ->
+                    io:format("get~n"),
                     process_get(Sock, StartNode, Key),
                     process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
