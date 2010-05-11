@@ -46,6 +46,10 @@ init_start_node(MaxLevel, BootNode) ->
             Capacity = 1000,
             {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
             {ok, Serializer} = mio_sup:start_serializer(),
+
+            %% N.B.
+            %%   For now, bootstrap server is SPOF.
+            %%   This should be replaced with Mnesia(ram_copy).
             case mio_sup:start_bootstrap(Bucket, Serializer) of
                 {ok, _BootStrap} ->
                     ok;
