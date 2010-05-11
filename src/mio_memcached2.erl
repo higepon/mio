@@ -50,7 +50,7 @@ init_start_node(MaxLevel, BootNode) ->
                 {ok, _BootStrap} ->
                     ok;
                 Reason ->
-                    throw({"start_bootstrap can't start: Reason", Reason})
+                    throw({"Can't start start_bootstrap : Reason", Reason})
             end,
             {Bucket, Serializer};
         _ ->
@@ -73,18 +73,20 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %% Internal functions
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
-    {BootBucket, Serializer} = init_start_node(MaxLevel, BootNode),
-
-    %% backlog value is same as on memcached
-    case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
-        {ok, Listen} ->
-            mio_accept(Listen, BootBucket, MaxLevel, Serializer);
-        {error, eaddrinuse} ->
-            ?FATALF("Port ~p is in use", [Port]);
-        {error, Reason} ->
-            ?FATALF("Can't start memcached compatible server : ~p", [Reason])
+    try init_start_node(MaxLevel, BootNode) of
+        {BootBucket, Serializer} ->
+            %% backlog value is same as on memcached
+            case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
+                {ok, Listen} ->
+                    mio_accept(Listen, BootBucket, MaxLevel, Serializer);
+                {error, eaddrinuse} ->
+                    ?FATALF("Port ~p is in use", [Port]);
+                {error, Reason} ->
+                    ?FATALF("Can't start memcached compatible server : ~p", [Reason])
+            end
+    catch
+         throw:Reason -> ?FATALF("~p", [Reason])
     end.
-
 
 mio_accept(Listen, StartNode, MaxLevel, Serializer) ->
     case gen_tcp:accept(Listen) of
