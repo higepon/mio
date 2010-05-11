@@ -37,56 +37,30 @@
 -module(mio_memcached2).
 -export([start_link/4]).
 -export([memcached/3, process_request/4]).
--export([get_boot_node/0]).
 
 -include("mio.hrl").
 
-boot_node_loop(BootNode, Serializer) ->
-    receive
-        {From, get} -> From ! {BootNode, Serializer};
-        _ -> []
-    end,
-    boot_node_loop(BootNode, Serializer).
-
-get_boot_node() ->
-    boot_node_loop2 ! {self(), get},
-    receive
-        {BootNode, Serializer} -> {BootNode, Serializer}
+init_start_node(MaxLevel, BootNode) ->
+    case BootNode of
+        false ->
+            Capacity = 1000,
+            {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
+            {ok, Serializer} = mio_sup:start_serializer(),
+            case mio_sup:start_bootstrap(Bucket, Serializer) of
+                {ok, _BootStrap} ->
+                    ok;
+                Reason ->
+                    throw({"start_bootstrap can't start: Reason", Reason})
+            end,
+            {Bucket, Serializer};
+        _ ->
+            case mio_bootstrap:get_boot_info(BootNode) of
+                {ok, BootBucket, Serializer} ->
+                    {BootBucket, Serializer};
+                Other ->
+                    throw({"Can't start, introducer node not found", Other})
+            end
     end.
-
-init_start_node(From, MaxLevel, BootNode) ->
-    {StartNode, ReqSerializer}
-        = case BootNode of
-              false ->
-                  Capacity = 1000,
-                  {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
-                  {ok, Serializer} = mio_sup:start_serializer(),
-                  case mio_sup:start_bootstrap(Bucket, Serializer) of
-                      {ok, _BootStrap} -> ok;
-                      Reason ->
-                          throw({"start_bootstrap can't start: Reason", Reason})
-                  end,
-%%                   case register(boot_node_loop2, spawn_link(fun() ->  boot_node_loop(Bucket, Serializer) end)) of
-%%                       true -> true;
-%%                       Other ->
-%%                           throw({"init_start_node failed on register ~p~n", Other})
-%%                   end,
-                  {Bucket, Serializer};
-              _ ->
-                  case mio_bootstrap:get_boot_info(BootNode) of
-                      {ok, BootBucket, Serializer} ->
-                          {BootBucket, Serializer};
-                      Other ->
-                          throw({"Can't start, introducer node not found", Other})
-                  end
-%%                   case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
-%%                       {badrpc, Reason} ->
-%%                           throw({"Can't start, introducer node not found", {badrpc, Reason}});
-%%                       {Bucket, MySerializer} ->
-%%                           {Bucket, MySerializer}
-%%                   end
-          end,
-    From ! {ok, StartNode, ReqSerializer}.
 
 %% supervisor calls this to create new memcached.
 start_link(Port, MaxLevel, BootNode, Verbose) ->
@@ -99,19 +73,16 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %% Internal functions
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
-    Self = self(),
-    spawn_link(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
-    receive
-        {ok, StartNode, Serializer} ->
-            %% backlog value is same as on memcached
-            case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
-                {ok, Listen} ->
-                    mio_accept(Listen, StartNode, MaxLevel, Serializer);
-                {error, eaddrinuse} ->
-                    ?FATALF("Port ~p is in use", [Port]);
-                {error, Reason} ->
-                    ?FATALF("Can't start memcached compatible server : ~p", [Reason])
-            end
+    {BootBucket, Serializer} = init_start_node(MaxLevel, BootNode),
+
+    %% backlog value is same as on memcached
+    case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
+        {ok, Listen} ->
+            mio_accept(Listen, BootBucket, MaxLevel, Serializer);
+        {error, eaddrinuse} ->
+            ?FATALF("Port ~p is in use", [Port]);
+        {error, Reason} ->
+            ?FATALF("Can't start memcached compatible server : ~p", [Reason])
     end.
 
 
