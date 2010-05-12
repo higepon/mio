@@ -1187,7 +1187,7 @@ make_c_O_c(MakeC_O_C_Fun) ->
 %% C [key1, key2, key3]
 %% O []
 make_c_o_different_mv() ->
-    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
+    {ok, Bucket} = mio_sup:make_bucket([], 3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [0, 1] end),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
     ok = mio_bucket:insert_op(Bucket, "key2", value2),
@@ -1196,7 +1196,7 @@ make_c_o_different_mv() ->
     {Bucket, RightBucket}.
 
 make_c_o_same_mv() ->
-    {ok, Bucket} = mio_sup:make_bucket(3, alone, [1, 1]),
+    {ok, Bucket} = mio_sup:make_bucket([], 3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
     ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
     ok = mio_bucket:insert_op(Bucket, "key2", value2),
@@ -1209,4 +1209,5 @@ make_c_o_same_mv() ->
 make_bucket(Type) ->
     Capacity = 3,
     MaxLevel = 3,
-    mio_sup:make_bucket(Capacity, Type, MaxLevel).
+    Allocator = [],
+    mio_sup:make_bucket(Allocator, Capacity, Type, MaxLevel).

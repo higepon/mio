@@ -667,4 +667,5 @@ check_range(Bucket, ExpectedMin, ExpectedMax) ->
 make_bucket(Type) ->
     Capacity = 3,
     MaxLevel = 3,
-    mio_sup:make_bucket(Capacity, Type, MaxLevel).
+    Allocator = [],
+    mio_sup:make_bucket(Allocator, Capacity, Type, MaxLevel).

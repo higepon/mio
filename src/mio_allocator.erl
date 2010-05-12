@@ -38,7 +38,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_node/2]).
+-export([start_link/0, add_node/2, allocate_bucket/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -58,6 +58,9 @@ start_link() ->
 
 add_node(Allocator, Node) ->
     gen_server:call(Allocator, {add_node, Node}).
+
+allocate_bucket(Allocator, Capacity, Type, MaxLevel) ->
+    gen_server:call(Allocator, {allocate_bucket, Capacity, Type, MaxLevel}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -83,7 +86,12 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({add_node, Node}, _From, State) ->
-    {reply, ok, State#state{supervisors=[Node, State#state.supervisors]}}.
+    {reply, ok, State#state{supervisors=[Node, State#state.supervisors]}};
+
+handle_call({allocate_bucket, Capacity, Type, MaxLevel}, _From, State) ->
+    [Supervisor | _] = State#state.supervisors,
+    Bucket = Supervisor:make_bucket(self(), Capacity, Type, MaxLevel),
+    {reply, Bucket, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |

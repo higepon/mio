@@ -321,7 +321,7 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Capacity, Type, MembershipVector]) ->
+init([Allocator, Capacity, Type, MembershipVector]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     Insereted = case Type of
@@ -344,7 +344,8 @@ init([Capacity, Type, MembershipVector]) ->
                 expire_time=0,
                 inserted=Insereted,
                 deleted=false,
-                gen_mvector=fun mio_mvector:generate/1
+                gen_mvector=fun mio_mvector:generate/1,
+                allocator=Allocator
                }}.
 
 
@@ -439,7 +440,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
 
 make_empty_bucket(State, Type) ->
     MaxLevel = length(State#node.membership_vector),
-    mio_sup:make_bucket(mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel])).
+    mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel])).
 
 make_c_o_c(State, Left, Right) ->
     {EmptyBucketMinKey, _} = get_largest_op(Left),
