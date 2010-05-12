@@ -47,21 +47,23 @@ init_start_node(MaxLevel, BootNode) ->
             {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
             {ok, Serializer} = mio_sup:start_serializer(),
             {ok, Allocator} = mio_sup:start_allocator(),
+            Supervisor = whereis(mio_sup),
+            ok = mio_allocator:add_node(Allocator, Supervisor),
 
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
-            case mio_sup:start_bootstrap(Bucket, Serializer) of
+            case mio_sup:start_bootstrap(Bucket, Allocator, Serializer) of
                 {ok, _BootStrap} ->
                     ok;
                 Reason ->
                     throw({"Can't start start_bootstrap : Reason", Reason})
             end,
-            {Bucket, Serializer};
+            {Bucket, Allocator, Serializer};
         _ ->
             case mio_bootstrap:get_boot_info(BootNode) of
-                {ok, BootBucket, Serializer} ->
-                    {BootBucket, Serializer};
+                {ok, BootBucket, Allocator, Serializer} ->
+                    {BootBucket, Allocator, Serializer};
                 Other ->
                     throw({"Can't start, introducer node not found", Other})
             end
@@ -79,7 +81,7 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
     try init_start_node(MaxLevel, BootNode) of
-        {BootBucket, Serializer} ->
+        {BootBucket, Allocator, Serializer} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->

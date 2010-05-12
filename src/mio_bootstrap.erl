@@ -39,13 +39,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, get_boot_info/1]).
+-export([start_link/3, get_boot_info/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {boot_bucket, serializer}).
+-record(state, {boot_bucket, allocator, serializer}).
 
 %%====================================================================
 %% API
@@ -54,8 +54,8 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(BootBucket, Serializer) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [BootBucket, Serializer], []).
+start_link(BootBucket, Allocator, Serializer) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [BootBucket, Allocator, Serializer], []).
 
 get_boot_info(Node) ->
     gen_server:call({?SERVER, Node}, get_boot_info).
@@ -71,8 +71,8 @@ get_boot_info(Node) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([BootBucket, Serializer]) ->
-    {ok, #state{boot_bucket=BootBucket, serializer=Serializer}}.
+init([BootBucket, Allocator, Serializer]) ->
+    {ok, #state{boot_bucket=BootBucket, allocator=Allocator, serializer=Serializer}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -84,7 +84,7 @@ init([BootBucket, Serializer]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(get_boot_info, _From, State) ->
-    Reply = {ok, State#state.boot_bucket, State#state.serializer},
+    Reply = {ok, State#state.boot_bucket, State#state.allocator, State#state.serializer},
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
