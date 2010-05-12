@@ -440,7 +440,13 @@ insert_op_call(From, State, Self, Key, Value)  ->
 
 make_empty_bucket(State, Type) ->
     MaxLevel = length(State#node.membership_vector),
-    mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel])).
+    case State#node.allocator of
+        [] ->
+            mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel]));
+        _Allocator ->
+            %% Here
+            mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel]))
+    end.
 
 make_c_o_c(State, Left, Right) ->
     {EmptyBucketMinKey, _} = get_largest_op(Left),
