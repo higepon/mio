@@ -443,9 +443,8 @@ make_empty_bucket(State, Type) ->
     case State#node.allocator of
         [] ->
             mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel]));
-        _Allocator ->
-            %% Here
-            mio_sup:make_bucket([], mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel]))
+        Allocator ->
+            mio_allocator:allocate_bucket(Allocator, mio_store:capacity(State#node.store), Type, apply(State#node.gen_mvector, [MaxLevel]))
     end.
 
 make_c_o_c(State, Left, Right) ->

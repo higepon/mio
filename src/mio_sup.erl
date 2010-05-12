@@ -37,7 +37,7 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/4, start_bootstrap/3, start_allocator/0]).
+-export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -65,14 +65,18 @@ start_node(Key, Value, MembershipVector, Expire) ->
                                                {mio_node, start_link, [[Key, Value, MembershipVector, Expire]]},
                                                temporary, brutal_kill, worker, [mio_node]}).
 
+
 make_bucket(Allocator, Capacity, Type, MaxLevel) when is_integer(MaxLevel) ->
     make_bucket(Allocator, Capacity, Type, mio_mvector:generate(MaxLevel));
 
 %% You can set MembershipVector for testablity.
 make_bucket(Allocator, Capacity, Type, MembershipVector) ->
-    {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
-                                               {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
-                                               temporary, brutal_kill, worker, [mio_bucket]}).
+    make_bucket(mio_sup, Allocator, Capacity, Type, MembershipVector).
+make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
+    io:format("allocated on ~p~n", [node()]),
+    {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
+                                                  {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
+                                                  temporary, brutal_kill, worker, [mio_bucket]}).
 
 
 start_write_serializer() ->

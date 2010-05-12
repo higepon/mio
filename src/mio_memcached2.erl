@@ -47,6 +47,7 @@ init_start_node(MaxLevel, BootNode) ->
             {ok, Serializer} = mio_sup:start_serializer(),
             {ok, Allocator} = mio_sup:start_allocator(),
             Supervisor = whereis(mio_sup),
+            io:format("first ~p~n", [Supervisor]),
             ok = mio_allocator:add_node(Allocator, Supervisor),
 
             {ok, Bucket} = mio_sup:make_bucket(Allocator, Capacity, alone, MaxLevel),
@@ -64,6 +65,9 @@ init_start_node(MaxLevel, BootNode) ->
         _ ->
             case mio_bootstrap:get_boot_info(BootNode) of
                 {ok, BootBucket, Allocator, Serializer} ->
+                    Supervisor = whereis(mio_sup),
+                    io:format("2nd ~p~n", [Supervisor]),
+                    ok = mio_allocator:add_node(Allocator, Supervisor),
                     {BootBucket, Allocator, Serializer};
                 Other ->
                     throw({"Can't start, introducer node not found", Other})

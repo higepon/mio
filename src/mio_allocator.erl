@@ -86,12 +86,14 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({add_node, Node}, _From, State) ->
-    {reply, ok, State#state{supervisors=[Node, State#state.supervisors]}};
+    {reply, ok, State#state{supervisors=[Node | State#state.supervisors]}};
 
+%% allocate bucket on one node.
 handle_call({allocate_bucket, Capacity, Type, MaxLevel}, _From, State) ->
-    [Supervisor | _] = State#state.supervisors,
-    Bucket = Supervisor:make_bucket(self(), Capacity, Type, MaxLevel),
-    {reply, Bucket, State}.
+    [Supervisor | More] = State#state.supervisors,
+    Bucket = mio_sup:make_bucket(Supervisor, self(), Capacity, Type, MaxLevel),
+    %% round-robin
+    {reply, Bucket, State#state{supervisors=lists:append(More, [Supervisor])}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
