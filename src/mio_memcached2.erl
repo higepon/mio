@@ -46,6 +46,7 @@ init_start_node(MaxLevel, BootNode) ->
             Capacity = 1000,
             {ok, Bucket} = mio_sup:make_bucket(Capacity, alone, MaxLevel),
             {ok, Serializer} = mio_sup:start_serializer(),
+            {ok, Allocator} = mio_sup:start_allocator(),
 
             %% N.B.
             %%   For now, bootstrap server is SPOF.

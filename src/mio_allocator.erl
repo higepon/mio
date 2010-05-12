@@ -26,26 +26,25 @@
 %%    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 %%    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 %%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 %%%-------------------------------------------------------------------
-%%% File    : mio_bootstrap.erl
+%%% File    : mio_allocator.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
-%%% Description : bootstrap server
+%%% Description : 
 %%%
-%%% Created : 11 May 2010 by higepon <higepon@labs.cybozu.co.jp>
+%%% Created : 12 May 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_bootstrap).
+-module(mio_allocator).
 -include("mio.hrl").
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, get_boot_info/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {boot_bucket, serializer}).
+-record(state, {supervisors}).
 
 %%====================================================================
 %% API
@@ -54,11 +53,8 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(BootBucket, Serializer) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [BootBucket, Serializer], []).
-
-get_boot_info(Node) ->
-    gen_server:call({?SERVER, Node}, get_boot_info).
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -71,8 +67,8 @@ get_boot_info(Node) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([BootBucket, Serializer]) ->
-    {ok, #state{boot_bucket=BootBucket, serializer=Serializer}}.
+init([]) ->
+    {ok, #state{supervisors=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -83,8 +79,8 @@ init([BootBucket, Serializer]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call(get_boot_info, _From, State) ->
-    Reply = {ok, State#state.boot_bucket, State#state.serializer},
+handle_call(_Request, _From, State) ->
+    Reply = ok,
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------

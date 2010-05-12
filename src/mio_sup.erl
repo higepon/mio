@@ -37,7 +37,7 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/3, start_bootstrap/2]).
+-export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/3, start_bootstrap/2, start_allocator/0]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -49,6 +49,12 @@ start_bootstrap(BootBucket, Serializer) ->
     {ok, _} = supervisor:start_child(mio_sup, {mio_bootstrap,
                                                {mio_bootstrap, start_link, [BootBucket, Serializer]},
                                                temporary, brutal_kill, worker, [mio_bootstrap]}).
+
+start_allocator() ->
+    {ok, _} = supervisor:start_child(mio_sup, {mio_allocator,
+                                               {mio_allocator, start_link, []},
+                                               temporary, brutal_kill, worker, [mio_allocator]}).
+
 
 %% start normal mio_node
 start_node(Key, Value, MembershipVector) ->
