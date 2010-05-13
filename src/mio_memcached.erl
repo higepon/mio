@@ -41,6 +41,7 @@
 -include("mio.hrl").
 
 init_start_node(MaxLevel, BootNode) ->
+    StartBucketEts = ets:new(store, [public, ordered_set]),
     case BootNode of
         %% Bootstrap
         false ->
@@ -51,7 +52,7 @@ init_start_node(MaxLevel, BootNode) ->
             ok = mio_allocator:add_node(Allocator, Supervisor),
 
             {ok, Bucket} = mio_sup:make_bucket(Allocator, Capacity, alone, MaxLevel),
-
+            ets:insert(StartBucketEts, {start_bucket, Bucket}),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
@@ -61,14 +62,15 @@ init_start_node(MaxLevel, BootNode) ->
                 Reason ->
                     throw({"Can't start start_bootstrap : Reason", Reason})
             end,
-            {Bucket, Serializer};
+            {StartBucketEts, Serializer};
         %% Introducer bootnode exists
         _ ->
             case mio_bootstrap:get_boot_info(BootNode) of
                 {ok, BootBucket, Allocator, Serializer} ->
                     Supervisor = whereis(mio_sup),
                     ok = mio_allocator:add_node(Allocator, Supervisor),
-                    {BootBucket, Serializer};
+                    ets:insert(StartBucketEts, {start_bucket, BootBucket}),
+                    {StartBucketEts, Serializer};
                 Other ->
                     throw({"Can't start, introducer node not found", Other})
             end
@@ -100,17 +102,18 @@ memcached(Port, MaxLevel, BootNode) ->
          throw:Reason -> ?FATALF("~p", [Reason])
     end.
 
-mio_accept(Listen, StartNode, MaxLevel, Serializer) ->
+mio_accept(Listen, StartBucketEts, MaxLevel, Serializer) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_request, [Sock, StartNode, MaxLevel, Serializer]),
-            mio_accept(Listen, StartNode, MaxLevel, Serializer);
+            spawn_link(?MODULE, process_request, [Sock, StartBucketEts, MaxLevel, Serializer]),
+            mio_accept(Listen, StartBucketEts, MaxLevel, Serializer);
         Other ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
 
-process_request(Sock, StartNode, MaxLevel, Serializer) ->
+process_request(Sock, StartBucketEts, MaxLevel, Serializer) ->
+    [{_, StartNode}] = ets:lookup(StartBucketEts, start_bucket),
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
@@ -119,13 +122,13 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
                 ["get", Key] ->
                     io:format("get~n"),
                     process_get(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
+                    process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
 %%                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
 %%                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
 %%                    ?INFOF("Start set ~p", [self()]),
@@ -136,21 +139,21 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
 %%                    erlang:garbage_collect(InsertedNode),
 
                     inet:setopts(Sock,[{packet, line}]),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
+                    process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["delete", Key] ->
 %%                     process_delete(Sock, StartNode, Key),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["delete", Key, _Time] ->
 %%                     process_delete(Sock, StartNode, Key),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["delete", Key, _Time, _NoReply] ->
 %%                     process_delete(Sock, StartNode, Key),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["quit"] ->
 %%                     ok = gen_tcp:close(Sock);
 %%                 ["stats"] ->
 %%                     process_stats(Sock, StartNode, MaxLevel),
-%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
