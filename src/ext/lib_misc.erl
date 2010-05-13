@@ -21,8 +21,9 @@
 -define(forp(Label), true).
 -define(balance_prof, true).
 -endif.
--export([rm_rf/1, pmap/3, succ/1, fast_acc/3, hash/1,hash/2, fnv/1,
-         nthdelete/2, zero_split/1, nthreplace/3, rand_str/1, position/2,
+-export([rm_rf/1, succ/1, fast_acc/3, hash/1,hash/2,%%  fnv/1,
+         nthdelete/2, %% zero_split/1,
+         nthreplace/3, rand_str/1,%%  position/2,
          shuffle/1, floor/1, ceiling/1, time_to_epoch_int/1,
          time_to_epoch_float/1, now_int/0, now_float/0, byte_size/1, listify/1,
          reverse_bits/1]).
@@ -46,16 +47,16 @@ rm_rf(Name) when is_list(Name) ->
       end
   end.
 
-zero_split(Bin) ->
-  zero_split(0, Bin).
+%% zero_split(Bin) ->
+%%   zero_split(0, Bin).
 
-zero_split(N, Bin) when N > erlang:byte_size(Bin) -> Bin;
+%% zero_split(N, Bin) when N > erlang:byte_size(Bin) -> Bin;
 
-zero_split(N, Bin) ->
-  case Bin of
-    <<_:N/binary, 0:8, _/binary>> -> split_binary(Bin, N);
-    _ -> zero_split(N+1, Bin)
-  end.
+%% zero_split(N, Bin) ->
+%%   case Bin of
+%%     <<_:N/binary, 0:8, _/binary>> -> split_binary(Bin, N);
+%%     _ -> zero_split(N+1, Bin)
+%%   end.
 
 rand_str(N) ->
   lists:map(fun(_I) ->
@@ -116,48 +117,48 @@ fast_acc(Fun, Acc, N) ->
 shuffle(List) when is_list(List) ->
   [ N || {_R,N} <- lists:keysort(1, [{random:uniform(),X} || X <- List]) ].
 
-pmap(Fun, List, ReturnNum) ->
-  N = if
-    ReturnNum > length(List) -> length(List);
-    true -> ReturnNum
-  end,
-  SuperParent = self(),
-  SuperRef = erlang:make_ref(),
-  Ref = erlang:make_ref(),
-  %% we spawn an intermediary to collect the results
-  %% this is so that there will be no leaked messages sitting in our mailbox
-  Parent = spawn(fun() ->
-      L = gather(N, length(List), Ref, []),
-      SuperParent ! {SuperRef, pmap_sort(List, L)}
-    end),
-  Pids = [spawn(fun() ->
-      Parent ! {Ref, {Elem, (catch Fun(Elem))}}
-    end) || Elem <- List],
-  Ret = receive
-    {SuperRef, Ret} -> Ret
-  end,
-  % i think we need to cleanup here.
-  lists:foreach(fun(P) -> exit(P, die) end, Pids),
-  Ret.
+%% pmap(Fun, List, ReturnNum) ->
+%%   N = if
+%%     ReturnNum > length(List) -> length(List);
+%%     true -> ReturnNum
+%%   end,
+%%   SuperParent = self(),
+%%   SuperRef = erlang:make_ref(),
+%%   Ref = erlang:make_ref(),
+%%   %% we spawn an intermediary to collect the results
+%%   %% this is so that there will be no leaked messages sitting in our mailbox
+%%   Parent = spawn(fun() ->
+%%       L = gather(N, length(List), Ref, []),
+%%       SuperParent ! {SuperRef, pmap_sort(List, L)}
+%%     end),
+%%   Pids = [spawn(fun() ->
+%%       Parent ! {Ref, {Elem, (catch Fun(Elem))}}
+%%     end) || Elem <- List],
+%%   Ret = receive
+%%     {SuperRef, Ret} -> Ret
+%%   end,
+%%   % i think we need to cleanup here.
+%%   lists:foreach(fun(P) -> exit(P, die) end, Pids),
+%%   Ret.
 
-pmap_sort(Original, Results) ->
-  pmap_sort([], Original, lists:reverse(Results)).
+%% pmap_sort(Original, Results) ->
+%%   pmap_sort([], Original, lists:reverse(Results)).
 
-% pmap_sort(Sorted, [], _) -> lists:reverse(Sorted);
-pmap_sort(Sorted, _, []) -> lists:reverse(Sorted);
-pmap_sort(Sorted, [E|Original], Results) ->
-  case lists:keytake(E, 1, Results) of
-    {value, {E, Val}, Rest} -> pmap_sort([Val|Sorted], Original, Rest);
-    false -> pmap_sort(Sorted, Original, Results)
-  end.
+%% % pmap_sort(Sorted, [], _) -> lists:reverse(Sorted);
+%% pmap_sort(Sorted, _, []) -> lists:reverse(Sorted);
+%% pmap_sort(Sorted, [E|Original], Results) ->
+%%   case lists:keytake(E, 1, Results) of
+%%     {value, {E, Val}, Rest} -> pmap_sort([Val|Sorted], Original, Rest);
+%%     false -> pmap_sort(Sorted, Original, Results)
+%%   end.
 
-gather(_, Max, _, L) when length(L) == Max -> L;
-gather(0, _, _, L) -> L;
-gather(N, Max, Ref, L) ->
-  receive
-    {Ref, {Elem, {'EXIT', Ret}}} -> gather(N, Max, Ref, [{Elem, {'EXIT', Ret}}|L]);
-	  {Ref, Ret} -> gather(N-1, Max, Ref, [Ret|L])
-  end.
+%% gather(_, Max, _, L) when length(L) == Max -> L;
+%% gather(0, _, _, L) -> L;
+%% gather(N, Max, Ref, L) ->
+%%   receive
+%%     {Ref, {Elem, {'EXIT', Ret}}} -> gather(N, Max, Ref, [{Elem, {'EXIT', Ret}}|L]);
+%% 	  {Ref, Ret} -> gather(N-1, Max, Ref, [Ret|L])
+%%   end.
 
 hash(Term) ->
   ?prof(hash),
@@ -172,39 +173,39 @@ hash(Term, Seed) ->
   R.
 
 %32 bit fnv.  magic numbers ahoy
-fnv(Term) when is_binary(Term) ->
-  fnv_int(?OFFSET_BASIS, 0, Term);
+%% fnv(Term) when is_binary(Term) ->
+%%   fnv_int(?OFFSET_BASIS, 0, Term);
 
-fnv(Term) ->
-  fnv_int(?OFFSET_BASIS, 0, term_to_binary(Term)).
+%% fnv(Term) ->
+%%   fnv_int(?OFFSET_BASIS, 0, term_to_binary(Term)).
 
-fnv_int(Hash, ByteOffset, Bin) when erlang:byte_size(Bin) == ByteOffset ->
-  Hash;
+%% fnv_int(Hash, ByteOffset, Bin) when erlang:byte_size(Bin) == ByteOffset ->
+%%   Hash;
 
-fnv_int(Hash, ByteOffset, Bin) ->
-  <<_:ByteOffset/binary, Octet:8, _/binary>> = Bin,
-  Xord = Hash bxor Octet,
-  fnv_int((Xord * ?FNV_PRIME) rem (2 bsl 31), ByteOffset+1, Bin).
+%% fnv_int(Hash, ByteOffset, Bin) ->
+%%   <<_:ByteOffset/binary, Octet:8, _/binary>> = Bin,
+%%   Xord = Hash bxor Octet,
+%%   fnv_int((Xord * ?FNV_PRIME) rem (2 bsl 31), ByteOffset+1, Bin).
 
-position(Predicate, List) when is_function(Predicate) ->
-  position(Predicate, List, 1);
+%% position(Predicate, List) when is_function(Predicate) ->
+%%   position(Predicate, List, 1);
 
-position(E, List) ->
-  position(E, List, 1).
+%% position(E, List) ->
+%%   position(E, List, 1).
 
-position(Predicate, [], _N) when is_function(Predicate) -> false;
+%% position(Predicate, [], _N) when is_function(Predicate) -> false;
 
-position(Predicate, [E|List], N) when is_function(Predicate) ->
-  case Predicate(E) of
-    true -> N;
-    false -> position(Predicate, List, N+1)
-  end;
+%% position(Predicate, [E|List], N) when is_function(Predicate) ->
+%%   case Predicate(E) of
+%%     true -> N;
+%%     false -> position(Predicate, List, N+1)
+%%   end;
 
-position(_, [], _) -> false;
+%% position(_, [], _) -> false;
 
-position(E, [E|_List], N) -> N;
+%% position(E, [E|_List], N) -> N;
 
-position(E, [_|List], N) -> position(E, List, N+1).
+%% position(E, [_|List], N) -> position(E, List, N+1).
 
 now_int() ->
   time_to_epoch_int(now()).

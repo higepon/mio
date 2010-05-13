@@ -51,10 +51,6 @@ sg_test_() ->
       ]
      }.
 
-search_o() ->
-    {ok, Bucket} = make_bucket(alone),
-    {error, not_found} = mio_skip_graph:search_op(Bucket, "key").
-
 c_o_same_mv() ->
     {Bucket, RightBucket} = make_c_o_same_mv(),
 

@@ -120,12 +120,12 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
                     io:format("get~n"),
                     process_get(Sock, StartNode, Key),
                     process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
+%%                     process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
+%%                     process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
 %%                    ?INFOF("Start set ~p", [self()]),
@@ -137,20 +137,20 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
 
                     inet:setopts(Sock,[{packet, line}]),
                     process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["delete", Key] ->
-                    process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["delete", Key, _Time] ->
-                    process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["delete", Key, _Time, _NoReply] ->
-                    process_delete(Sock, StartNode, Key),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
-                ["quit"] ->
-                    ok = gen_tcp:close(Sock);
-                ["stats"] ->
-                    process_stats(Sock, StartNode, MaxLevel),
-                    process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["delete", Key] ->
+%%                     process_delete(Sock, StartNode, Key),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["delete", Key, _Time] ->
+%%                     process_delete(Sock, StartNode, Key),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["delete", Key, _Time, _NoReply] ->
+%%                     process_delete(Sock, StartNode, Key),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
+%%                 ["quit"] ->
+%%                     ok = gen_tcp:close(Sock);
+%%                 ["stats"] ->
+%%                     process_stats(Sock, StartNode, MaxLevel),
+%%                     process_request(Sock, StartNode, MaxLevel, Serializer);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -162,30 +162,30 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
     end.
 
 
-process_stats(Sock, Node, MaxLevel) ->
-    mio_skip_graph:dump_op(Node),
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
+%% process_stats(Sock, Node, MaxLevel) ->
+%%     mio_skip_graph:dump_op(Node),
+%%     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
 
 
-process_delete(Sock, StartNode, Key) ->
-    exit({todo, ?LINE}).
+%% process_delete(Sock, StartNode, Key) ->
+%%     exit({todo, ?LINE}).
 
-%% Expiry format definition
-%% Expire:
-%%   0 -> never expire
-%%   -1 -> expired and enqueued to delete queue
-%%   greater than zero -> expiration date in Unix time format
-%% Returns {Expired?, NeedEnqueue}
-check_expired(0) ->
-    exit({todo, ?LINE}),
-    {false, false};
-check_expired(-1) ->
-    exit({todo, ?LINE}),
-    {true, false};
-check_expired(ExpireDate) ->
-    exit({todo, ?LINE}),
-    Expired = ExpireDate =< unixtime(),
-    {Expired, Expired}.
+%% %% Expiry format definition
+%% %% Expire:
+%% %%   0 -> never expire
+%% %%   -1 -> expired and enqueued to delete queue
+%% %%   greater than zero -> expiration date in Unix time format
+%% %% Returns {Expired?, NeedEnqueue}
+%% check_expired(0) ->
+%%     exit({todo, ?LINE}),
+%%     {false, false};
+%% check_expired(-1) ->
+%%     exit({todo, ?LINE}),
+%%     {true, false};
+%% check_expired(ExpireDate) ->
+%%     exit({todo, ?LINE}),
+%%     Expired = ExpireDate =< unixtime(),
+%%     {Expired, Expired}.
 
 
 %% todo expire
@@ -198,50 +198,50 @@ process_get(Sock, StartNode, Key) ->
         {error, not_found} ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end.
-%%    erlang:garbage_collect(Node),
+%% %%    erlang:garbage_collect(Node),
 
-%%     %% enqueue to the delete queue
-%%     if NeedEnqueue ->
-%%             enqueue_to_delete(WriteSerializer, Node);
-%%        true -> []
-%%     end.
+%% %%     %% enqueue to the delete queue
+%% %%     if NeedEnqueue ->
+%% %%             enqueue_to_delete(WriteSerializer, Node);
+%% %%        true -> []
+%% %%     end.
 
-process_values([{_, Key, Value, _} | More]) ->
-    io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
-                  [Key, size(Value), Value, process_values(More)]);
-process_values([]) ->
-    "END\r\n".
+%% process_values([{_, Key, Value, _} | More]) ->
+%%     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
+%%                   [Key, size(Value), Value, process_values(More)]);
+%% process_values([]) ->
+%%     "END\r\n".
 
-enqueue_to_delete(WriteSerializer, Node) ->
-    mio_node:set_expire_time_op(Node, -1),
-    spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
+%% enqueue_to_delete(WriteSerializer, Node) ->
+%%     mio_node:set_expire_time_op(Node, -1),
+%%     spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
 
-filter_expired(WriteSerializer, Values) ->
-    lists:filter(fun({Node, _, _, ExpireDate}) ->
-                         {Expired, NeedEnqueue} = check_expired(ExpireDate),
-                         if NeedEnqueue ->
-                                 enqueue_to_delete(WriteSerializer, Node);
-                            true -> []
-                         end,
-                         not Expired
-                 end, Values).
+%% filter_expired(WriteSerializer, Values) ->
+%%     lists:filter(fun({Node, _, _, ExpireDate}) ->
+%%                          {Expired, NeedEnqueue} = check_expired(ExpireDate),
+%%                          if NeedEnqueue ->
+%%                                  enqueue_to_delete(WriteSerializer, Node);
+%%                             true -> []
+%%                          end,
+%%                          not Expired
+%%                  end, Values).
 
-process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-    exit({todo, ?LINE}).
-%%     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-%%     ActiveValues = filter_expired(WriteSerializer, Values),
-%%     P = process_values(ActiveValues),
-%%     ok = gen_tcp:send(Sock, P).
+%% process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
+%%     exit({todo, ?LINE}).
+%% %%     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
+%% %%     ActiveValues = filter_expired(WriteSerializer, Values),
+%% %%     P = process_values(ActiveValues),
+%% %%     ok = gen_tcp:send(Sock, P).
 
-process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
-    exit({todo, ?LINE}).
-%%     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-%%     ActiveValues = filter_expired(WriteSerializer, Values),
-%%     P = process_values(ActiveValues),
-%%     ok = gen_tcp:send(Sock, P).
+%% process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+%%     exit({todo, ?LINE}).
+%% %%     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
+%% %%     ActiveValues = filter_expired(WriteSerializer, Values),
+%% %%     P = process_values(ActiveValues),
+%% %%     ok = gen_tcp:send(Sock, P).
 
-%% See expiry format definition on process_get
-process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel, Serializer) ->
+%% %% See expiry format definition on process_get
+process_set(Sock, Introducer, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
 %%             MVector = mio_mvector:generate(MaxLevel),
@@ -267,6 +267,6 @@ process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel, Serializ
             Introducer
     end.
 
-unixtime() ->
-    {Msec, Sec, _} = now(),
-    Msec * 1000 + Sec.
+%% unixtime() ->
+%%     {Msec, Sec, _} = now(),
+%%     Msec * 1000 + Sec.

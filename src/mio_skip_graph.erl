@@ -230,16 +230,3 @@ neighbor_node(State, Direction, Level) ->
             node_on_level(State#node.left, Level)
     end.
 
-reverse_direction(Direction) ->
-    case Direction of
-        right ->
-             left;
-        left ->
-            right
-    end.
-
-set_right(State, Level, Node) ->
-    State#node{right=mio_util:lists_set_nth(Level + 1, Node, State#node.right)}.
-
-set_left(State, Level, Node) ->
-    State#node{left=mio_util:lists_set_nth(Level + 1, Node, State#node.left)}.

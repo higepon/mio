@@ -1405,7 +1405,7 @@ check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
 check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
     check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, get_left_op, fun(X, Y) -> X < Y end).
 
-check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
+check_invariant_ge1(Level, MyKey, Buddy, _BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
     RealBuddyNeighbor = apply(?MODULE, GetNeighborOp, [Buddy, Level]),
     {RealBuddyNeighborKey, _} = mio_skip_graph:get_key_op(RealBuddyNeighbor),
 %%    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
