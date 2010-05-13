@@ -37,7 +37,7 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
--export([init/1, start_node/3, start_node/4, start_write_serializer/0, start_serializer/0, terminate_node/1, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
+-export([init/1, start_serializer/0, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
 -include("mio.hrl").
 
 %% supervisor:
@@ -56,16 +56,6 @@ start_allocator() ->
                                                temporary, brutal_kill, worker, [mio_allocator]}).
 
 
-%% start normal mio_node
-start_node(Key, Value, MembershipVector) ->
-    start_node(Key, Value, MembershipVector, 0).
-start_node(Key, Value, MembershipVector, Expire) ->
-    %% node should be 'temporary', since a crash of node means fatal error.
-    {ok, _} = supervisor:start_child(mio_sup, {getRandomId(),
-                                               {mio_node, start_link, [[Key, Value, MembershipVector, Expire]]},
-                                               temporary, brutal_kill, worker, [mio_node]}).
-
-
 make_bucket(Allocator, Capacity, Type, MaxLevel) when is_integer(MaxLevel) ->
     make_bucket(Allocator, Capacity, Type, mio_mvector:generate(MaxLevel));
 
@@ -79,12 +69,6 @@ make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
 
 
-start_write_serializer() ->
-    {ok, _} = supervisor:start_child(mio_sup,
-                                     {getRandomId(),
-                                      {mio_write_serializer, start_link, []},
-                                      temporary, brutal_kill, worker, [mio_write_serializer]}).
-
 start_serializer() ->
     {ok, _} = supervisor:start_child(mio_sup,
                                      {getRandomId(),
@@ -92,13 +76,6 @@ start_serializer() ->
                                       temporary, brutal_kill, worker, [mio_serializer]}).
 
 
-terminate_node(TargetPid) ->
-    lists:any(fun({Id, Pid, _, _}) ->
-                      if Pid =:= TargetPid ->
-                              supervisor:terminate_child(mio_sup, Id),
-                              true;
-                         true -> false
-                      end end, supervisor:which_children(mio_sup)).
 %% Logging policy
 %%
 %%   1. tty output is OFF by default.
@@ -153,15 +130,9 @@ init(_Args) ->
             permanent, brutal_kill, worker, [logger]},
            {dynomite_prof, {dynomite_prof, start_link, []},
             permanent, brutal_kill, worker, [dynomite_prof]},
-           {mio_logger, {mio_logger, start_link, []},
-            permanent, brutal_kill, worker, [mio_logger]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
-            permanent, brutal_kill, worker, [mio_memcached]},
-           {mio_memcached2, %% this is just id of specification, will not be registered by register/2.
-            %% temporary
-            {mio_memcached2, start_link, [Port + 100, MaxLevel, BootNode, Verbose]},
-            permanent, brutal_kill, worker, [mio_memcached2]}
+            permanent, brutal_kill, worker, [mio_memcached]}
 ]}}.
 
 

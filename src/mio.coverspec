@@ -1,2 +1,0 @@
-{level, details}.
-{incl_mods, [mio_node, mio_app, mio_sup, mio_memcached, mio_bucket]}.

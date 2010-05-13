@@ -1,4 +1,5 @@
-%%    Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+%%    Copyright (C) 2010 Cybozu Labs, Inc.,
+%%    written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 %%
 %%    Redistribution and use in source and binary forms, with or without
 %%    modification, are permitted provided that the following conditions

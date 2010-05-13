@@ -37,46 +37,42 @@
 -module(mio_memcached).
 -export([start_link/4]).
 -export([memcached/3, process_request/4]).
--export([get_boot_node/0]).
 
 -include("mio.hrl").
 
-boot_node_loop(BootNode, Serializer) ->
-    receive
-        {From, get} -> From ! {BootNode, Serializer};
-        _ -> []
-    end,
-    boot_node_loop(BootNode, Serializer).
+init_start_node(MaxLevel, BootNode) ->
+    case BootNode of
+        %% Bootstrap
+        false ->
+            Capacity = 1000,
+            {ok, Serializer} = mio_sup:start_serializer(),
+            {ok, Allocator} = mio_sup:start_allocator(),
+            Supervisor = whereis(mio_sup),
+            ok = mio_allocator:add_node(Allocator, Supervisor),
 
-get_boot_node() ->
-    boot_node_loop ! {self(), get},
-    receive
-        {BootNode, Serializer} -> {BootNode, Serializer}
+            {ok, Bucket} = mio_sup:make_bucket(Allocator, Capacity, alone, MaxLevel),
+
+            %% N.B.
+            %%   For now, bootstrap server is SPOF.
+            %%   This should be replaced with Mnesia(ram_copy).
+            case mio_sup:start_bootstrap(Bucket, Allocator, Serializer) of
+                {ok, _BootStrap} ->
+                    ok;
+                Reason ->
+                    throw({"Can't start start_bootstrap : Reason", Reason})
+            end,
+            {Bucket, Serializer};
+        %% Introducer bootnode exists
+        _ ->
+            case mio_bootstrap:get_boot_info(BootNode) of
+                {ok, BootBucket, Allocator, Serializer} ->
+                    Supervisor = whereis(mio_sup),
+                    ok = mio_allocator:add_node(Allocator, Supervisor),
+                    {BootBucket, Serializer};
+                Other ->
+                    throw({"Can't start, introducer node not found", Other})
+            end
     end.
-
-init_start_node(From, MaxLevel, BootNode) ->
-    {StartNode, Serializer}
-        = case BootNode of
-              false ->
-                  MVector = mio_mvector:generate(MaxLevel),
-                  {ok, Node} = mio_sup:start_node("dummy", list_to_binary("dummy"), MVector),
-
-                   mio_node:insert_op(Node, Node),
-
-                  {ok, WriteSerializer} = mio_sup:start_write_serializer(),
-                  register(boot_node_loop, spawn_link(fun() ->  boot_node_loop(Node, WriteSerializer) end)),
-                  {Node, WriteSerializer};
-              _ ->
-                  case rpc:call(BootNode, ?MODULE, get_boot_node, []) of
-                      {badrpc, Reason} ->
-                          throw({"Can't start, introducer node not found", {badrpc, Reason}});
-                      {Introducer, MySerializer} ->
-                          {ok, Node} = mio_sup:start_node("dummy"++BootNode, list_to_binary("dummy"), mio_mvector:generate(MaxLevel)),
-                          mio_node:insert_op(Introducer, Node),
-                          {Node, MySerializer}
-                  end
-          end,
-    From ! {ok, StartNode, Serializer}.
 
 %% supervisor calls this to create new memcached.
 start_link(Port, MaxLevel, BootNode, Verbose) ->
@@ -89,71 +85,72 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %% Internal functions
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
-    Self = self(),
-    spawn_link(fun() -> init_start_node(Self, MaxLevel, BootNode) end),
-    receive
-        {ok, StartNode, WriteSerializer} ->
+    try init_start_node(MaxLevel, BootNode) of
+        {BootBucket, Serializer} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->
-                    mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
+                    mio_accept(Listen, BootBucket, MaxLevel, Serializer);
                 {error, eaddrinuse} ->
                     ?FATALF("Port ~p is in use", [Port]);
                 {error, Reason} ->
                     ?FATALF("Can't start memcached compatible server : ~p", [Reason])
             end
+    catch
+         throw:Reason -> ?FATALF("~p", [Reason])
     end.
 
-
-mio_accept(Listen, WriteSerializer, StartNode, MaxLevel) ->
+mio_accept(Listen, StartNode, MaxLevel, Serializer) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_request, [Sock, WriteSerializer, StartNode, MaxLevel]),
-            mio_accept(Listen, WriteSerializer, StartNode, MaxLevel);
+            spawn_link(?MODULE, process_request, [Sock, StartNode, MaxLevel, Serializer]),
+            mio_accept(Listen, StartNode, MaxLevel, Serializer);
         Other ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
 
-process_request(Sock, WriteSerializer, StartNode, MaxLevel) ->
+process_request(Sock, StartNode, MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
-            ?INFO(Token),
+%%            ?INFO(Token),
             case Token of
                 ["get", Key] ->
-                    process_get(Sock, WriteSerializer, StartNode, Key),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    io:format("get~n"),
+                    process_get(Sock, StartNode, Key),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_range_search_asc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_range_search_desc(Sock, StartNode, Key1, Key2, list_to_integer(Limit)),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-                    InsertedNode = process_set(Sock, WriteSerializer, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel),
-
+%%                    ?INFOF("Start set ~p", [self()]),
+                    InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
+%%                    ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
-                    erlang:garbage_collect(InsertedNode),
+%%                    erlang:garbage_collect(InsertedNode),
 
                     inet:setopts(Sock,[{packet, line}]),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key] ->
-                    process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_delete(Sock, StartNode, Key),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key, _Time] ->
-                    process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_delete(Sock, StartNode, Key),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["delete", Key, _Time, _NoReply] ->
-                    process_delete(Sock, WriteSerializer, StartNode, Key),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_delete(Sock, StartNode, Key),
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 ["quit"] ->
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
                     process_stats(Sock, StartNode, MaxLevel),
-                    process_request(Sock, WriteSerializer, StartNode, MaxLevel);
+                    process_request(Sock, StartNode, MaxLevel, Serializer);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -166,21 +163,12 @@ process_request(Sock, WriteSerializer, StartNode, MaxLevel) ->
 
 
 process_stats(Sock, Node, MaxLevel) ->
-%%     IsVerbose = not mio_logger:is_verbose(),
-%%     mio_logger:set_verbose(IsVerbose),
-%%    io:format("logger verbose = ~p~n", [IsVerbose]),
-    {Key, Value} = mio_node:stats_op(Node, MaxLevel),
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [Key, Value])).
+    mio_skip_graph:dump_op(Node),
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
 
 
-process_delete(Sock, WriteSerializer, StartNode, Key) ->
-    case mio_write_serializer:delete_op(WriteSerializer, StartNode, Key) of
-        ng ->
-            ok = gen_tcp:send(Sock, "NOT_FOUND\r\n");
-        _ ->
-            ok = gen_tcp:send(Sock, "DELETED\r\n")
-    end.
-
+process_delete(Sock, StartNode, Key) ->
+    exit({todo, ?LINE}).
 
 %% Expiry format definition
 %% Expire:
@@ -189,31 +177,34 @@ process_delete(Sock, WriteSerializer, StartNode, Key) ->
 %%   greater than zero -> expiration date in Unix time format
 %% Returns {Expired?, NeedEnqueue}
 check_expired(0) ->
+    exit({todo, ?LINE}),
     {false, false};
 check_expired(-1) ->
+    exit({todo, ?LINE}),
     {true, false};
 check_expired(ExpireDate) ->
+    exit({todo, ?LINE}),
     Expired = ExpireDate =< unixtime(),
     {Expired, Expired}.
 
 
-process_get(Sock, WriteSerializer, StartNode, Key) ->
-    {Node, FoundKey, Value, ExpireDate} = mio_node:search_op(StartNode, Key),
-    {Expired, NeedEnqueue} = check_expired(ExpireDate),
-    if Key =:= FoundKey andalso not Expired ->
+%% todo expire
+process_get(Sock, StartNode, Key) ->
+    case mio_skip_graph:search_op(StartNode, Key) of
+        {ok, Value} ->
             ok = gen_tcp:send(Sock, io_lib:format(
                                       "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                                       [Key, size(Value), Value]));
-       true ->
+        {error, not_found} ->
             ok = gen_tcp:send(Sock, "END\r\n")
-    end,
-    erlang:garbage_collect(Node),
-
-    %% enqueue to the delete queue
-    if NeedEnqueue ->
-            enqueue_to_delete(WriteSerializer, Node);
-       true -> []
     end.
+%%    erlang:garbage_collect(Node),
+
+%%     %% enqueue to the delete queue
+%%     if NeedEnqueue ->
+%%             enqueue_to_delete(WriteSerializer, Node);
+%%        true -> []
+%%     end.
 
 process_values([{_, Key, Value, _} | More]) ->
     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
@@ -235,36 +226,39 @@ filter_expired(WriteSerializer, Values) ->
                          not Expired
                  end, Values).
 
-process_range_search_asc(Sock, WriteSerializer, StartNode, Key1, Key2, Limit) ->
-    Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    ActiveValues = filter_expired(WriteSerializer, Values),
-    P = process_values(ActiveValues),
-    ok = gen_tcp:send(Sock, P).
+process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
+    exit({todo, ?LINE}).
+%%     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
+%%     ActiveValues = filter_expired(WriteSerializer, Values),
+%%     P = process_values(ActiveValues),
+%%     ok = gen_tcp:send(Sock, P).
 
-process_range_search_desc(Sock, WriteSerializer, StartNode, Key1, Key2, Limit) ->
-    Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    ActiveValues = filter_expired(WriteSerializer, Values),
-    P = process_values(ActiveValues),
-    ok = gen_tcp:send(Sock, P).
+process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+    exit({todo, ?LINE}).
+%%     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
+%%     ActiveValues = filter_expired(WriteSerializer, Values),
+%%     P = process_values(ActiveValues),
+%%     ok = gen_tcp:send(Sock, P).
 
 %% See expiry format definition on process_get
-process_set(Sock, _WriteSerializer, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel) ->
+process_set(Sock, Introducer, Key, _Flags, ExpireDate, Bytes, MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            MVector = mio_mvector:generate(MaxLevel),
-            UnixTime = unixtime(),
-            ExpireDateUnixTime = if  ExpireDate =:= 0 ->
-                                     0;
-                                 ExpireDate > UnixTime ->
-                                     ExpireDate;
-                                 true ->
-                                     ExpireDate + UnixTime
-                             end,
-            {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
-            mio_node:insert_op(Introducer, NodeToInsert),
+%%             MVector = mio_mvector:generate(MaxLevel),
+%%             UnixTime = unixtime(),
+%%             ExpireDateUnixTime = if  ExpireDate =:= 0 ->
+%%                                      0;
+%%                                  ExpireDate > UnixTime ->
+%%                                      ExpireDate;
+%%                                  true ->
+%%                                      ExpireDate + UnixTime
+%%                              end,
+%%             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
+%%            mio_skip_graph:insert_op(Introducer, Key, Value),
+            gen_server:call(Serializer, {insert_op, Introducer, Key, Value}),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
-            {ok, _Data} = gen_tcp:recv(Sock, 2),
-            NodeToInsert;
+            {ok, _Data} = gen_tcp:recv(Sock, 2);
+%%            NodeToInsert;
         {error, closed} ->
             ok;
         Error ->

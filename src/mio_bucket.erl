@@ -1088,7 +1088,7 @@ get_neighbor_op_call(From, State, Direction, Level) ->
 lock(Nodes, infinity, _Line) ->
     mio_lock:lock(Nodes, infinity);
 lock(Nodes, 100, Line) ->
-    ?FATALF("mio_node:lock dead lock Nodes=~p at mio_node:~p", [Nodes, Line]),
+    ?FATALF("~p:lock dead lock Nodes=~p at ~p:~p", [?MODULE, Nodes, ?MODULE, Line]),
     false;
 lock(Nodes, Times, Line) ->
     case mio_lock:lock(Nodes) of

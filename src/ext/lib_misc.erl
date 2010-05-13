@@ -1,4 +1,13 @@
-
+%%%-------------------------------------------------------------------
+%%% File:      dynomite_prof.erl
+%%% @author    Cliff Moon <> []
+%%% @copyright 2009 Cliff Moon
+%%% @doc
+%%%
+%%% @end
+%%%
+%%% @since 2009-02-15 by Cliff Moon
+%%%-------------------------------------------------------------------
 -module(lib_misc).
 
 -define(OFFSET_BASIS, 2166136261).

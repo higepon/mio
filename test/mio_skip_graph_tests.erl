@@ -14,9 +14,7 @@
 
 setup_mio() ->
     ok = application:start(mio),
-    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT + 100),
-    {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    true = register(mio_node, NodePid).
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT).
 
 teardown_mio(_) ->
     ok = application:stop(mio).

@@ -1,4 +1,5 @@
-%%    Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+%%    Copyright (C) 2010 Cybozu Labs, Inc.,
+%%    written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 %%
 %%    Redistribution and use in source and binary forms, with or without
 %%    modification, are permitted provided that the following conditions
@@ -29,7 +30,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : mio_allocator.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
-%%% Description : 
+%%% Description : bucket allocator
 %%%
 %%% Created : 12 May 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
@@ -91,9 +92,8 @@ handle_call({add_node, Node}, _From, State) ->
 %% allocate bucket on one node.
 handle_call({allocate_bucket, Capacity, Type, MaxLevel}, _From, State) ->
     [Supervisor | More] = State#state.supervisors,
-    io:format("supervisor is ~p ~p", [Supervisor, node(Supervisor)]),
     Bucket = mio_sup:make_bucket(Supervisor, self(), Capacity, Type, MaxLevel),
-    %% round-robin
+    %% simple round-robin
     {reply, Bucket, State#state{supervisors=lists:append(More, [Supervisor])}}.
 
 %%--------------------------------------------------------------------

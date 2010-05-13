@@ -1,4 +1,5 @@
-%%    Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+%%    Copyright (C) 2010 Cybozu Labs, Inc.,
+%%    written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 %%
 %%    Redistribution and use in source and binary forms, with or without
 %%    modification, are permitted provided that the following conditions
@@ -110,7 +111,7 @@ stop(_State) ->
     ok.
 
 prep_stop(_State) ->
-   io:format("stats ~p", [dynomite_prof:stats()]),
+%%   io:format("stats ~p", [dynomite_prof:stats()]),
     %% N.B.
     %% PROFILER_STOP should be placed here, tty may be closed on stop/1 function.
 %%    ?PROFILER_STOP(),

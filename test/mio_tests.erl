@@ -14,9 +14,7 @@
 
 setup_mio() ->
     ok = application:start(mio),
-    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-    {ok, NodePid} = mio_sup:start_node(myKey, myValue, mio_mvector:make([1, 0])),
-    true = register(mio_node, NodePid).
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT).
 
 teardown_mio(_) ->
     ok = application:stop(mio).
@@ -25,12 +23,12 @@ mio_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
       [?_test(set_and_get())],
-      [?_test(set_and_get_alphabet_key())],
-      [?_test(delete())],
-      [?_test(expiration())],
-      [?_test(range_search())],
-      [?_test(range_search_alphabet())],
-      [?_test(range_search_expiration())]
+      [?_test(set_and_get_alphabet_key())]
+%%       [?_test(delete())],
+%%       [?_test(expiration())],
+%%       [?_test(range_search())],
+%%       [?_test(range_search_alphabet())],
+%%       [?_test(range_search_expiration())]
      ]
     }.
 
