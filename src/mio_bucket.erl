@@ -39,13 +39,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -behaviour(gen_server).
 
--define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
--define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
-
-%% -define(LOGF(Msg), []).
-%% -define(LOGF(Msg, Args), []).
-
-
 %% API
 -export([start_link/1,
          get_left_op/1, get_right_op/1,

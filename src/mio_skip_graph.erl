@@ -38,10 +38,6 @@
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(LOGF(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
--define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
-
-
 %% API
 -export([search_op/2, search_op/3,
          get_key_op/1,

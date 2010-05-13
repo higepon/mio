@@ -14,6 +14,10 @@
 -define(MIN_KEY, "").
 -define(MAX_KEY, <<16#7F>>).
 
+-define(LOG(Msg), io:format(Msg ++ " ~p:~p~p~n", [?MODULE, ?LINE, self()])).
+-define(LOGF(Msg, Args), io:format(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
+
+
 %% ERROR should be always written to stderr.
 -define(ERRORF(Msg, Args), error_logger:error_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE]), io:format(Msg ++ "~n", Args)).
 -define(ERROR(Msg), ?ERRORF(Msg, [])).

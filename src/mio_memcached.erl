@@ -129,7 +129,7 @@ process_request(Sock, StartNode, MaxLevel, Serializer) ->
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
 %%                    ?INFOF("Start set ~p", [self()]),
-                    InsertedNode = process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
+                    process_set(Sock, StartNode, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
 %%                    ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
