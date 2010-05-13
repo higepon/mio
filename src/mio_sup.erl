@@ -71,9 +71,9 @@ make_bucket(Allocator, Capacity, Type, MaxLevel) when is_integer(MaxLevel) ->
 
 %% You can set MembershipVector for testablity.
 make_bucket(Allocator, Capacity, Type, MembershipVector) ->
+    io:format("allocated on ~p~n", [node()]),
     make_bucket(mio_sup, Allocator, Capacity, Type, MembershipVector).
 make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
-    io:format("allocated on ~p~n", [node()]),
     {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
                                                   {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
