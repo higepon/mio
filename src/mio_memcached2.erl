@@ -42,6 +42,7 @@
 
 init_start_node(MaxLevel, BootNode) ->
     case BootNode of
+        %% Bootstrap
         false ->
             Capacity = 1000,
             {ok, Serializer} = mio_sup:start_serializer(),
@@ -61,14 +62,15 @@ init_start_node(MaxLevel, BootNode) ->
                 Reason ->
                     throw({"Can't start start_bootstrap : Reason", Reason})
             end,
-            {Bucket, Allocator, Serializer};
+            {Bucket, Serializer};
+        %% Introducer bootnode exists
         _ ->
             case mio_bootstrap:get_boot_info(BootNode) of
                 {ok, BootBucket, Allocator, Serializer} ->
                     Supervisor = whereis(mio_sup),
                     io:format("2nd ~p~n", [Supervisor]),
                     ok = mio_allocator:add_node(Allocator, Supervisor),
-                    {BootBucket, Allocator, Serializer};
+                    {BootBucket, Serializer};
                 Other ->
                     throw({"Can't start, introducer node not found", Other})
             end
@@ -86,7 +88,7 @@ start_link(Port, MaxLevel, BootNode, Verbose) ->
 %%====================================================================
 memcached(Port, MaxLevel, BootNode) ->
     try init_start_node(MaxLevel, BootNode) of
-        {BootBucket, Allocator, Serializer} ->
+        {BootBucket, Serializer} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->
