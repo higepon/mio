@@ -420,7 +420,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
     case mio_util:is_local_process(NewlyAllocatedBucket) of
         true ->
 %%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
-            ets:insert(hige, {start_bucket, NewlyAllocatedBucket});
+            ok = mio_local_store:set(start_bucket, NewlyAllocatedBucket);
         _ ->
             []
     end,
