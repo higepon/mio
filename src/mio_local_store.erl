@@ -47,7 +47,7 @@
 %%====================================================================
 new() ->
     %% This ets is node() local.
-    case ets:new(?MODULE, [public, ordered_set, named_table]) of
+    case ets:new(?MODULE, [public, set, named_table]) of
         {error, Reason} ->
             {error, Reason};
         _ -> ok
