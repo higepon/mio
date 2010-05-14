@@ -301,6 +301,7 @@ take_largest_op(Bucket) ->
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Args) ->
+    io:format("mio_bucket allocated on ~p~n", [node()]),
     gen_server:start_link(?MODULE, Args, []).
 
 %%====================================================================

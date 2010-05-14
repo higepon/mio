@@ -120,7 +120,6 @@ process_request(Sock, StartBucketEts, MaxLevel, Serializer) ->
 %%            ?INFO(Token),
             case Token of
                 ["get", Key] ->
-                    io:format("get~n"),
                     process_get(Sock, StartNode, Key),
                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
 %%                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
