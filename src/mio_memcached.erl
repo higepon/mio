@@ -41,7 +41,7 @@
 -include("mio.hrl").
 
 init_start_node(MaxLevel, BootNode) ->
-    StartBucketEts = ets:new(store, [public, ordered_set]),
+    StartBucketEts = ets:new(hige, [public, ordered_set, named_table]),
     case BootNode of
         %% Bootstrap
         false ->
@@ -52,7 +52,7 @@ init_start_node(MaxLevel, BootNode) ->
             ok = mio_allocator:add_node(Allocator, Supervisor),
 
             {ok, Bucket} = mio_sup:make_bucket(Allocator, Capacity, alone, MaxLevel),
-            ets:insert(StartBucketEts, {start_bucket, Bucket}),
+            ets:insert(hige, {start_bucket, Bucket}),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).

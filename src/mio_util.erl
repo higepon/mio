@@ -38,13 +38,19 @@
 
 %% API
 -export([random_sleep/1, lists_set_nth/3, do_times_with_index/3, do_workers/2, do_workers/3,
-         do_times/2, do_times/3]).
+         do_times/2, do_times/3, is_local_process/1]).
 
 -include("mio.hrl").
+
 
 %%====================================================================
 %% API
 %%====================================================================
+is_local_process([]) ->
+    false;
+is_local_process(Pid) ->
+    node() =:= node(Pid).
+
 random_sleep(Times) ->
     case (Times rem 10) of
         0 -> erase(random_seed);
