@@ -301,7 +301,7 @@ take_largest_op(Bucket) ->
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Args) ->
-    io:format("mio_bucket allocated on ~p~n", [node()]),
+%%    io:format("mio_bucket allocated on ~p~n", [node()]),
     gen_server:start_link(?MODULE, Args, []).
 
 %%====================================================================
@@ -419,7 +419,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
     %% It's preferable that start buckt is local.
     case mio_util:is_local_process(NewlyAllocatedBucket) of
         true ->
-            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
+%%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
             ets:insert(hige, {start_bucket, NewlyAllocatedBucket});
         _ ->
             []
