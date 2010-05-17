@@ -46,7 +46,7 @@ insert() ->
     %% set up initial bucket
     Bucket = setup_full_bucket(),
     ok = case mio_bucket:get_right_op(Bucket) of
-             [] -> ?assert(false);
+             [] -> exit({?MODULE, ?LINE, "should not come here"}) ;
              RightBucket ->
                  ?assert(mio_bucket:is_empty_op(RightBucket)),
                  ?assertEqual(left, get_left_type(Bucket)),
