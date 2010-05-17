@@ -65,7 +65,7 @@ stop() ->
             ok = rpc:call(list_to_atom(Node), application, stop, [mio]),
             ok = rpc:call(list_to_atom(Node), init, stop, []);
         X ->
-            ?ERROR(X)
+            ?FATALF("Application stop failed : ~p", [X])
     end.
 
 fatal(Msg, Args, Module, Line) ->
