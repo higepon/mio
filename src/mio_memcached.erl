@@ -56,12 +56,7 @@ init_start_node(MaxLevel, BootNode) ->
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
-            case mio_sup:start_bootstrap(Bucket, Allocator, Serializer) of
-                {ok, _BootStrap} ->
-                    ok;
-                Reason ->
-                    throw({"Can't start start_bootstrap : Reason", Reason})
-            end,
+            {ok, _BootStrap} = mio_sup:start_bootstrap(Bucket, Allocator, Serializer),
             {Serializer};
         %% Introducer bootnode exists
         _ ->
