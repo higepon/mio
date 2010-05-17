@@ -47,11 +47,9 @@
 %%====================================================================
 new() ->
     %% This ets is node() local.
-    case ets:new(?MODULE, [public, set, named_table]) of
-        {error, Reason} ->
-            {error, Reason};
-        _ -> ok
-    end.
+    %% ets:new returns tid() | atom. We discard them.
+    ets:new(?MODULE, [public, set, named_table]),
+    ok.
 
 get(Key) ->
     case ets:lookup(?MODULE, Key) of
