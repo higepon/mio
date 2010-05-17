@@ -106,19 +106,6 @@ handle_call({error_msg, Format, Args}, From, IsVerbose) ->
     {noreply, IsVerbose};
 
 
-handle_call({warn_msg, Format, Args}, From, IsVerbose) ->
-    spawn(fun() ->
-                  case IsVerbose of
-                      true ->
-                          error_logger:warn_msg(Format, Args);
-                      _ ->
-                          []
-                  end,
-                  gen_server:reply(From, ok)
-          end),
-    {noreply, IsVerbose};
-
-
 handle_call(is_verbose, _From, IsVerbose) ->
     {reply, IsVerbose, IsVerbose};
 

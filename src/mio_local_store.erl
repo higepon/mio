@@ -62,9 +62,6 @@ get(Key) ->
     end.
 
 set(Key, Value) ->
-    case ets:insert(?MODULE, {Key, Value}) of
-        true ->
-            ok;
-        Other ->
-            Other
-    end.
+    %% est:insert returns always true.
+    true = ets:insert(?MODULE, {Key, Value}),
+    ok.
