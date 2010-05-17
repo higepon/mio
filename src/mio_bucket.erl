@@ -55,10 +55,11 @@
 stats_op/2,
 get_op/2,
           buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
-         insert_op_call/4, delete_op_call/3,
+         insert_op_call/4, %% delete_op_call/3,
           link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4,
-         delete_op/2, delete_op/1,range_search_asc_op/4, range_search_desc_op/4,
+         %% delete_op/2, delete_op/1,
+range_search_asc_op/4, range_search_desc_op/4,
          check_invariant_level_0_left/5,
          check_invariant_level_0_right/5,
          check_invariant_level_ge1_left/5,
@@ -621,23 +622,23 @@ set_expire_time_op(Node, ExpireTime) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-delete_op(Introducer, Key) ->
-    {FoundNode, FoundKey, _, _} = mio_skip_graph:search_op(Introducer, Key),
-    case string:equal(FoundKey, Key) of
-        true ->
-            delete_op(FoundNode),
-            ok;
-        false -> ng
-    end.
+%% delete_op(Introducer, Key) ->
+%%     {FoundNode, FoundKey, _, _} = mio_skip_graph:search_op(Introducer, Key),
+%%     case string:equal(FoundKey, Key) of
+%%         true ->
+%%             delete_op(FoundNode),
+%%             ok;
+%%         false -> ng
+%%     end.
 
-delete_op(Node) ->
-    gen_server:call(Node, delete_op, 30000), %% todo proper timeout value
+%% delete_op(Node) ->
+%%     gen_server:call(Node, delete_op, 30000), %% todo proper timeout value
 
-    %% Since the node to delete may be still referenced,
-    %% We wait 1 minitue.
-    OneMinute = 60000,
-    terminate_node(Node, OneMinute),
-    ok.
+%%     %% Since the node to delete may be still referenced,
+%%     %% We wait 1 minitue.
+%%     OneMinute = 60000,
+%%     terminate_node(Node, OneMinute),
+%%     ok.
 
 
 stats_op(Node, MaxLevel) ->
@@ -656,11 +657,10 @@ stats_status(Node, MaxLevel) ->
             {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
     end.
 
-terminate_node(Node, After) ->
-    spawn_link(fun() ->
-                  receive after After -> ok end,
-                  mio_sup:terminate_node(Node)
-          end).
+%% terminate_node(Node, After) ->
+%%     spawn_link(fun() ->
+%%                   receive after After -> ok end
+%%           end).
 
 %%--------------------------------------------------------------------
 %%  range search operation
@@ -1030,51 +1030,51 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  delete operation
 %%--------------------------------------------------------------------
-delete_op_call(From, Self, State) ->
-    LockedNodes = lock_or_exit([Self], ?LINE, [my_key(State)]),
-    IsDeleted = gen_server:call(Self, get_deleted_op),
-    if IsDeleted ->
-            %% already deleted.
-            unlock(LockedNodes, ?LINE),
-            gen_server:reply(From, ok);
-       true ->
-            case gen_server:call(Self, get_inserted_op) of
-                true ->
-                    MaxLevel = length(State#node.membership_vector),
-                    %% My State will not be changed, since I will be killed soon.
-                    gen_server:call(Self, set_deleted_op),
-                    %% N.B.
-                    %% To prevent deadlock, we unlock the Self after deleted mark is set.
-                    %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for the same reason.
-                    unlock(LockedNodes, ?LINE),
-                    delete_loop_(Self, MaxLevel),
-                    gen_server:reply(From, ok);
-                _ ->
-                    unlock(LockedNodes, ?LINE),
-                    %% Not inserted yet, wait.
-                    mio_util:random_sleep(0),
-                    ?INFO("not inserted yet. waiting ..."),
-                    delete_op_call(From, Self, State)
-            end
-    end.
+%% delete_op_call(From, Self, State) ->
+%%     LockedNodes = lock_or_exit([Self], ?LINE, [my_key(State)]),
+%%     IsDeleted = gen_server:call(Self, get_deleted_op),
+%%     if IsDeleted ->
+%%             %% already deleted.
+%%             unlock(LockedNodes, ?LINE),
+%%             gen_server:reply(From, ok);
+%%        true ->
+%%             case gen_server:call(Self, get_inserted_op) of
+%%                 true ->
+%%                     MaxLevel = length(State#node.membership_vector),
+%%                     %% My State will not be changed, since I will be killed soon.
+%%                     gen_server:call(Self, set_deleted_op),
+%%                     %% N.B.
+%%                     %% To prevent deadlock, we unlock the Self after deleted mark is set.
+%%                     %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for the same reason.
+%%                     unlock(LockedNodes, ?LINE),
+%%                     delete_loop_(Self, MaxLevel),
+%%                     gen_server:reply(From, ok);
+%%                 _ ->
+%%                     unlock(LockedNodes, ?LINE),
+%%                     %% Not inserted yet, wait.
+%%                     mio_util:random_sleep(0),
+%%                     ?INFO("not inserted yet. waiting ..."),
+%%                     delete_op_call(From, Self, State)
+%%             end
+%%     end.
 
-delete_loop_(_Self, Level) when Level < 0 ->
-    [];
-delete_loop_(Self, Level) ->
-    RightNode = get_right_op(Self, Level),
-    LeftNode = get_left_op(Self, Level),
-    LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, []),
+%% delete_loop_(_Self, Level) when Level < 0 ->
+%%     [];
+%% delete_loop_(Self, Level) ->
+%%     RightNode = get_right_op(Self, Level),
+%%     LeftNode = get_left_op(Self, Level),
+%%     LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, []),
 
-    ?CHECK_SANITY(Self, Level),
+%%     ?CHECK_SANITY(Self, Level),
 
-    ok = link_left_op(RightNode, Level, LeftNode),
-    ok = link_right_op(LeftNode, Level, RightNode),
+%%     ok = link_left_op(RightNode, Level, LeftNode),
+%%     ok = link_right_op(LeftNode, Level, RightNode),
 
-    ?CHECK_SANITY(Self, Level),
-    unlock(LockedNodes, ?LINE),
-    %% N.B.
-    %% We keep the right/left node of Self, since it may be still located on search path.
-    delete_loop_(Self, Level - 1).
+%%     ?CHECK_SANITY(Self, Level),
+%%     unlock(LockedNodes, ?LINE),
+%%     %% N.B.
+%%     %% We keep the right/left node of Self, since it may be still located on search path.
+%%     delete_loop_(Self, Level - 1).
 
 
 get_neighbor_op_call(From, State, Direction, Level) ->

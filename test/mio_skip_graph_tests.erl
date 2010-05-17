@@ -653,7 +653,6 @@ insert_o_3() ->
 insert_many() ->
     mio_util:do_times(10, fun do_insert_many/0).
 do_insert_many() ->
-    ?debugHere,
     {ok, Bucket} = make_bucket(alone),
     ok = mio_skip_graph:insert_op(Bucket, "d4bd50c13cb2c368", "d4bd50c13cb2c368"),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
