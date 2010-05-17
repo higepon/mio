@@ -135,9 +135,7 @@ handle_event(Event, S) ->
             disk_log:do_sync(get(log)),
             {ok, S#state{cnt = S#state.cnt+N}};
         {error, Error, _N} ->
-            Error;
-        Error2 ->
-            Error2
+            Error
         end
     end.
 

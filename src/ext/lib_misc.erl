@@ -21,9 +21,9 @@
 -define(forp(Label), true).
 -define(balance_prof, true).
 -endif.
--export([rm_rf/1, succ/1, fast_acc/3, hash/1,hash/2,%%  fnv/1,
+-export([rm_rf/1, succ/1, fast_acc/3, %% , hash/1,hash/2,%%  fnv/1,
          nthdelete/2, %% zero_split/1,
-         nthreplace/3, rand_str/1,%%  position/2,
+         nthreplace/3, rand_str/1, %, position/2,
          shuffle/1, floor/1, ceiling/1, time_to_epoch_int/1,
          time_to_epoch_float/1, now_int/0, now_float/0, byte_size/1, listify/1,
          reverse_bits/1]).
@@ -160,17 +160,17 @@ shuffle(List) when is_list(List) ->
 %% 	  {Ref, Ret} -> gather(N-1, Max, Ref, [Ret|L])
 %%   end.
 
-hash(Term) ->
-  ?prof(hash),
-  R = fnv:hash(Term),
-  ?forp(hash),
-  R.
+%% hash(Term) ->
+%%   ?prof(hash),
+%%   R = fnv:hash(Term),
+%%   ?forp(hash),
+%%   R.
 
-hash(Term, Seed) ->
-  ?prof(hash),
-  R = fnv:hash(Term, Seed),
-  ?forp(hash),
-  R.
+%% hash(Term, Seed) ->
+%%   ?prof(hash),
+%%   R = fnv:hash(Term, Seed),
+%%   ?forp(hash),
+%%   R.
 
 %32 bit fnv.  magic numbers ahoy
 %% fnv(Term) when is_binary(Term) ->

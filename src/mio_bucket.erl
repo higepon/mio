@@ -52,7 +52,7 @@
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
-stats_op/2,
+%%stats_op/2,
 get_op/2,
           buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
          insert_op_call/4, %% delete_op_call/3,
@@ -641,21 +641,21 @@ set_expire_time_op(Node, ExpireTime) ->
 %%     ok.
 
 
-stats_op(Node, MaxLevel) ->
-    stats_status(Node, MaxLevel).
+%% stats_op(Node, MaxLevel) ->
+%%     stats_status(Node, MaxLevel).
 
 %% stats_curr_items(Node) ->
 %%     {"curr_items", integer_to_list(length(dump_op(Node, 0)))}.
 
-stats_status(Node, MaxLevel) ->
-    case mio_util:do_times_with_index(0, MaxLevel,
-                             fun(Level) ->
-                                     mio_debug:check_sanity(Node, Level, stats, 0)
-                             end) of
-        ok -> {"mio_status", "OK"};
-        Other ->
-            {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
-    end.
+%% stats_status(Node, MaxLevel) ->
+%%     case mio_util:do_times_with_index(0, MaxLevel,
+%%                              fun(Level) ->
+%%                                      mio_debug:check_sanity(Node, Level, stats, 0)
+%%                              end) of
+%%         ok -> {"mio_status", "OK"};
+%%         Other ->
+%%             {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
+%%     end.
 
 %% terminate_node(Node, After) ->
 %%     spawn_link(fun() ->
