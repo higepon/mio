@@ -104,8 +104,9 @@ set_system_error_logging() ->
         %% Delete the (possibly existing) unformating handler
         error_logger:delete_report_handler(error_logger),
         %% Add the simplest handler that directs reports not
-        %% belonging to this node to the correct node.
-        error_logger:simple_logger(),
+       %% belonging to this node to the correct node.
+        %% dialyzer tell me this should be removed.
+        %% error_logger:simple_logger(),
         ok;
     _ ->
         ok

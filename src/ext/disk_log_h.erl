@@ -136,8 +136,8 @@ handle_event(Event, S) ->
             {ok, S#state{cnt = S#state.cnt+N}};
         {error, Error, _N} ->
             Error;
-        Error ->
-            Error
+        Error2 ->
+            Error2
         end
     end.
 

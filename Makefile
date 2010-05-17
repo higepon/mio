@@ -72,6 +72,7 @@ VERBOSE_TEST ?= false
 check: all
 	@erl -pa `pwd`/ebin -eval 'eunit:test([mio_skip_graph_tests, mio_bucket_tests, global, mio_tests, mio_lock, mio_mvector, mio_store]).' -s init stop | gor
 	@./test/two-nodes.sh |gor
+	$(MAKE) dialyzer & # quick quick
 
 check_one: all
 	@erl -pa `pwd`/ebin -eval 'eunit:test([$(TEST_NAME)_tests]).' -s init stop | gor
