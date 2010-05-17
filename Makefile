@@ -113,3 +113,14 @@ clean:
 	rm -rf log/ct_run*
 	rm -rf log/mio.log.*
 	rm -rf mio.log.*
+
+dialyzer: all
+	dialyzer -Wno_return -I $(INCLUDE_DIR) -c $(EBIN_DIR)
+
+create_plt:
+	dialyzer --build_plt \
+-r /usr/local/lib/erlang/lib/kernel-2.13.5/ebin \
+-r /usr/local/lib/erlang/lib/memcached-client-0.0.1/ebin \
+-r /usr/local/lib/erlang/lib/mnesia-4.4.13/ebin \
+-r /usr/local/lib/erlang/lib/os_mon-2.2.5/ebin \
+-r /usr/local/lib/erlang/lib/stdlib-1.16.5/ebin
