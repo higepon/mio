@@ -567,7 +567,6 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 
 
 %% Insertion to the Right causes overflow
-%% Right is already locked.
 split_c_o_c_by_r(State, Left, Middle, Right) ->
     {PrevRight, EmptyBucket} = prepare_split_c_o_c(State, Left, Middle, Right),
     {LargeKey, LargeValue} = take_largest_op(Right),
@@ -1067,39 +1066,6 @@ get_neighbor_op_call(From, State, Direction, Level) ->
     {NeighborKey, _} = mio_skip_graph:get_key_op(NeighborNode),
     gen_server:reply(From, {NeighborNode, NeighborKey}).
 
-lock(Nodes, infinity, _Line) ->
-    mio_lock:lock(Nodes, infinity);
-lock(Nodes, 100, Line) ->
-    ?FATALF("~p:lock dead lock Nodes=~p at ~p:~p", [?MODULE, Nodes, ?MODULE, Line]),
-    false;
-lock(Nodes, Times, Line) ->
-    case mio_lock:lock(Nodes) of
-        true ->
-            true;
-        false ->
-            ?INFOF("Lock NG Sleeping ~p~n", [Nodes]),
-            dynomite_prof:start_prof(lock_sleep),
-            mio_util:random_sleep(Times),
-            dynomite_prof:stop_prof(lock_sleep),
-            lock(Nodes, Times + 1, Line)
-    end.
-
-lock(Nodes, Line) ->
-    lock(Nodes, 0, Line).
-
-unlock(Nodes, _Line) ->
-%%    ?INFOF("unlocked ~p at ~p:~p", [Nodes, Line, self()]),
-    mio_lock:unlock(Nodes).
-
-lock_or_exit(Nodes, Line, Info) ->
-    IsLocked = lock(Nodes, Line),
-    if not IsLocked ->
-            ?FATALF("~p:~p <~p> lock failed~n", [?MODULE, Line, Info]),
-            exit(lock_failed);
-       true ->
-            Nodes
-    end.
-
 link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left] -> [Center]  [Right]
     link_right_op(LeftNode, Level, CenterNode),
@@ -1125,7 +1091,6 @@ insert_op_call(From, State, Self, Introducer) ->
     %% At first, we lock the Self not to be deleted.
     %% => This causes dead lock, since Self will never be released to others.
     %%    We use inserted_op instead in order to prevent deletion.
-    %% LockedNodes = lock_or_exit([Self], ?LINE, MyKey),
     dynomite_prof:start_prof(link_on_level_0),
     case link_on_level_0(From, State, Self, Introducer) of
         no_more ->
@@ -1159,24 +1124,9 @@ link_on_level_0(From, State, Self, Introducer) ->
 
 try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
     Value = dummy_todo,
-    %% Since this process doesn't have any other lock, dead lock will never happen.
-    %% Just wait infinity.
-    lock([Neighbor], infinity, ?LINE),
-
-    IsDeleted = gen_server:call(Neighbor, get_deleted_op),
-    if IsDeleted ->
-            %% Retry
-            ?INFO("link_on_level_0: Neighbor deleted "),
-            unlock([Neighbor], ?LINE),
-            mio_util:random_sleep(0),
-            link_on_level_0(From, State, Self, Introducer);
-       true ->
-            %% overwrite the value
-            ok = gen_server:call(Neighbor, {set_op, Value}),
-            unlock([Neighbor], ?LINE),
-            %% tell the callee, link_on_level_ge1 is not necessary
-            no_more
-    end.
+    %% overwrite the value
+    ok = gen_server:call(Neighbor, {set_op, Value}),
+    no_more.
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
 do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
@@ -1197,7 +1147,6 @@ do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, Check
     dynomite_prof:stop_prof(do_link_on_level_0_hoge),
     dynomite_prof:start_prof(do_link_on_level_0_hoge1),
 
-    LockedNodes = lock_or_exit([Neighbor, Self, NeighborRightOrLeft], ?LINE, MyKey),
     dynomite_prof:stop_prof(do_link_on_level_0_hoge1),
 
     dynomite_prof:start_prof(do_link_on_level_0_hoge2),
@@ -1211,7 +1160,6 @@ do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, Check
     case apply(?MODULE, CheckInvariantFun, [MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
         retry ->
             dynomite_prof:stop_prof(do_link_on_level_0_invari),
-            unlock(LockedNodes, ?LINE),
             dynomite_prof:stop_prof(do_link_on_level_0),
             link_on_level_0(From, State, Self, Introducer);
         ok ->
@@ -1222,7 +1170,6 @@ do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, Check
                 _ ->
                     link_three_nodes(RealNeighborRightOrLeft, Self, Neighbor, 0)
             end,
-            unlock(LockedNodes, ?LINE),
             dynomite_prof:stop_prof(do_link_on_level_0),
             need_link_on_level_ge1
     end.
@@ -1349,18 +1296,15 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
 
 do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, Direction, CheckInvariantFun) ->
     dynomite_prof:start_prof(do_link_level_ge1_lock),
-    LockedNodes = lock_or_exit([Self, BuddyNeighbor, Buddy], ?LINE, MyKey),
     dynomite_prof:stop_prof(do_link_level_ge1_lock),
     case apply(?MODULE, CheckInvariantFun, [Level, MyKey, Buddy, BuddyKey, BuddyNeighbor]) of
         retry ->
             dynomite_prof:start_prof(do_link_level_ge1_retry),
-            unlock(LockedNodes, ?LINE),
             mio_util:random_sleep(0),
             dynomite_prof:stop_prof(do_link_level_ge1_retry),
             link_on_level_ge1(Self, Level, MaxLevel);
         done ->
             gen_server:call(Self, set_inserted_op),
-            unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level);
         ok ->
 
@@ -1371,7 +1315,6 @@ do_link_level_ge1(Self, MyKey, Buddy, BuddyKey, BuddyNeighbor, Level, MaxLevel, 
                     link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
             end,
             gen_server:call(Self, {set_inserted_op, Level}),
-            unlock(LockedNodes, ?LINE),
             ?CHECK_SANITY(Self, Level),
             %% Go up to next Level.
             link_on_level_ge1(Self, Level + 1, MaxLevel)
