@@ -262,13 +262,9 @@ set_type_op(Bucket, Type) ->
 set_range_op(Bucket, {MinKey, EncompassMin}, {MaxKey, EncompassMax}) ->
     gen_server:call(Bucket, {set_range_op, {MinKey, EncompassMin}, {MaxKey, EncompassMax}}).
 
-set_max_key_op([], _MaxKey, _EncompassMax) ->
-    ok;
 set_max_key_op(Bucket, MaxKey, EncompassMax) ->
     gen_server:call(Bucket, {set_max_key_op, MaxKey, EncompassMax}).
 
-set_min_key_op([], _MinKey, _EncompassMin) ->
-    ok;
 set_min_key_op(Bucket, MinKey, EncompassMin) ->
     gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
 
@@ -823,13 +819,6 @@ handle_call(get_op, From, State) ->
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
-%% Returns insert is done?
-handle_call(get_inserted_op, _From, State) ->
-    {reply, lists:all(fun(X) -> X end, State#node.inserted), State};
-
-handle_call(get_deleted_op, _From, State) ->
-    {reply, State#node.deleted, State};
-
 handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
@@ -1149,47 +1138,6 @@ do_link_on_level_0(Self, Neighbor, GetNeighborOp) ->
     dynomite_prof:stop_prof(do_link_on_level_0),
     need_link_on_level_ge1.
 
-%% %% [Neighbor] <=> [Self] <=> [NeighborRight]
-%% check_invariant_level_0_left(MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
-%%     check_invariant_level_0(MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey, fun(X, Y) -> X >= Y end).
-
-%% %% [NeighborLeft] <=> [Self] <=> [Neighbor]
-%% check_invariant_level_0_right(MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey) ->
-%%     check_invariant_level_0(MyKey, Neighbor, NeighborLeft, RealNeighborLeft, RealNeighborLeftKey, fun(X, Y) -> X =< Y end).
-
-%% %% N.B.
-%% %%   callee shoudl lock all nodes
-%% %%
-%% %% Returns
-%% %%   retry: You should retry link_on_level_ge1 on same level.
-%% %%   ok: invariant is satified, you can link safely on this level.
-%% check_invariant_level_0(MyKey, Neighbor, NeighborOfNeighbor, RealNeighborOfNeighbor, RealNeighborOfNeighborKey, CompareFun) ->
-%%     %% After locked 3 nodes, check invariants.
-%%     %% invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     %%   NeighborOfNeighbor == RealNeighborOfNeighbor
-%%     %%   Neighbor->rightKey < MyKey (sanity check)
-%%     IsInvalidOrder = (RealNeighborOfNeighborKey =/= [] andalso CompareFun(MyKey, RealNeighborOfNeighborKey)),
-%%     IsNeighborChanged = (NeighborOfNeighbor =/= RealNeighborOfNeighbor),
-
-%%     if IsInvalidOrder orelse IsNeighborChanged
-%%        ->
-%%             %% Retry: another key is inserted
-%%             ?INFOF("RETRY: check_invariant_level_0 MyKey=~p RealNeighborOfNeighborKey=~p", [MyKey, RealNeighborOfNeighborKey]),
-%%             retry;
-%%        true ->
-%%             IsDeleted =
-%%                 (Neighbor =/= [] andalso gen_server:call(Neighbor, get_deleted_op))
-%%                 orelse
-%%                 (NeighborOfNeighbor =/= [] andalso gen_server:call(NeighborOfNeighbor, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     ?INFO("RETRY: check_invariant_level_0 neighbor deleted"),
-%%                     retry;
-%%                true ->
-%%                     ok
-%%             end
-%%     end.
-
 buddy_op_proxy([], [], _MyMV, _Level) ->
     not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
@@ -1222,7 +1170,6 @@ link_on_level_ge1(Self, State) ->
 %% Link on all levels done.
 link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
     [];
-%% Find buddy node and link it.
 %% buddy node has same membership_vector on this level.
 %% Insert Sample
 %%
@@ -1280,46 +1227,6 @@ do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
     ?CHECK_SANITY(Self, Level),
     %% Go up to next Level.
     link_on_level_ge1(Self, Level + 1, MaxLevel).
-
-%% %% callee should lock all nodes
-%% %% Returns
-%% %%   retry: You should retry link_on_level_ge1 on same level.
-%% %%   done: link process is done. link on higher level is not necessary.
-%% %%   ok: invariant is satified, you can link safely on this level.
-%% check_invariant_level_ge1_left(Level, MyKey, Buddy, BuddyKey, BuddyRight) ->
-%%     check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyRight, get_right_op, fun(X, Y) -> X > Y end).
-%% check_invariant_level_ge1_right(Level, MyKey, Buddy, BuddyKey, BuddyLeft) ->
-%%     check_invariant_ge1(Level, MyKey, Buddy, BuddyKey, BuddyLeft, get_left_op, fun(X, Y) -> X < Y end).
-
-%% check_invariant_ge1(Level, MyKey, Buddy, _BuddyKey, BuddyNeighbor, GetNeighborOp, CompareFun) ->
-%%     RealBuddyNeighbor = apply(?MODULE, GetNeighborOp, [Buddy, Level]),
-%%     {RealBuddyNeighborKey, _} = mio_skip_graph:get_key_op(RealBuddyNeighbor),
-%% %%    {RealBuddyNeighbor, RealBuddyNeighborKey} = gen_server:call(Buddy, {GetNeighborOp, Level}),
-%%     IsSameKey = RealBuddyNeighborKey =/= [] andalso string:equal(MyKey, RealBuddyNeighborKey),
-%%     IsInvalidOrder = (RealBuddyNeighborKey =/= [] andalso CompareFun(MyKey, RealBuddyNeighborKey)),
-%%     IsNeighborChanged = (RealBuddyNeighbor =/= BuddyNeighbor),
-%%     %% Invariant
-%%     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-%%     if
-%%         %% done: other process insert on higher level, so we have nothing to do.
-%%         IsSameKey ->
-%%             done;
-%%         %% retry: another key is inserted
-%%         IsInvalidOrder orelse IsNeighborChanged ->
-%%             %%?INFOF("RETRY: check_invariant_ge1 Level=~p ~p ~p", [Level, [RealBuddyNeighbor, BuddyNeighbor], [MyKey, BuddyKey, RealBuddyNeighborKey]]),
-%%             retry;
-%%         true->
-%%             IsDeleted =
-%%                 (Buddy =/= [] andalso gen_server:call(Buddy, get_deleted_op))
-%%                 orelse
-%%                   (BuddyNeighbor =/= [] andalso gen_server:call(BuddyNeighbor, get_deleted_op)),
-%%             if IsDeleted ->
-%%                     ?INFO("RETRY: check_invariant_ge1 Neighbor deleted"),
-%%                     retry;
-%%                true ->
-%%                     ok
-%%             end
-%%     end.
 
 node_on_level(Nodes, Level) ->
     case Nodes of
