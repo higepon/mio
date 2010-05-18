@@ -389,7 +389,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 insert_op_call(From, State, Self, Key, Value)  ->
-    LockedNodes = lock_or_exit([Self], ?LINE, [my_key(State)]),
     InsertState = just_insert_op(Self, Key, Value),
     NewlyAllocatedBucket =
     case {State#node.type, InsertState} of
@@ -415,7 +414,6 @@ insert_op_call(From, State, Self, Key, Value)  ->
             split_c_o_c_by_m(State, neighbor_node(State, left, 0), Self, neighbor_node(State, right, 0));
         _ -> []
     end,
-    unlock(LockedNodes, ?LINE),
 
     %% It's preferable that start buckt is local.
     case mio_util:is_local_process(NewlyAllocatedBucket) of
@@ -457,29 +455,23 @@ make_c_o_c(State, Left, Right) ->
     link_on_level_ge1(EmptyBucket, State),
     EmptyBucket.
 
-%% Left is already locked
 insert_c_o_l_overflow(State, Left, Right) ->
-    LockedNodes = lock_or_exit([Right], ?LINE, []),
     {LargeKey, LargeValue} = take_largest_op(Left),
     case just_insert_op(Right, LargeKey, LargeValue) of
         full ->
             %% C1-O2$ -> C1'-O*-C2
             NewlyAllocatedBucket = make_c_o_c(State, Left, Right),
-            unlock(LockedNodes, ?LINE),
             NewlyAllocatedBucket;
         _ ->
             %% C1-O -> C1'-O'
             {NewMaxKey, _} = get_largest_op(Left),
             set_max_key_op(Left, NewMaxKey, true),
             set_min_key_op(Right, NewMaxKey, false),
-            unlock(LockedNodes, ?LINE),
             []
     end.
 
 
-%% Left is already locked
 insert_c_o_c_l_overflow(State, Left, Middle) ->
-    LockedNodes = lock_or_exit([Middle], ?LINE, []),
     {LargeKey, LargeValue} = take_largest_op(Left),
     NewlyAllocatedBucket =
     case just_insert_op(Middle, LargeKey, LargeValue) of
@@ -494,7 +486,6 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
             set_min_key_op(Middle, LeftMax, false),
             []
     end,
-    unlock(LockedNodes, ?LINE),
     NewlyAllocatedBucket.
 
 insert_alone_full(State, Self) ->
@@ -578,11 +569,7 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
 %% Insertion to the Right causes overflow
 %% Right is already locked.
 split_c_o_c_by_r(State, Left, Middle, Right) ->
-    LockedNodes = lock_or_exit([Left, Middle], ?LINE, []),
     {PrevRight, EmptyBucket} = prepare_split_c_o_c(State, Left, Middle, Right),
-    LockedNodes2 = lock_or_exit([PrevRight], ?LINE, []),
-
-
     {LargeKey, LargeValue} = take_largest_op(Right),
     ok = just_insert_op(EmptyBucket, LargeKey, LargeValue),
 
@@ -600,8 +587,6 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     %% link on Level >= 1
     link_on_level_ge1(EmptyBucket, State),
 
-    unlock(LockedNodes, ?LINE),
-    unlock(LockedNodes2, ?LINE),
     EmptyBucket.
 
 %% Skip graphs
