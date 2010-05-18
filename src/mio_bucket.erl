@@ -491,7 +491,6 @@ insert_alone_full(State, Self) ->
     %% link on Level 0
     link_right_op(Self, 0, EmptyBucket),
     link_left_op(EmptyBucket, 0, Self),
-    gen_server:call(EmptyBucket, {set_inserted_op, 0}),
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
@@ -844,19 +843,6 @@ handle_call({link_right_op, Level, RightNode}, _From, State) ->
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)};
 
-handle_call({set_expire_time_op, ExpireTime}, _From, State) ->
-    {reply, ok, State#node{expire_time=ExpireTime}};
-
-handle_call(set_deleted_op, _From, State) ->
-    {reply, ok, State#node{deleted=true}};
-
-
-handle_call({set_inserted_op, Level}, _From, State) ->
-    {reply, ok, State#node{inserted=mio_util:lists_set_nth(Level + 1, true, State#node.inserted)}};
-
-handle_call(set_inserted_op, _From, State) ->
-    {reply, ok, State#node{inserted=lists:duplicate(length(State#node.inserted) + 1, true)}};
-
 handle_call(Args, _From, State) ->
     io:format("Unknown handle call on mio_bucket : ~p:State=~p", [Args, State]).
 
@@ -1129,7 +1115,6 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
-            gen_server:call(Self, set_inserted_op),
             ?CHECK_SANITY(Self, Level),
             dynomite_prof:stop_prof(link_on_level_ge1),
             [];
@@ -1154,7 +1139,6 @@ do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
         left ->
             link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
     end,
-    gen_server:call(Self, {set_inserted_op, Level}),
     ?CHECK_SANITY(Self, Level),
     %% Go up to next Level.
     link_on_level_ge1(Self, Level + 1, MaxLevel).
