@@ -1092,7 +1092,7 @@ insert_op_call(From, State, Self, Introducer) ->
     %% => This causes dead lock, since Self will never be released to others.
     %%    We use inserted_op instead in order to prevent deletion.
     dynomite_prof:start_prof(link_on_level_0),
-    case link_on_level_0(From, State, Self, Introducer) of
+    case link_on_level_0(State, Self, Introducer) of
         no_more ->
             dynomite_prof:stop_prof(link_on_level_0),
             gen_server:call(Self, set_inserted_op),
@@ -1108,7 +1108,7 @@ insert_op_call(From, State, Self, Introducer) ->
     gen_server:reply(From, ok).
 
 
-link_on_level_0(From, State, Self, Introducer) ->
+link_on_level_0(State, Self, Introducer) ->
     MyKey = my_key(State),
     {Neighbor, NeighborKey, _, _} = mio_skip_graph:search_op(Introducer, MyKey),
 
@@ -1116,63 +1116,42 @@ link_on_level_0(From, State, Self, Introducer) ->
     if
         %% MyKey is already exists
         IsSameKey ->
-            try_overwrite_value(From, State, Self, Neighbor, Introducer);
+            try_overwrite_value(Neighbor);
         %% insert!
         true ->
-            do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer)
+            do_link_on_level_0(State, Self, Neighbor, NeighborKey)
     end.
 
-try_overwrite_value(From, State, Self, Neighbor, Introducer) ->
+try_overwrite_value(Neighbor) ->
     Value = dummy_todo,
     %% overwrite the value
     ok = gen_server:call(Neighbor, {set_op, Value}),
     no_more.
 
 %% [Neighbor] <-> [NodeToInsert] <-> [NeigborRight]
-do_link_on_level_0(From, State, Self, Neighbor, NeighborKey, Introducer) ->
+do_link_on_level_0(State, Self, Neighbor, NeighborKey)  ->
     case NeighborKey < my_key(State) of
         true ->
-            do_link_on_level_0(From, State, Self, Neighbor, Introducer, get_right_op, check_invariant_level_0_left);
+            do_link_on_level_0(Self, Neighbor, get_right_op);
         _ ->
             %% [NeighborLeft] <-> [NodeToInsert] <-> [Neigbor]
-            do_link_on_level_0(From, State, Self, Neighbor, Introducer, get_left_op, check_invariant_level_0_right)
+            do_link_on_level_0(Self, Neighbor, get_left_op)
     end.
-
-do_link_on_level_0(From, State, Self, Neighbor, Introducer, GetNeighborOp, CheckInvariantFun) ->
+do_link_on_level_0(Self, Neighbor, GetNeighborOp) ->
     dynomite_prof:start_prof(do_link_on_level_0),
-    MyKey = my_key(State),
-    dynomite_prof:start_prof(do_link_on_level_0_hoge),
-    %% Lock 3 nodes [Neighbor], [NodeToInsert] and [NeighborRightOrLeft]
-    NeighborRightOrLeft = apply(?MODULE, GetNeighborOp, [Self, 0]),
-    dynomite_prof:stop_prof(do_link_on_level_0_hoge),
-    dynomite_prof:start_prof(do_link_on_level_0_hoge1),
-
-    dynomite_prof:stop_prof(do_link_on_level_0_hoge1),
-
-    dynomite_prof:start_prof(do_link_on_level_0_hoge2),
 
     %% After locked 3 nodes, check invariants.
     %% invariant
     %%   http://docs.google.com/present/edit?id=0AWmP2yjXUnM5ZGY5cnN6NHBfMmM4OWJiZGZm&hl=ja
-    {RealNeighborRightOrLeft, RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
-    dynomite_prof:stop_prof(do_link_on_level_0_hoge2),
-    dynomite_prof:start_prof(do_link_on_level_0_invari),
-    case apply(?MODULE, CheckInvariantFun, [MyKey, Neighbor, NeighborRightOrLeft, RealNeighborRightOrLeft, RealNeighborRightOrLeftKey]) of
-        retry ->
-            dynomite_prof:stop_prof(do_link_on_level_0_invari),
-            dynomite_prof:stop_prof(do_link_on_level_0),
-            link_on_level_0(From, State, Self, Introducer);
-        ok ->
-            dynomite_prof:stop_prof(do_link_on_level_0_invari),
-            case GetNeighborOp of
-                get_right_op ->
-                    link_three_nodes(Neighbor, Self, RealNeighborRightOrLeft, 0);
-                _ ->
-                    link_three_nodes(RealNeighborRightOrLeft, Self, Neighbor, 0)
-            end,
-            dynomite_prof:stop_prof(do_link_on_level_0),
-            need_link_on_level_ge1
-    end.
+    {RealNeighborRightOrLeft, _RealNeighborRightOrLeftKey} = gen_server:call(Neighbor, {GetNeighborOp, 0}),
+    case GetNeighborOp of
+        get_right_op ->
+            link_three_nodes(Neighbor, Self, RealNeighborRightOrLeft, 0);
+        _ ->
+            link_three_nodes(RealNeighborRightOrLeft, Self, Neighbor, 0)
+    end,
+    dynomite_prof:stop_prof(do_link_on_level_0),
+    need_link_on_level_ge1.
 
 %% [Neighbor] <=> [Self] <=> [NeighborRight]
 check_invariant_level_0_left(MyKey, Neighbor, NeighborRight, RealNeighborRight, RealNeighborRightKey) ->
