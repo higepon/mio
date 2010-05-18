@@ -5,3 +5,4 @@ erl_crash.dump
 mio.log.1
 mio.log.idx
 mio.log.siz
+_test/

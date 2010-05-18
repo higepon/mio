@@ -6,7 +6,7 @@
 %%% Created : 16 Apr 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_skip_graph_tests).
--include("../include/mio.hrl").
+-include("../src/mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MEMCACHED_PORT, 11211).
