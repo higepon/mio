@@ -55,8 +55,8 @@ get(Key) ->
     case ets:lookup(?MODULE, Key) of
         [{Key, Value}] ->
             {ok, Value};
-        Other ->
-            Other
+        [] ->
+            {error, not_found}
     end.
 
 set(Key, Value) ->
