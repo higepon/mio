@@ -7,7 +7,7 @@
 
 
 -define(SERVER, ?MODULE).
--define(INFOF(Msg, Args), mio_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
+-define(INFOF(Msg, Args), error_logger:info_msg(Msg ++ " ~p:~p~p~n", Args ++ [?MODULE, ?LINE, self()])).
 -define(INFO(Msg), ?INFOF(Msg, [])).
 
 %%-define(MIN_KEY, <<16#20>>).

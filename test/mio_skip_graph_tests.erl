@@ -72,7 +72,8 @@ c_o_same_mv() ->
     ?assertEqual({error, not_found}, mio_skip_graph:search_op(RightBucket, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(RightBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(RightBucket, "key2")),
-    ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")).
+    ?assertEqual({ok, value3}, mio_skip_graph:search_op(RightBucket, "key3")),
+    mio_skip_graph:dump_op(Bucket).
 
 c_o_different_mv() ->
     {Bucket, RightBucket} = make_c_o_different_mv(),

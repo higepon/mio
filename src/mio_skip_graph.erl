@@ -188,9 +188,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 
 dump_op_call(State) ->
     Key = get_key(State),
-    io:format("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
+    ?INFOF("===========================================~nBucket: ~p<~p>~n", [Key, State#node.type]),
     lists:foreach(fun(K) ->
-                          io:format("    ~p~n", [K])
+                          ?INFOF("    ~p~n", [K])
                   end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];
