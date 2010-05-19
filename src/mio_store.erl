@@ -112,8 +112,6 @@ take_smallest(Store) ->
             none;
         Key ->
             case ets:lookup(Store#store.ets, Key) of
-                [] ->
-                    none;
                 [{Key, Value}] ->
                     true = ets:delete(Store#store.ets, Key),
                     {Key, Value, Store}
@@ -130,8 +128,6 @@ take_largest(Store) ->
             none;
         Key ->
             case ets:lookup(Store#store.ets, Key) of
-                [] ->
-                    none;
                 [{Key, Value}] ->
                     true = ets:delete(Store#store.ets, Key),
                     {Key, Value, Store}
@@ -148,8 +144,6 @@ largest(Store) ->
             none;
         Key ->
             case ets:lookup(Store#store.ets, Key) of
-                [] ->
-                    none;
                 [{Key, Value}] ->
                     {Key, Value}
             end
@@ -165,8 +159,6 @@ smallest(Store) ->
             none;
         Key ->
             case ets:lookup(Store#store.ets, Key) of
-                [] ->
-                    none;
                 [{Key, Value}] ->
                     {Key, Value}
             end

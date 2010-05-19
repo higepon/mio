@@ -82,3 +82,8 @@ take_largest_test() ->
 
     B5 = mio_store:new(3),
     none = mio_store:take_largest(B5).
+
+empty_test() ->
+    B = mio_store:new(3),
+    none = mio_store:largest(B),
+    none = mio_store:smallest(B).
