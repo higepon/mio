@@ -53,6 +53,12 @@ full_test() ->
     {full, B3} = mio_store:set(key_c, value_c, B2),
     true = mio_store:is_full(B3).
 
+full2_test() ->
+    B = mio_store:new(1),
+    {full, B1} = mio_store:set(key_a, value_a, B),
+    {full, _} = mio_store:set(key_a, value_a, B1).
+
+
 take_smallest_test() ->
     B = mio_store:new(3),
     B1 = mio_store:set(key_b, value_b, B),
