@@ -70,11 +70,12 @@ $(EBIN_DIR)/mio_skip_graph_tests.beam: $(TEST_DIR)/mio_skip_graph_tests.erl $(SO
 VERBOSE_TEST ?= false
 
 check: all
-#	@erl -pa `pwd`/ebin -eval 'eunit:test([mio_skip_graph_tests, mio_bucket_tests, global, mio_tests, mio_lock, mio_mvector, mio_store]).' -s init stop | gor
+	@(pgrep -f dialyzer || true) > /tmp/dialyzer.pid
+	@((cat /tmp/dialyzer.pid | xargs kill) || true) > /dev/null
 	@cd src && ./ext/run_tests.escript ../ebin/ | gor
 	@./test/two-nodes.sh |gor
 	@google-chrome ./_test/cover/index.html 1>/dev/null
-#	$(MAKE) dialyzer & # quick quick
+	@$(MAKE) check-error& # quick quick
 
 check_one: all
 	@erl -pa `pwd`/ebin -eval 'eunit:test([$(TEST_NAME)_tests]).' -s init stop | gor
@@ -117,7 +118,8 @@ clean:
 	rm -rf log/mio.log.*
 	rm -rf mio.log.*
 
-dialyzer: all
+# don't name this target as "dialyzer", which will cause been kill by pkill.
+check-error: all
 	dialyzer -Wno_return -I $(INCLUDE_DIR) -c $(EBIN_DIR)
 
 create_plt:
