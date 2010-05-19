@@ -52,13 +52,11 @@
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
-%%stats_op/2,
-get_op/2,
+         get_op/2,
           buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
           link_right_op/3, link_left_op/3,
          set_expire_time_op/2, buddy_op/4,
-         %% delete_op/2, delete_op/1,
-range_search_asc_op/4, range_search_desc_op/4,
+         range_search_asc_op/4, range_search_desc_op/4,
          node_on_level/2,
          %% For testability
          set_gen_mvector_op/2
@@ -67,7 +65,6 @@ range_search_asc_op/4, range_search_desc_op/4,
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
-
 
 %%====================================================================
 %%  Skip Graph layer

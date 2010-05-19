@@ -252,7 +252,7 @@ process_set(Sock, Introducer, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serial
 %%                              end,
 %%             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
 %%            mio_skip_graph:insert_op(Introducer, Key, Value),
-            gen_server:call(Serializer, {insert_op, Introducer, Key, Value}),
+            mio_serializer:insert_op(Serializer, Introducer, Key, Value),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2);
 %%            NodeToInsert;
