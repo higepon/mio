@@ -39,6 +39,7 @@
 -behaviour(supervisor).
 -export([init/1, start_serializer/0, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
 -include("mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %% supervisor:
 %%   On start up, supervisor starts mio_memcached.
@@ -104,8 +105,54 @@ add_disk_logger(LogDir) ->
             halt(1)
    end.
 
+init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
+?debugHere,
+    %% getRandomId uses crypto server
+    crypto:start(),
+?debugHere,
+    %% However we want to set log Verbose here, we have to wait logger starting up.
+    %% So we set Verbose flag on mio_memcached:start_link
+    add_disk_logger(LogDir),
+?debugHere,
+    %% todo
+    %% Make this simple_one_for_one
+    ?PROFILER_START(self()),
+?debugHere,
+    {ok, {{one_for_one, 10, 20},
+          %% logger should be the first.
+          [
+           {getRandomId(), {logger, start_link, []},
+            permanent, brutal_kill, worker, [logger]},
+           {dynomite_prof, {dynomite_prof, start_link, []},
+            permanent, brutal_kill, worker, [dynomite_prof]},
+           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
+            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+            permanent, brutal_kill, worker, [mio_memcached]}
+]}};
 
-init(_Args) ->
+init([second, Port, MaxLevel, BootNode, LogDir, Verbose]) ->
+?debugHere,
+    %% getRandomId uses crypto server
+?debugHere,
+    %% However we want to set log Verbose here, we have to wait logger starting up.
+    %% So we set Verbose flag on mio_memcached:start_link
+?debugHere,
+    %% todo
+    %% Make this simple_one_for_one
+    ?PROFILER_START(self()),
+?debugHere,
+    {ok, {{one_for_one, 10, 20},
+          %% logger should be the first.
+          [
+           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
+            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+            permanent, brutal_kill, worker, [mio_memcached]}
+]}};
+
+
+
+init([]) ->
+?debugHere,
     %% getRandomId uses crypto server
     crypto:start(),
 
@@ -125,11 +172,11 @@ init(_Args) ->
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
           [
-           {logger, {logger, start_link, []},
+           {getRandomId(), {logger, start_link, []},
             permanent, brutal_kill, worker, [logger]},
-           {dynomite_prof, {dynomite_prof, start_link, []},
+           {getRandomId(), {dynomite_prof, start_link, []},
             permanent, brutal_kill, worker, [dynomite_prof]},
-           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
+           {getRandomId(), %% this is just id of specification, will not be registered by register/2.
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}
 ]}}.

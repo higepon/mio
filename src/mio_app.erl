@@ -38,6 +38,7 @@
 -module(mio_app).
 -behaviour(application).
 -include("mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([start/0, stop/0, fatal/4, get_env/1, get_env/2, wait_startup/2]).
@@ -81,6 +82,7 @@ wait_startup(Host, Port) ->
 wait_startup(0, _Host, _Port) ->
     {error, mio_not_started};
 wait_startup(N, Host, Port) ->
+
     case gen_tcp:connect(Host, Port, []) of
         {ok, Socket} ->
             gen_tcp:close(Socket),

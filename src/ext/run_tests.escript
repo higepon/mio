@@ -11,6 +11,7 @@ main([Ebin]) ->
 
     crypto:start(),
     start_cover(CoverModules),
+%%    eunit:test(TestModules, [verbose]),
     eunit:test(TestModules),
     analyze_cover(CoverModules);
 main(_) ->
