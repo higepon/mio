@@ -62,6 +62,7 @@ init_start_node(Sup, MaxLevel, BootNode) ->
             {Serializer, LocalSetting};
         %% Introducer bootnode exists
         _ ->
+            ?debugFmt("~p", [BootNode]),
             case mio_bootstrap:get_boot_info(BootNode) of
                 {ok, BootBucket, Allocator, Serializer} ->
                     Supervisor = whereis(mio_sup),

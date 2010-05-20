@@ -30,3 +30,6 @@ start_and_kill_test() ->
     ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11311)),
     exit(Mio3, normal),
     exit(Mio4, normal).
+
+introducer_not_exist_test() ->
+    {ok, Mio4} = mio_sup:start_second_mio(mio_sup1, "hig", 11311, 3, false).

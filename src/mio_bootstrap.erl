@@ -37,6 +37,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_bootstrap).
 -include("mio.hrl").
+-include_lib("eunit/include/eunit.hrl").
 -behaviour(gen_server).
 
 %% API
