@@ -126,7 +126,7 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
 %%                    ?INFOF("Start set ~p", [self()]),
-                    process_set(Sock, StartBucket, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
+                    process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
 %%                    ?INFOF("End set ~p", [self()]),
                     %% process_set increses process memory size and never shrink.
                     %% We have to collect them here.
@@ -238,7 +238,7 @@ process_get(Sock, StartNode, Key) ->
 %% %%     ok = gen_tcp:send(Sock, P).
 
 %% %% See expiry format definition on process_get
-process_set(Sock, Introducer, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
+process_set(Sock, Introducer, LocalSetting, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value),
@@ -248,7 +248,7 @@ process_set(Sock, Introducer, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serial
             case mio_util:is_local_process(NewlyAllocatedBucket) of
                 true ->
                     %%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
-                    ok = mio_local_store:set(start_bucket, NewlyAllocatedBucket);
+                    ok = mio_local_store:set(LocalSetting, start_bucket, NewlyAllocatedBucket);
                 _ ->
                     []
             end;
