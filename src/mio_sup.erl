@@ -155,8 +155,8 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
 ]}};
 
 init([]) ->
-    %% getRandomId uses crypto server
-    crypto:start(),
+%%     %% getRandomId uses crypto server
+%%     crypto:start(),
 
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 10),
@@ -164,24 +164,26 @@ init([]) ->
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),
 
+    init([Port, MaxLevel, BootNode, LogDir, Verbose]).
+
     %% However we want to set log Verbose here, we have to wait logger starting up.
     %% So we set Verbose flag on mio_memcached:start_link
-    add_disk_logger(LogDir),
+%%    add_disk_logger(LogDir),
 
-    %% todo
-    %% Make this simple_one_for_one
-    ?PROFILER_START(self()),
-    {ok, {{one_for_one, 10, 20},
-          %% logger should be the first.
-          [
-           {getRandomId(), {logger, start_link, []},
-            permanent, brutal_kill, worker, [logger]},
-           {getRandomId(), {dynomite_prof, start_link, []},
-            permanent, brutal_kill, worker, [dynomite_prof]},
-           {getRandomId(), %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
-            permanent, brutal_kill, worker, [mio_memcached]}
-]}}.
+%%     %% todo
+%%     %% Make this simple_one_for_one
+%%     ?PROFILER_START(self()),
+%%     {ok, {{one_for_one, 10, 20},
+%%           %% logger should be the first.
+%%           [
+%%            {getRandomId(), {logger, start_link, []},
+%%             permanent, brutal_kill, worker, [logger]},
+%%            {getRandomId(), {dynomite_prof, start_link, []},
+%%             permanent, brutal_kill, worker, [dynomite_prof]},
+%%            {getRandomId(), %% this is just id of specification, will not be registered by register/2.
+%%             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+%%             permanent, brutal_kill, worker, [mio_memcached]}
+%% ]}}
 
 
 getRandomId() ->
