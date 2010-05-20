@@ -37,7 +37,7 @@
 -module(mio_local_store).
 
 %% API
--export([new/0, get/1, set/2]).
+-export([new/0, get/2, set/3]).
 
 -include("mio.hrl").
 
@@ -48,18 +48,18 @@
 new() ->
     %% This ets is node() local.
     %% ets:new returns tid() | atom. We discard them.
-    ets:new(?MODULE, [public, set, named_table]),
-    ok.
+    Table = ets:new(?MODULE, [public, set]),
+    {ok, Table}.
 
-get(Key) ->
-    case ets:lookup(?MODULE, Key) of
+get(Table, Key) ->
+    case ets:lookup(Table, Key) of
         [{Key, Value}] ->
             {ok, Value};
         [] ->
             {error, not_found}
     end.
 
-set(Key, Value) ->
+set(Table, Key, Value) ->
     %% est:insert returns always true.
-    true = ets:insert(?MODULE, {Key, Value}),
+    true = ets:insert(Table, {Key, Value}),
     ok.
