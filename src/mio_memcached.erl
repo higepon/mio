@@ -241,21 +241,17 @@ process_get(Sock, StartNode, Key) ->
 process_set(Sock, Introducer, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-%%             MVector = mio_mvector:generate(MaxLevel),
-%%             UnixTime = unixtime(),
-%%             ExpireDateUnixTime = if  ExpireDate =:= 0 ->
-%%                                      0;
-%%                                  ExpireDate > UnixTime ->
-%%                                      ExpireDate;
-%%                                  true ->
-%%                                      ExpireDate + UnixTime
-%%                              end,
-%%             {ok, NodeToInsert} = mio_sup:start_node(Key, Value, MVector, ExpireDateUnixTime),
-%%            mio_skip_graph:insert_op(Introducer, Key, Value),
-            mio_serializer:insert_op(Serializer, Introducer, Key, Value),
+            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
-            {ok, _Data} = gen_tcp:recv(Sock, 2);
-%%            NodeToInsert;
+            {ok, _Data} = gen_tcp:recv(Sock, 2),
+            %% It's preferable that start buckt is local.
+            case mio_util:is_local_process(NewlyAllocatedBucket) of
+                true ->
+                    %%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
+                    ok = mio_local_store:set(start_bucket, NewlyAllocatedBucket);
+                _ ->
+                    []
+            end;
         {error, closed} ->
             ok;
         Error ->

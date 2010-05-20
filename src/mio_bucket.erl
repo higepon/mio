@@ -402,16 +402,7 @@ insert_op_call(From, State, Self, Key, Value)  ->
             split_c_o_c_by_m(State, neighbor_node(State, left, 0), Self, neighbor_node(State, right, 0));
         _ -> []
     end,
-
-    %% It's preferable that start buckt is local.
-    case mio_util:is_local_process(NewlyAllocatedBucket) of
-        true ->
-%%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
-            ok = mio_local_store:set(start_bucket, NewlyAllocatedBucket);
-        _ ->
-            []
-    end,
-    gen_server:reply(From, ok).
+    gen_server:reply(From, {ok, NewlyAllocatedBucket}).
 
 make_empty_bucket(State, Type) ->
     MaxLevel = length(State#node.membership_vector),

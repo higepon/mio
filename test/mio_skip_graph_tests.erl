@@ -117,7 +117,7 @@ search_c_o_1_different() ->
 search_c_o_1(MakeC_O_C_Fun) ->
     {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key0", value0)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key0", value0)),
     %% search
     ?assertEqual({ok, value0}, mio_skip_graph:search_op(Bucket, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
@@ -138,8 +138,8 @@ search_c_o_2_different() ->
 search_c_o_2(MakeC_O_C_Fun) ->
     {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key00", value00)),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key01", value01)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key00", value00)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key01", value01)),
 
     %% search
     ?assertEqual({ok, value00}, mio_skip_graph:search_op(Bucket, "key00")),
@@ -163,9 +163,9 @@ search_c_o_3_different() ->
 search_c_o_3(MakeC_O_C_Fun) ->
     {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key00", value00)),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key01", value01)),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key02", value02)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key00", value00)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key01", value01)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key02", value02)),
 
     %% Right becomes c_o_c_r
     ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
@@ -203,9 +203,9 @@ search_c_o_4_different() ->
 search_c_o_4(MakeC_O_C_Fun) ->
     {Bucket, RightBucket} = MakeC_O_C_Fun(),
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key4", value4)),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key5", value5)),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key6", value6)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key4", value4)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key5", value5)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key6", value6)),
 
     %% Right becomes c_o_c_r
     ?assertEqual(c_o_c_r, mio_bucket:get_type_op(RightBucket)),
@@ -252,7 +252,7 @@ search_c_o_c_1(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Left, "key0", value0)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Left, "key0", value0)),
 
     {ok, value0} = mio_bucket:get_op(Left, "key0"),
     ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
@@ -295,7 +295,7 @@ search_c_o_c_2(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Right, "key7", value7)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Right, "key7", value7)),
 
     %% check types
     NewBucket = mio_bucket:get_right_op(Right),
@@ -354,7 +354,7 @@ search_c_o_c_3(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key30", value30)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Middle, "key30", value30)),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Left, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Left, "key2")),
@@ -395,7 +395,7 @@ search_c_o_c_4(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key32", value32)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Middle, "key32", value32)),
 
     %% check types
     NewBucket = mio_bucket:get_right_op(Right),
@@ -474,7 +474,7 @@ search_c_o_c_5(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Left, "key22", value22)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Left, "key22", value22)),
 
     %% check types
     NewBucket = mio_bucket:get_right_op(Right),
@@ -560,7 +560,7 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_O_c(MakeC_O_C_Fun),
 
     %% insert
-    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key55", value55)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Middle, "key55", value55)),
 
     %% check types
     NewBucket = mio_bucket:get_right_op(Right),
@@ -625,28 +625,28 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
 
 insert_o_1() ->
     {ok, Bucket} = make_bucket(alone),
-    ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key1", value1),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")).
 
 insert_o_2() ->
     {ok, Bucket} = make_bucket(alone),
-    ok = mio_skip_graph:insert_op(Bucket, "key2", value2),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key2", value2),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
 
-    ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key1", value1),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")).
 
 insert_o_3() ->
     {ok, Bucket} = make_bucket(alone),
-    ok = mio_skip_graph:insert_op(Bucket, "key2", value2),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key2", value2),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
 
-    ok = mio_skip_graph:insert_op(Bucket, "key1", value1),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key1", value1),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
 
-    ok = mio_skip_graph:insert_op(Bucket, "key3", value3),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "key3", value3),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Bucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(Bucket, "key2")),
     ?assertEqual({ok, value3}, mio_skip_graph:search_op(Bucket, "key3")).
@@ -655,34 +655,34 @@ insert_many() ->
     mio_util:do_times(10, fun do_insert_many/0).
 do_insert_many() ->
     {ok, Bucket} = make_bucket(alone),
-    ok = mio_skip_graph:insert_op(Bucket, "d4bd50c13cb2c368", "d4bd50c13cb2c368"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "d4bd50c13cb2c368", "d4bd50c13cb2c368"),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "7b077f782f5239c6", "7b077f782f5239c6"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "7b077f782f5239c6", "7b077f782f5239c6"),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "dc3df49638adfd2b", "dc3df49638adfd2b"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "dc3df49638adfd2b", "dc3df49638adfd2b"),
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "3a18f2c88d4ef922", "3a18f2c88d4ef922"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "3a18f2c88d4ef922", "3a18f2c88d4ef922"),
     ?assertEqual({ok, "3a18f2c88d4ef922"}, mio_skip_graph:search_op(Bucket, "3a18f2c88d4ef922")),
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "0177ebdfb54aba4c", "0177ebdfb54aba4c"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "0177ebdfb54aba4c", "0177ebdfb54aba4c"),
     ?assertEqual({ok, "0177ebdfb54aba4c"}, mio_skip_graph:search_op(Bucket, "0177ebdfb54aba4c")),
     ?assertEqual({ok, "3a18f2c88d4ef922"}, mio_skip_graph:search_op(Bucket, "3a18f2c88d4ef922")),
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "fc88c7d803f02fce", "fc88c7d803f02fce"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "fc88c7d803f02fce", "fc88c7d803f02fce"),
     ?assertEqual({ok, "fc88c7d803f02fce"}, mio_skip_graph:search_op(Bucket, "fc88c7d803f02fce")),
     ?assertEqual({ok, "0177ebdfb54aba4c"}, mio_skip_graph:search_op(Bucket, "0177ebdfb54aba4c")),
     ?assertEqual({ok, "3a18f2c88d4ef922"}, mio_skip_graph:search_op(Bucket, "3a18f2c88d4ef922")),
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "ae0aaa8b1c701ea7", "ae0aaa8b1c701ea7"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "ae0aaa8b1c701ea7", "ae0aaa8b1c701ea7"),
     ?assertEqual({ok, "ae0aaa8b1c701ea7"}, mio_skip_graph:search_op(Bucket, "ae0aaa8b1c701ea7")),
     ?assertEqual({ok, "fc88c7d803f02fce"}, mio_skip_graph:search_op(Bucket, "fc88c7d803f02fce")),
     ?assertEqual({ok, "0177ebdfb54aba4c"}, mio_skip_graph:search_op(Bucket, "0177ebdfb54aba4c")),
@@ -690,7 +690,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "5580da7ca4202565", "5580da7ca4202565"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "5580da7ca4202565", "5580da7ca4202565"),
     ?assertEqual({ok, "5580da7ca4202565"}, mio_skip_graph:search_op(Bucket, "5580da7ca4202565")),
     ?assertEqual({ok, "ae0aaa8b1c701ea7"}, mio_skip_graph:search_op(Bucket, "ae0aaa8b1c701ea7")),
     ?assertEqual({ok, "fc88c7d803f02fce"}, mio_skip_graph:search_op(Bucket, "fc88c7d803f02fce")),
@@ -699,7 +699,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "d2043d9b37d14ebf", "d2043d9b37d14ebf"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "d2043d9b37d14ebf", "d2043d9b37d14ebf"),
     ?assertEqual({ok, "d2043d9b37d14ebf"}, mio_skip_graph:search_op(Bucket, "d2043d9b37d14ebf")),
     ?assertEqual({ok, "5580da7ca4202565"}, mio_skip_graph:search_op(Bucket, "5580da7ca4202565")),
     ?assertEqual({ok, "ae0aaa8b1c701ea7"}, mio_skip_graph:search_op(Bucket, "ae0aaa8b1c701ea7")),
@@ -709,7 +709,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "aeaf94f572e71d9c", "aeaf94f572e71d9c"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "aeaf94f572e71d9c", "aeaf94f572e71d9c"),
     ?assertEqual({ok, "aeaf94f572e71d9c"}, mio_skip_graph:search_op(Bucket, "aeaf94f572e71d9c")),
     ?assertEqual({ok, "d2043d9b37d14ebf"}, mio_skip_graph:search_op(Bucket, "d2043d9b37d14ebf")),
     ?assertEqual({ok, "5580da7ca4202565"}, mio_skip_graph:search_op(Bucket, "5580da7ca4202565")),
@@ -720,7 +720,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "5e4f257214882b66", "5e4f257214882b66"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "5e4f257214882b66", "5e4f257214882b66"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "5e4f257214882b66"}, mio_skip_graph:search_op(Bucket, "5e4f257214882b66")),
     ?assertEqual({ok, "aeaf94f572e71d9c"}, mio_skip_graph:search_op(Bucket, "aeaf94f572e71d9c")),
@@ -733,7 +733,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "f8d5e4182acde4df", "f8d5e4182acde4df"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "f8d5e4182acde4df", "f8d5e4182acde4df"),
     ?assertEqual({ok, "f8d5e4182acde4df"}, mio_skip_graph:search_op(Bucket, "f8d5e4182acde4df")),
     ?assertEqual({ok, "5e4f257214882b66"}, mio_skip_graph:search_op(Bucket, "5e4f257214882b66")),
     ?assertEqual({ok, "aeaf94f572e71d9c"}, mio_skip_graph:search_op(Bucket, "aeaf94f572e71d9c")),
@@ -746,7 +746,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "f3a18fe8b425450e", "f3a18fe8b425450e"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "f3a18fe8b425450e", "f3a18fe8b425450e"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "f3a18fe8b425450e"}, mio_skip_graph:search_op(Bucket, "f3a18fe8b425450e")),
     ?assertEqual({ok, "f8d5e4182acde4df"}, mio_skip_graph:search_op(Bucket, "f8d5e4182acde4df")),
@@ -761,7 +761,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "4a0672495168237d", "4a0672495168237d"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "4a0672495168237d", "4a0672495168237d"),
     ?assertEqual({ok, "4a0672495168237d"}, mio_skip_graph:search_op(Bucket, "4a0672495168237d")),
     ?assertEqual({ok, "f3a18fe8b425450e"}, mio_skip_graph:search_op(Bucket, "f3a18fe8b425450e")),
     ?assertEqual({ok, "f8d5e4182acde4df"}, mio_skip_graph:search_op(Bucket, "f8d5e4182acde4df")),
@@ -776,7 +776,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "1923dbe8af615049", "1923dbe8af615049"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "1923dbe8af615049", "1923dbe8af615049"),
     ?assertEqual({ok, "1923dbe8af615049"}, mio_skip_graph:search_op(Bucket, "1923dbe8af615049")),
     ?assertEqual({ok, "4a0672495168237d"}, mio_skip_graph:search_op(Bucket, "4a0672495168237d")),
     ?assertEqual({ok, "f3a18fe8b425450e"}, mio_skip_graph:search_op(Bucket, "f3a18fe8b425450e")),
@@ -792,7 +792,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "c12368669cccc56e", "c12368669cccc56e"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "c12368669cccc56e", "c12368669cccc56e"),
     ?assertEqual({ok, "c12368669cccc56e"}, mio_skip_graph:search_op(Bucket, "c12368669cccc56e")),
     ?assertEqual({ok, "1923dbe8af615049"}, mio_skip_graph:search_op(Bucket, "1923dbe8af615049")),
     ?assertEqual({ok, "4a0672495168237d"}, mio_skip_graph:search_op(Bucket, "4a0672495168237d")),
@@ -809,7 +809,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "97d283ca38bd0e1c", "97d283ca38bd0e1c"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "97d283ca38bd0e1c", "97d283ca38bd0e1c"),
     ?assertEqual({ok, "97d283ca38bd0e1c"}, mio_skip_graph:search_op(Bucket, "97d283ca38bd0e1c")),
     ?assertEqual({ok, "c12368669cccc56e"}, mio_skip_graph:search_op(Bucket, "c12368669cccc56e")),
     ?assertEqual({ok, "1923dbe8af615049"}, mio_skip_graph:search_op(Bucket, "1923dbe8af615049")),
@@ -827,7 +827,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "f2369ca008446bda", "f2369ca008446bda"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "f2369ca008446bda", "f2369ca008446bda"),
     ?assertEqual({ok, "f2369ca008446bda"}, mio_skip_graph:search_op(Bucket, "f2369ca008446bda")),
     ?assertEqual({ok, "97d283ca38bd0e1c"}, mio_skip_graph:search_op(Bucket, "97d283ca38bd0e1c")),
     ?assertEqual({ok, "c12368669cccc56e"}, mio_skip_graph:search_op(Bucket, "c12368669cccc56e")),
@@ -846,7 +846,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "325af468d6b6b460", "325af468d6b6b460"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "325af468d6b6b460", "325af468d6b6b460"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "325af468d6b6b460"}, mio_skip_graph:search_op(Bucket, "325af468d6b6b460")),
     ?assertEqual({ok, "f2369ca008446bda"}, mio_skip_graph:search_op(Bucket, "f2369ca008446bda")),
@@ -867,7 +867,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "1506b21ba57e6241", "1506b21ba57e6241"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "1506b21ba57e6241", "1506b21ba57e6241"),
     ?assertEqual({ok, "1506b21ba57e6241"}, mio_skip_graph:search_op(Bucket, "1506b21ba57e6241")),
     ?assertEqual({ok, "325af468d6b6b460"}, mio_skip_graph:search_op(Bucket, "325af468d6b6b460")),
     ?assertEqual({ok, "f2369ca008446bda"}, mio_skip_graph:search_op(Bucket, "f2369ca008446bda")),
@@ -888,7 +888,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "694ff99f8b29aab0", "694ff99f8b29aab0"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "694ff99f8b29aab0", "694ff99f8b29aab0"),
     ?assertEqual({ok, "694ff99f8b29aab0"}, mio_skip_graph:search_op(Bucket, "694ff99f8b29aab0")),
     ?assertEqual({ok, "1506b21ba57e6241"}, mio_skip_graph:search_op(Bucket, "1506b21ba57e6241")),
     ?assertEqual({ok, "325af468d6b6b460"}, mio_skip_graph:search_op(Bucket, "325af468d6b6b460")),
@@ -910,7 +910,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "f270646a9b74dde0", "f270646a9b74dde0"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "f270646a9b74dde0", "f270646a9b74dde0"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "f270646a9b74dde0"}, mio_skip_graph:search_op(Bucket, "f270646a9b74dde0")),
     ?assertEqual({ok, "694ff99f8b29aab0"}, mio_skip_graph:search_op(Bucket, "694ff99f8b29aab0")),
@@ -934,7 +934,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "3929e7412fa542aa", "3929e7412fa542aa"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "3929e7412fa542aa", "3929e7412fa542aa"),
     ?assertEqual({ok, "3929e7412fa542aa"}, mio_skip_graph:search_op(Bucket, "3929e7412fa542aa")),
     ?assertEqual({ok, "f270646a9b74dde0"}, mio_skip_graph:search_op(Bucket, "f270646a9b74dde0")),
     ?assertEqual({ok, "694ff99f8b29aab0"}, mio_skip_graph:search_op(Bucket, "694ff99f8b29aab0")),
@@ -958,7 +958,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "5022491d338a4ac2", "5022491d338a4ac2"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "5022491d338a4ac2", "5022491d338a4ac2"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "5022491d338a4ac2"}, mio_skip_graph:search_op(Bucket, "5022491d338a4ac2")),
     ?assertEqual({ok, "3929e7412fa542aa"}, mio_skip_graph:search_op(Bucket, "3929e7412fa542aa")),
@@ -984,7 +984,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "87c3061cf0ed9dae", "87c3061cf0ed9dae"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "87c3061cf0ed9dae", "87c3061cf0ed9dae"),
 %%    mio_skip_graph:dump_op(Bucket),
     ?assertEqual({ok, "87c3061cf0ed9dae"}, mio_skip_graph:search_op(Bucket, "87c3061cf0ed9dae")),
     ?assertEqual({ok, "5022491d338a4ac2"}, mio_skip_graph:search_op(Bucket, "5022491d338a4ac2")),
@@ -1011,7 +1011,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "72725872d73c8881", "72725872d73c8881"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "72725872d73c8881", "72725872d73c8881"),
     ?assertEqual({ok, "72725872d73c8881"}, mio_skip_graph:search_op(Bucket, "72725872d73c8881")),
     ?assertEqual({ok, "87c3061cf0ed9dae"}, mio_skip_graph:search_op(Bucket, "87c3061cf0ed9dae")),
     ?assertEqual({ok, "5022491d338a4ac2"}, mio_skip_graph:search_op(Bucket, "5022491d338a4ac2")),
@@ -1038,7 +1038,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "378e1ad721639aa5", "378e1ad721639aa5"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "378e1ad721639aa5", "378e1ad721639aa5"),
     ?assertEqual({ok, "378e1ad721639aa5"}, mio_skip_graph:search_op(Bucket, "378e1ad721639aa5")),
     ?assertEqual({ok, "72725872d73c8881"}, mio_skip_graph:search_op(Bucket, "72725872d73c8881")),
     ?assertEqual({ok, "87c3061cf0ed9dae"}, mio_skip_graph:search_op(Bucket, "87c3061cf0ed9dae")),
@@ -1066,7 +1066,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "e56afcd4a7841e2c", "e56afcd4a7841e2c"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "e56afcd4a7841e2c", "e56afcd4a7841e2c"),
     ?assertEqual({ok, "e56afcd4a7841e2c"}, mio_skip_graph:search_op(Bucket, "e56afcd4a7841e2c")),
     ?assertEqual({ok, "378e1ad721639aa5"}, mio_skip_graph:search_op(Bucket, "378e1ad721639aa5")),
     ?assertEqual({ok, "72725872d73c8881"}, mio_skip_graph:search_op(Bucket, "72725872d73c8881")),
@@ -1095,7 +1095,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "9ad21cf2116c8f12", "9ad21cf2116c8f12"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "9ad21cf2116c8f12", "9ad21cf2116c8f12"),
     ?assertEqual({ok, "9ad21cf2116c8f12"}, mio_skip_graph:search_op(Bucket, "9ad21cf2116c8f12")),
     ?assertEqual({ok, "e56afcd4a7841e2c"}, mio_skip_graph:search_op(Bucket, "e56afcd4a7841e2c")),
     ?assertEqual({ok, "378e1ad721639aa5"}, mio_skip_graph:search_op(Bucket, "378e1ad721639aa5")),
@@ -1125,7 +1125,7 @@ do_insert_many() ->
     ?assertEqual({ok, "dc3df49638adfd2b"}, mio_skip_graph:search_op(Bucket, "dc3df49638adfd2b")),
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")),
-    ok = mio_skip_graph:insert_op(Bucket, "3538dbd9389a630a", "3538dbd9389a630a"),
+    {ok, _} = mio_skip_graph:insert_op(Bucket, "3538dbd9389a630a", "3538dbd9389a630a"),
     ?assertEqual({ok, "3538dbd9389a630a"}, mio_skip_graph:search_op(Bucket, "3538dbd9389a630a")),
     ?assertEqual({ok, "9ad21cf2116c8f12"}, mio_skip_graph:search_op(Bucket, "9ad21cf2116c8f12")),
     ?assertEqual({ok, "e56afcd4a7841e2c"}, mio_skip_graph:search_op(Bucket, "e56afcd4a7841e2c")),
@@ -1173,8 +1173,8 @@ make_c_o_c(MakeC_O_C_Fun) ->
 %% C [key4, key5, key6]
 make_c_O_c(MakeC_O_C_Fun) ->
     {Left, Middle, Right} = make_c_o_c(MakeC_O_C_Fun),
-    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key30", value30)),
-    ?assertEqual(ok, mio_bucket:insert_op(Middle, "key31", value31)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Middle, "key30", value30)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Middle, "key31", value31)),
     {Left, Middle, Right}.
 
 
@@ -1183,18 +1183,18 @@ make_c_O_c(MakeC_O_C_Fun) ->
 make_c_o_different_mv() ->
     {ok, Bucket} = mio_sup:make_bucket([], 3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [0, 1] end),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
-    ok = mio_bucket:insert_op(Bucket, "key2", value2),
-    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key1", value1)),
+    {ok, _} = mio_bucket:insert_op(Bucket, "key2", value2),
+    {ok, _} = mio_bucket:insert_op(Bucket, "key3", value3),
     RightBucket = mio_bucket:get_right_op(Bucket),
     {Bucket, RightBucket}.
 
 make_c_o_same_mv() ->
     {ok, Bucket} = mio_sup:make_bucket([], 3, alone, [1, 1]),
     mio_bucket:set_gen_mvector_op(Bucket, fun(_Level) -> [1, 1] end),
-    ?assertEqual(ok, mio_bucket:insert_op(Bucket, "key1", value1)),
-    ok = mio_bucket:insert_op(Bucket, "key2", value2),
-    ok = mio_bucket:insert_op(Bucket, "key3", value3),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key1", value1)),
+    {ok, _} = mio_bucket:insert_op(Bucket, "key2", value2),
+    {ok, _} = mio_bucket:insert_op(Bucket, "key3", value3),
 
     %% check on level 0
     RightBucket = mio_bucket:get_right_op(Bucket),
