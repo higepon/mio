@@ -9,11 +9,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 start_test() ->
-    ?debugFmt("~p", [supervisor:start_link({local, mio_sup}, mio_sup, [11211, 3, false, ".", false])]),
-    ok = mio_app:wait_startup("127.0.0.1", 11211),
-    ?debugFmt("~p", [supervisor:start_link({local, mio_sup2}, mio_sup, [second, 11311, 3, false, ".", false])]),
+    ?assertMatch({ok, _} , supervisor:start_link({local, mio_sup}, mio_sup, [11211, 3, false, ".", false])),
+    ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11211)),
+    ?assertMatch({ok, _}, supervisor:start_link({local, mio_sup2}, mio_sup, [second, 11311, 3, false, ".", false])),
+    ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11311)),
     ?debugHere.
-%    ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11211)).
-%%     supervisor:start_link({local, mio_sup2}, mio_sup, [11311, 3, "mio2", ".", false]),
-%%     ok = mio_app:wait_startup("127.0.0.1", 11311).
+    
 

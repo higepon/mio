@@ -106,6 +106,14 @@ get_env(Key, DefaultValue) ->
     end.
 
 
+hige() ->
+   io:format("start=~p", [net_kernel:start(["hige"])]),
+    receive 
+        _ ->
+            supervisor:start_link({local, mio_sup2}, mio_sup, [second, 11311, 3, false, ".", false])
+    end.
+
+
 start(_Type, _StartArgs) ->
     supervisor:start_link({local, mio_sup}, mio_sup, []).
 

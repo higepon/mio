@@ -106,18 +106,14 @@ add_disk_logger(LogDir) ->
    end.
 
 init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
-?debugHere,
     %% getRandomId uses crypto server
     crypto:start(),
-?debugHere,
     %% However we want to set log Verbose here, we have to wait logger starting up.
     %% So we set Verbose flag on mio_memcached:start_link
     add_disk_logger(LogDir),
-?debugHere,
     %% todo
     %% Make this simple_one_for_one
     ?PROFILER_START(self()),
-?debugHere,
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
           [
@@ -131,16 +127,12 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
 ]}};
 
 init([second, Port, MaxLevel, BootNode, LogDir, Verbose]) ->
-?debugHere,
     %% getRandomId uses crypto server
-?debugHere,
     %% However we want to set log Verbose here, we have to wait logger starting up.
     %% So we set Verbose flag on mio_memcached:start_link
-?debugHere,
     %% todo
     %% Make this simple_one_for_one
     ?PROFILER_START(self()),
-?debugHere,
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
           [
@@ -152,7 +144,6 @@ init([second, Port, MaxLevel, BootNode, LogDir, Verbose]) ->
 
 
 init([]) ->
-?debugHere,
     %% getRandomId uses crypto server
     crypto:start(),
 
