@@ -35,28 +35,30 @@
 %%% Created : 3 Aug 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
--export([start_link/4]).
--export([memcached/3, process_request/4]).
-
+-export([start_link/5]).
+-export([memcached/4, process_request/4]).
+-include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
-init_start_node(MaxLevel, BootNode) ->
+init_start_node(Sup, MaxLevel, BootNode) ->
     {ok, LocalSetting} = mio_local_store:new(),
+
     case BootNode of
         %% Bootstrap
         false ->
             Capacity = 1000,
-            {ok, Serializer} = mio_sup:start_serializer(),
-            {ok, Allocator} = mio_sup:start_allocator(),
-            Supervisor = whereis(mio_sup),
-            ok = mio_allocator:add_node(Allocator, Supervisor),
+            {ok, Serializer} = mio_sup:start_serializer(Sup),
+            {ok, Allocator} = mio_sup:start_allocator(Sup),
 
-            {ok, Bucket} = mio_sup:make_bucket(Allocator, Capacity, alone, MaxLevel),
+            ok = mio_allocator:add_node(Allocator, Sup),
+            {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
+
             ok = mio_local_store:set(LocalSetting, start_bucket, Bucket),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
-            {ok, _BootStrap} = mio_sup:start_bootstrap(Bucket, Allocator, Serializer),
+            {ok, _BootStrap} = mio_sup:start_bootstrap(Sup, Bucket, Allocator, Serializer),
+
             {Serializer, LocalSetting};
         %% Introducer bootnode exists
         _ ->
@@ -72,16 +74,16 @@ init_start_node(MaxLevel, BootNode) ->
     end.
 
 %% supervisor calls this to create new memcached.
-start_link(Port, MaxLevel, BootNode, Verbose) ->
+start_link(Sup, Port, MaxLevel, BootNode, Verbose) ->
     error_logger:tty(Verbose),
-    Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
+    Pid = spawn_link(?MODULE, memcached, [Sup, Port, MaxLevel, BootNode]),
     {ok, Pid}.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
-memcached(Port, MaxLevel, BootNode) ->
-    try init_start_node(MaxLevel, BootNode) of
+memcached(Sup, Port, MaxLevel, BootNode) ->
+    try init_start_node(Sup, MaxLevel, BootNode) of
         {Serializer, LocalSetting} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of

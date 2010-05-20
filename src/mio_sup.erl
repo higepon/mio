@@ -39,7 +39,7 @@
 -behaviour(supervisor).
 %% API
 -export([start_first_mio/5, start_second_mio/5]).
--export([init/1, start_serializer/0, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
+-export([init/1, start_serializer/1, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/1]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -59,31 +59,31 @@ start_second_mio(SupName, Node, Port, MaxLevel, Verbose) ->
 %%   mio_memcached starts a dummy node using mio_sup:start_node.
 %%   Whenever new node is to create, mio_sup:start_nodes is used.
 
-start_bootstrap(BootBucket, Allocator, Serializer) ->
-    {ok, _} = supervisor:start_child(mio_sup, {mio_bootstrap,
-                                               {mio_bootstrap, start_link, [BootBucket, Allocator, Serializer]},
-                                               temporary, brutal_kill, worker, [mio_bootstrap]}).
+start_bootstrap(Sup, BootBucket, Allocator, Serializer) ->
+    {ok, _} = supervisor:start_child(Sup, {mio_bootstrap,
+                                           {mio_bootstrap, start_link, [BootBucket, Allocator, Serializer]},
+                                           temporary, brutal_kill, worker, [mio_bootstrap]}).
 
-start_allocator() ->
-    {ok, _} = supervisor:start_child(mio_sup, {mio_allocator,
-                                               {mio_allocator, start_link, []},
-                                               temporary, brutal_kill, worker, [mio_allocator]}).
+start_allocator(Sup) ->
+    {ok, _} = supervisor:start_child(Sup, {mio_allocator,
+                                           {mio_allocator, start_link, []},
+                                           temporary, brutal_kill, worker, [mio_allocator]}).
 
 
-make_bucket(Allocator, Capacity, Type, MaxLevel) when is_integer(MaxLevel) ->
-    make_bucket(Allocator, Capacity, Type, mio_mvector:generate(MaxLevel));
-
-%% You can set MembershipVector for testablity.
 make_bucket(Allocator, Capacity, Type, MembershipVector) ->
     make_bucket(mio_sup, Allocator, Capacity, Type, MembershipVector).
+
+make_bucket(Sup, Allocator, Capacity, Type, MaxLevel) when is_integer(MaxLevel) ->
+    make_bucket(Sup, Allocator, Capacity, Type, mio_mvector:generate(MaxLevel));
+
 make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
     {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
                                                   {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
 
 
-start_serializer() ->
-    {ok, _} = supervisor:start_child(mio_sup,
+start_serializer(Sup) ->
+    {ok, _} = supervisor:start_child(Sup,
                                      {getRandomId(),
                                       {mio_serializer, start_link, []},
                                       temporary, brutal_kill, worker, [mio_serializer]}).
@@ -121,9 +121,10 @@ add_disk_logger(LogDir) ->
 %% Used for local second mio server
 %% Just start up memcached.
 init([Port, MaxLevel, BootNode, Verbose]) ->
+    Sup = self(),
     {ok, {{one_for_one, 10, 20},
           [{mio_memcached,
-            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
@@ -136,6 +137,7 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
     %% todo
     %% Make this simple_one_for_one
     ?PROFILER_START(self()),
+    Sup = self(),
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
           [
@@ -144,7 +146,7 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
            {dynomite_prof, {dynomite_prof, start_link, []},
             permanent, brutal_kill, worker, [dynomite_prof]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([]) ->
