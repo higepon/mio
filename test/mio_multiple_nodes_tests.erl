@@ -9,8 +9,12 @@
 -include_lib("eunit/include/eunit.hrl").
 
 start_test() ->
-    ?assertMatch({ok, _} , mio_sup:start_mio(mio_sup, 11211, 3, ".", false)),
+    %% start first mio server
+    ?assertMatch({ok, _} , mio_sup:start_first_mio(mio_sup, 11211, 3, ".", false)),
     ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11211)),
-    ?assertMatch({ok, _}, supervisor:start_link({local, mio_sup2}, mio_sup, [second, 11311, 3, node(), false])),
+
+    %% start second mio server
+    %% On this test code, Introducer node is the same node as first mio server.
+    ?assertMatch({ok, _}, mio_sup:start_second_mio(mio_sup2, node(), 11311, 3, false)),
     ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11311)),
     ?debugHere.

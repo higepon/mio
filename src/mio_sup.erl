@@ -38,15 +38,20 @@
 -module(mio_sup).
 -behaviour(supervisor).
 %% API
--export([start_mio/5]).
+-export([start_first_mio/5, start_second_mio/5]).
 -export([init/1, start_serializer/0, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 
-start_mio(SupName, Port, MaxLevel, LogDir, Verbose) ->
+%% Start first mio server.
+start_first_mio(SupName, Port, MaxLevel, LogDir, Verbose) ->
     BootNode = false,
     supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, BootNode, LogDir, Verbose]).
+
+%% Start second mio server using introducer "Node"
+start_second_mio(SupName, Node, Port, MaxLevel, Verbose) ->
+    supervisor:start_link({local, SupName}, mio_sup, [second, Port, MaxLevel, Node, Verbose]).
 
 
 %% supervisor:
