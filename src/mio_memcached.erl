@@ -74,7 +74,6 @@ init_start_node(MaxLevel, BootNode) ->
 %% supervisor calls this to create new memcached.
 start_link(Port, MaxLevel, BootNode, Verbose) ->
     error_logger:tty(Verbose),
-
     Pid = spawn_link(?MODULE, memcached, [Port, MaxLevel, BootNode]),
     {ok, Pid}.
 

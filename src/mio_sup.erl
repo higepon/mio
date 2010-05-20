@@ -37,9 +37,17 @@
 
 -module(mio_sup).
 -behaviour(supervisor).
+%% API
+-export([start_mio/5]).
 -export([init/1, start_serializer/0, make_bucket/4, make_bucket/5, start_bootstrap/3, start_allocator/0]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
+
+
+start_mio(SupName, Port, MaxLevel, LogDir, Verbose) ->
+    BootNode = false,
+    supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, BootNode, LogDir, Verbose]).
+
 
 %% supervisor:
 %%   On start up, supervisor starts mio_memcached.
