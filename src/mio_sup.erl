@@ -105,6 +105,21 @@ add_disk_logger(LogDir) ->
             halt(1)
    end.
 
+init([second, Port, MaxLevel, BootNode, Verbose]) ->
+    %% getRandomId uses crypto server
+    %% However we want to set log Verbose here, we have to wait logger starting up.
+    %% So we set Verbose flag on mio_memcached:start_link
+    %% todo
+    %% Make this simple_one_for_one
+    ?PROFILER_START(self()),
+    {ok, {{one_for_one, 10, 20},
+          %% logger should be the first.
+          [
+           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
+            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
+            permanent, brutal_kill, worker, [mio_memcached]}
+]}};
+
 init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
     %% getRandomId uses crypto server
     crypto:start(),
@@ -125,23 +140,6 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
             {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}
 ]}};
-
-init([second, Port, MaxLevel, BootNode, LogDir, Verbose]) ->
-    %% getRandomId uses crypto server
-    %% However we want to set log Verbose here, we have to wait logger starting up.
-    %% So we set Verbose flag on mio_memcached:start_link
-    %% todo
-    %% Make this simple_one_for_one
-    ?PROFILER_START(self()),
-    {ok, {{one_for_one, 10, 20},
-          %% logger should be the first.
-          [
-           {mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Port, MaxLevel, BootNode, Verbose]},
-            permanent, brutal_kill, worker, [mio_memcached]}
-]}};
-
-
 
 init([]) ->
     %% getRandomId uses crypto server
