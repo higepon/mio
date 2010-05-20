@@ -26,9 +26,7 @@ start_and_kill_test() ->
     %% Can we reuse the port?
     {ok, Mio3} = mio_sup:start_first_mio(mio_sup3, 11211, 3, ".", false),
     ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11211)),
-    {ok, Mio4} = mio_sup:start_first_mio(mio_sup4, 11211, 3, ".", false),
+    {ok, Mio4} = mio_sup:start_second_mio(mio_sup4, node(), 11311, 3, false),
     ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11311)),
     exit(Mio3, normal),
     exit(Mio4, normal).
-
-
