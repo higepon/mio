@@ -38,20 +38,20 @@
 -module(mio_sup).
 -behaviour(supervisor).
 %% API
--export([start_first_mio/5, start_second_mio/5]).
+-export([start_first_mio/6, start_second_mio/6]).
 -export([init/1, start_serializer/1, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/1]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 
 %% Start first mio server.
-start_first_mio(SupName, Port, MaxLevel, LogDir, Verbose) ->
+start_first_mio(SupName, Port, MaxLevel, Capacity, LogDir, Verbose) ->
     BootNode = false,
-    supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, BootNode, LogDir, Verbose]).
+    supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]).
 
 %% Start second mio server using introducer "Node"
-start_second_mio(SupName, Node, Port, MaxLevel, Verbose) ->
-    supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, Node, Verbose]).
+start_second_mio(SupName, Node, Port, MaxLevel, Capacity, Verbose) ->
+    supervisor:start_link({local, SupName}, mio_sup, [Port, MaxLevel, Capacity, Node, Verbose]).
 
 
 %% supervisor:
@@ -120,14 +120,14 @@ add_disk_logger(LogDir) ->
 
 %% Used for local second mio server
 %% Just start up memcached.
-init([Port, MaxLevel, BootNode, Verbose]) ->
+init([Port, MaxLevel, Capacity, BootNode, Verbose]) ->
     Sup = self(),
     {ok, {{one_for_one, 10, 20},
           [{mio_memcached,
-            {mio_memcached, start_link, [Sup, Port, MaxLevel, 1000, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, Capacity, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
-init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
+init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]) ->
     %% getRandomId uses crypto server
     crypto:start(),
 
@@ -146,16 +146,17 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
            {dynomite_prof, {dynomite_prof, start_link, []},
             permanent, brutal_kill, worker, [dynomite_prof]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Sup, Port, MaxLevel, 1000, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, Capacity, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([]) ->
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 10),
     {ok, BootNode} = mio_app:get_env(boot_node, false),
+    {ok, Capacity} = mio_app:get_env(capacity, 1000),
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),
-    init([Port, MaxLevel, BootNode, LogDir, Verbose]).
+    init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]).
 
 
 getRandomId() ->
