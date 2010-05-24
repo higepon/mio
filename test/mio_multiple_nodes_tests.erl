@@ -32,7 +32,7 @@ start_and_kill_test() ->
     exit(Mio3, normal),
     exit(Mio4, normal).
 
-insert_many_test() ->
+allocator_on_two_node_test() ->
     Capacity = 3,
     %% start first mio server
     {ok, Mio1} = mio_sup:start_first_mio(mio_sup, 11211, 3, Capacity, ".", false),
