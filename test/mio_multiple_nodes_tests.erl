@@ -32,4 +32,4 @@ start_and_kill_test() ->
     exit(Mio4, normal).
 
 introducer_not_exist_test() ->
-    {ok, Mio4} = mio_sup:start_second_mio(mio_sup1, "hig", 11311, 3, false).
+    ?assertEqual({error, shutdown}, mio_sup:start_second_mio(mio_sup1, "hig", 11311, 3, false)).

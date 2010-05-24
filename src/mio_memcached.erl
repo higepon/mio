@@ -62,23 +62,36 @@ init_start_node(Sup, MaxLevel, BootNode) ->
             {Serializer, LocalSetting};
         %% Introducer bootnode exists
         _ ->
-            ?debugFmt("~p", [BootNode]),
-            case mio_bootstrap:get_boot_info(BootNode) of
-                {ok, BootBucket, Allocator, Serializer} ->
-                    Supervisor = whereis(mio_sup),
-                    ok = mio_allocator:add_node(Allocator, Supervisor),
-                    ok = mio_local_store:set(LocalSetting, start_bucket, BootBucket),
-                    {Serializer, LocalSetting};
-                Other ->
-                    throw({"Can't start, introducer node not found", Other})
-            end
+            {ok, BootBucket, Allocator, Serializer} = mio_bootstrap:get_boot_info(BootNode),
+            Supervisor = whereis(mio_sup),
+            ok = mio_allocator:add_node(Allocator, Supervisor),
+            ok = mio_local_store:set(LocalSetting, start_bucket, BootBucket),
+            {Serializer, LocalSetting}
+    end.
+
+
+%% we should check boot node is exist?
+is_boot_node_exists(false) ->
+    true;
+is_boot_node_exists(BootNode) ->
+    try mio_bootstrap:get_boot_info(BootNode) of
+        {ok, _BootBucket, _Allocator, _Serializer} ->
+            true
+    catch
+        exit:_ ->
+            false
     end.
 
 %% supervisor calls this to create new memcached.
 start_link(Sup, Port, MaxLevel, BootNode, Verbose) ->
     error_logger:tty(Verbose),
-    Pid = spawn_link(?MODULE, memcached, [Sup, Port, MaxLevel, BootNode]),
-    {ok, Pid}.
+    case is_boot_node_exists(BootNode) of
+        true ->
+            Pid = spawn_link(?MODULE, memcached, [Sup, Port, MaxLevel, BootNode]),
+            {ok, Pid};
+        _ ->
+            {error, "introducer not found"}
+    end.
 
 %%====================================================================
 %% Internal functions
