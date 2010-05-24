@@ -124,7 +124,7 @@ init([Port, MaxLevel, BootNode, Verbose]) ->
     Sup = self(),
     {ok, {{one_for_one, 10, 20},
           [{mio_memcached,
-            {mio_memcached, start_link, [Sup, Port, MaxLevel, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, 1000, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
@@ -146,7 +146,7 @@ init([Port, MaxLevel, BootNode, LogDir, Verbose]) ->
            {dynomite_prof, {dynomite_prof, start_link, []},
             permanent, brutal_kill, worker, [dynomite_prof]},
            {mio_memcached, %% this is just id of specification, will not be registered by register/2.
-            {mio_memcached, start_link, [Sup, Port, MaxLevel, BootNode, Verbose]},
+            {mio_memcached, start_link, [Sup, Port, MaxLevel, 1000, BootNode, Verbose]},
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([]) ->

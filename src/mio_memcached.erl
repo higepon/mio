@@ -35,18 +35,17 @@
 %%% Created : 3 Aug 2009 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
--export([start_link/5]).
--export([memcached/4, process_request/4]).
+-export([start_link/6]).
+-export([memcached/5, process_request/4]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
-init_start_node(Sup, MaxLevel, BootNode) ->
+init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
     {ok, LocalSetting} = mio_local_store:new(),
 
     case BootNode of
         %% Bootstrap
         false ->
-            Capacity = 1000,
             {ok, Serializer} = mio_sup:start_serializer(Sup),
             {ok, Allocator} = mio_sup:start_allocator(Sup),
 
@@ -83,11 +82,11 @@ is_boot_node_exists(BootNode) ->
     end.
 
 %% supervisor calls this to create new memcached.
-start_link(Sup, Port, MaxLevel, BootNode, Verbose) ->
+start_link(Sup, Port, MaxLevel, Capacity, BootNode, Verbose) ->
     error_logger:tty(Verbose),
     case is_boot_node_exists(BootNode) of
         true ->
-            Pid = spawn_link(?MODULE, memcached, [Sup, Port, MaxLevel, BootNode]),
+            Pid = spawn_link(?MODULE, memcached, [Sup, Port, MaxLevel, Capacity, BootNode]),
             {ok, Pid};
         _ ->
             {error, "introducer not found"}
@@ -96,8 +95,8 @@ start_link(Sup, Port, MaxLevel, BootNode, Verbose) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-memcached(Sup, Port, MaxLevel, BootNode) ->
-    try init_start_node(Sup, MaxLevel, BootNode) of
+memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
+    try init_start_node(Sup, MaxLevel, Capacity, BootNode) of
         {Serializer, LocalSetting} ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
