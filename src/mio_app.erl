@@ -54,7 +54,7 @@ start() ->
         ok ->
             ok;
         {error, {shutdown, Reason}} ->
-            ?FATALF("Can't start workers. See more information on ~p.", [Reason, log_file_path()]);
+            ?FATALF("Can't start workers. Reason=~p See more information on ~p.", [Reason, log_file_path()]);
         {error, Reason} ->
             ?FATALF("Application start failed ~p. See more information on ~p.", [Reason, log_file_path()])
     end.
