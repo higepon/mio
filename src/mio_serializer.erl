@@ -89,7 +89,9 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({insert_op, Introducer, Key, Value}, _From, State) ->
     {ok, NewlyAllocatedBucket} = mio_skip_graph:insert_op(Introducer, Key, Value),
-    {reply, {ok, NewlyAllocatedBucket}, State}.
+    {reply, {ok, NewlyAllocatedBucket}, State};
+handle_call(stop_op, _From, State) ->
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
