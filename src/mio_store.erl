@@ -102,8 +102,31 @@ get(Key, Store) ->
             {ok, Value}
     end.
 
-get_range(KeyA, KeyB, Limit, Store) ->
+get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
+    ?debugFmt("Key=~p hoge=~p", [KeyA, ets:next(Store#store.ets, KeyA)]),
+    case ets:lookup(Store#store.ets, KeyA) of
+        [] ->
+            get_range_rec(KeyA, KeyB, 0, Limit, [], Store);
+        [{KeyA, Value}] ->
+            get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store)
+    end,
     [{key_b, value_b}, {key_c, value_c}].
+
+get_range_rec(_StartKey, _EndKey, Count, Limit, AccumValues, _Store) when Count =:= Limit ->
+    AccumValues;
+get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) ->
+    case ets:next(Store#store.ets, StartKey) of
+        '$end_of_table' ->
+            AccumValues;
+        NextKey ->
+            case NextKey > EndKey of
+                true ->
+                    AccumValues;
+                _ ->
+                    {ok, Value} = get(NextKey, Store),
+                    get_range_rec(NextKey, EndKey, Count + 1, Limit, [{NextKey, Value} | AccumValues], Store)
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: take_smallest/1
