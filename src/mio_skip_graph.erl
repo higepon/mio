@@ -121,11 +121,14 @@ search_op(StartBucket, SearchKey, StartLevel) ->
     dynomite_prof:stop_prof(store_get),
     Ret.
 
+search_bucket_op(StartBucket, SearchKey) ->
+    search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
-range_search_asc_op(StartBucket, Key1, Key2, Limit) ->
-    [{"1001", term_to_binary("Hello")}, {"2001", term_to_binary("Japan")}].
+range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 < Key2 ->
+    Bucket = search_bucket_op(StartBucket, Key1),
+    mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit).
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
@@ -228,4 +231,3 @@ neighbor_node(State, Direction, Level) ->
         left ->
             node_on_level(State#node.left, Level)
     end.
-

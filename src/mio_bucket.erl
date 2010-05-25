@@ -41,6 +41,7 @@
 
 %% API
 -export([start_link/1,
+         get_range_values_op/4,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
          insert_op/3, just_insert_op/3,
@@ -233,6 +234,8 @@
 set_gen_mvector_op(Bucket, Fun) ->
     gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
 
+get_range_values_op(Bucket, Key1, Key2, Limit) ->
+    gen_server:call(Bucket, {get_range_values_op, Key1, Key2, Limit}).
 
 get_left_op(Bucket) ->
     get_left_op(Bucket, 0).
@@ -796,6 +799,8 @@ handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
 handle_call(get_range_op, _From, State) ->
     {reply, {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}, State};
 
+handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
+    {reply, mio_store:get_range(Key1, Key2, Limit, State#node.store), State};
 
 %% Read Only Operations start
 handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
