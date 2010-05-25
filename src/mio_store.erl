@@ -109,12 +109,13 @@ get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
             get_range_rec(KeyA, KeyB, 0, Limit, [], Store);
         [{KeyA, Value}] ->
             get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store)
-    end,
-    [{key_b, value_b}, {key_c, value_c}].
+    end.
 
 get_range_rec(_StartKey, _EndKey, Count, Limit, AccumValues, _Store) when Count =:= Limit ->
+    ?debugFmt("Count=~p Limit=~p, AccumValues=~p", [Count, Limit, AccumValues]),
     AccumValues;
 get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) ->
+    ?debugFmt("Count=~p Limit=~p, AccumValues=~p", [Count, Limit, AccumValues]),
     case ets:next(Store#store.ets, StartKey) of
         '$end_of_table' ->
             AccumValues;
