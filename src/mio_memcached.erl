@@ -48,16 +48,13 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         false ->
             {ok, Serializer} = mio_sup:start_serializer(Sup),
             {ok, Allocator} = mio_sup:start_allocator(Sup),
-
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
-
             ok = mio_local_store:set(LocalSetting, start_bucket, Bucket),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
             {ok, _BootStrap} = mio_sup:start_bootstrap(Sup, Bucket, Allocator, Serializer),
-
             {Serializer, LocalSetting};
         %% Introducer bootnode exists
         _ ->

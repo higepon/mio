@@ -85,6 +85,8 @@ init([BootBucket, Allocator, Serializer]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call(stop_op, _From, State) ->
+    {stop, normal, State};
 handle_call(get_boot_info, _From, State) ->
     Reply = {ok, State#state.boot_bucket, State#state.allocator, State#state.serializer},
     {reply, Reply, State}.

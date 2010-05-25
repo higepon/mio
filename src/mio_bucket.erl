@@ -722,6 +722,8 @@ link_left_op(Node, Level, Left) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call(stop_op, _From, State) ->
+    {stop, normal, State};
 handle_call(is_empty_op, _From, State) ->
     {reply, mio_store:is_empty(State#node.store), State};
 

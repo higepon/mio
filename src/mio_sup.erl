@@ -130,7 +130,6 @@ init([Port, MaxLevel, Capacity, BootNode, Verbose]) ->
 init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]) ->
     %% getRandomId uses crypto server
     crypto:start(),
-
     %% However we want to set log Verbose here, we have to wait logger starting up.
     %% So we set Verbose flag on mio_memcached:start_link
     add_disk_logger(LogDir),
