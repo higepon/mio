@@ -87,3 +87,12 @@ empty_test() ->
     B = mio_store:new(3),
     none = mio_store:largest(B),
     none = mio_store:smallest(B).
+
+range_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_a, value_a, B1),
+    B3 = mio_store:set(key_d, value_c, B2),
+    B4 = mio_store:set(key_d, value_d, B3),
+
+    [{key_b, value_b}, {key_c, value_c}] = mio_store:get_range(B4, key_aa, key_bb, 10).
