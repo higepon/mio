@@ -67,10 +67,10 @@ range_search() ->
     ok = memcached:set(Conn, "2001", "Japan"),
     ok = memcached:set(Conn, "3001", "World"),
     ?assertMatch({ok, [{"1001","Hello"}, {"2001","Japan"}]}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "asc"])),
-%%     {ok, [{"2001","Japan"}, {"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
-    {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "asc"]),
-%%     {ok, [{"2001","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "desc"]),
-    {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"]),
+    ?assertMatch({ok, [{"2001","Japan"}, {"1001","Hello"}]}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"])),
+    ?assertMatch({ok, [{"1001","Hello"}]}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "asc"])),
+    ?assertMatch({ok, [{"2001","Japan"}]}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "desc"])),
+    ?assertMatch({ok, []}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"])),
     ok = memcached:disconnect(Conn).
 
 %% range_search_alphabet() ->
