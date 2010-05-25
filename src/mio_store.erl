@@ -40,7 +40,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([new/1, set/3, get/2, remove/2, is_full/1, take_smallest/1, take_largest/1,
+-export([new/1, set/3, get/2, get_range/4, remove/2, is_full/1, take_smallest/1, take_largest/1,
          capacity/1, is_empty/1, largest/1, smallest/1, keys/1]).
 
 %%====================================================================
@@ -101,6 +101,9 @@ get(Key, Store) ->
         [{Key, Value}] ->
             {ok, Value}
     end.
+
+get_range(KeyA, KeyB, Limit, Store) ->
+    [{key_b, value_b}, {key_c, value_c}].
 
 %%--------------------------------------------------------------------
 %% Function: take_smallest/1

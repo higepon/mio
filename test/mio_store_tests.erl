@@ -95,4 +95,4 @@ range_test() ->
     B3 = mio_store:set(key_d, value_c, B2),
     B4 = mio_store:set(key_d, value_d, B3),
 
-    [{key_b, value_b}, {key_c, value_c}] = mio_store:get_range(B4, key_aa, key_bb, 10).
+    [{key_b, value_b}, {key_c, value_c}] = mio_store:get_range(key_aa, key_bb, 10, B4).
