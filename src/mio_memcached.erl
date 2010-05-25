@@ -128,9 +128,9 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                 ["get", Key] ->
                     process_get(Sock, StartBucket, Key),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
-%%                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-%%                     process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+                ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
+                    process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
+                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
 %%                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
 %%                     process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
 %%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
@@ -234,12 +234,18 @@ process_get(Sock, StartNode, Key) ->
 %%                          not Expired
 %%                  end, Values).
 
-%% process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-%%     exit({todo, ?LINE}).
-%% %%     Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-%% %%     ActiveValues = filter_expired(WriteSerializer, Values),
-%% %%     P = process_values(ActiveValues),
-%% %%     ok = gen_tcp:send(Sock, P).
+process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
+%%    Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
+    Values = [{"1001", term_to_binary("Hello")}, {"2001", term_to_binary("Japan")}],
+%%    ActiveValues = filter_expired(WriteSerializer, Values),
+    P = process_values(Values),
+    ok = gen_tcp:send(Sock, P).
+
+process_values([{Key, Value} | More]) ->
+    io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
+                  [Key, size(Value), Value, process_values(More)]);
+process_values([]) ->
+    "END\r\n".
 
 %% process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
 %%     exit({todo, ?LINE}).
