@@ -23,10 +23,10 @@ mio_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
       [?_test(set_and_get())],
-      [?_test(set_and_get_alphabet_key())]
+      [?_test(set_and_get_alphabet_key())],
 %%       [?_test(delete())],
 %%       [?_test(expiration())],
-%%       [?_test(range_search())],
+      [?_test(range_search())]
 %%       [?_test(range_search_alphabet())],
 %%       [?_test(range_search_expiration())]
      ]
@@ -61,17 +61,17 @@ set_and_get_alphabet_key() ->
 %%     {error, not_found} = memcached:get(Conn, "1234"),
 %%     ok = memcached:disconnect(Conn).
 
-%% range_search() ->
-%%     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-%%     ok = memcached:set(Conn, "1001", "Hello"),
-%%     ok = memcached:set(Conn, "2001", "Japan"),
-%%     ok = memcached:set(Conn, "3001", "World"),
-%%     {ok, [{"1001","Hello"}, {"2001","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "asc"]),
-%%     {ok, [{"2001","Japan"}, {"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
-%%     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "asc"]),
-%%     {ok, [{"2001","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "desc"]),
-%%     {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"]),
-%%     ok = memcached:disconnect(Conn).
+range_search() ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "1001", "Hello"),
+    ok = memcached:set(Conn, "2001", "Japan"),
+    ok = memcached:set(Conn, "3001", "World"),
+    {ok, [{"1001","Hello"}, {"2001","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "asc"]),
+    {ok, [{"2001","Japan"}, {"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
+    {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "asc"]),
+    {ok, [{"2001","Japan"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "1", "desc"]),
+    {ok, []} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"]),
+    ok = memcached:disconnect(Conn).
 
 %% range_search_alphabet() ->
 %%     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
