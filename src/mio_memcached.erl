@@ -235,9 +235,7 @@ process_get(Sock, StartNode, Key) ->
 %%                  end, Values).
 
 process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-%%    Values = mio_node:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    Values = [{"1001", term_to_binary("Hello")}, {"2001", term_to_binary("Japan")}],
-%%    ActiveValues = filter_expired(WriteSerializer, Values),
+    Values = mio_skip_graph:range_search_asc_op(StartNode, Key1, Key2, Limit),
     P = process_values(Values),
     ok = gen_tcp:send(Sock, P).
 

@@ -40,6 +40,7 @@
 
 %% API
 -export([search_op/2, search_op/3,
+         range_search_asc_op/4,
          get_key_op/1,
          insert_op/3,
          dump_op/1
@@ -109,19 +110,22 @@ insert_op_call(From, Self, Key, Value) ->
 %%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
 
 %%--------------------------------------------------------------------
-search_op(StartNode, SearchKey) ->
-    search_op(StartNode, SearchKey, []).
-search_op(StartNode, SearchKey, StartLevel) ->
+search_op(StartBucket, SearchKey) ->
+    search_op(StartBucket, SearchKey, []).
+search_op(StartBucket, SearchKey, StartLevel) ->
     dynomite_prof:start_prof(search_get),
-    Bucket = search_bucket_op(StartNode, SearchKey, StartLevel),
+    Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
     dynomite_prof:stop_prof(search_get),
     dynomite_prof:start_prof(store_get),
     Ret = mio_bucket:get_op(Bucket, SearchKey),
     dynomite_prof:stop_prof(store_get),
     Ret.
 
-search_bucket_op(StartNode, SearchKey, StartLevel) ->
-    gen_server:call(StartNode, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
+search_bucket_op(StartBucket, SearchKey, StartLevel) ->
+    gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
+
+range_search_asc_op(StartBucket, Key1, Key2, Limit) ->
+    [{"1001", term_to_binary("Hello")}, {"2001", term_to_binary("Japan")}].
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
