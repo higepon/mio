@@ -73,6 +73,31 @@ range_search() ->
     ?assertMatch({ok, []}, memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "0", "asc"])),
     ok = memcached:disconnect(Conn).
 
+range_search_many_buckets_test() ->
+    Capacity = 3,
+    %% start first mio server
+    {ok, Mio1} = mio_sup:start_first_mio(mio_sup, 11211, 3, Capacity, ".", false),
+    ?assertEqual(ok, mio_app:wait_startup("127.0.0.1", 11211)),
+
+    {ok, Conn} = memcached:connect("127.0.0.1", 11211),
+
+    ok = memcached:set(Conn, "1", "1"),
+    ok = memcached:set(Conn, "2", "2"),
+    ok = memcached:set(Conn, "3", "3"),
+    ok = memcached:set(Conn, "4", "4"),
+    ok = memcached:set(Conn, "5", "5"),
+    ok = memcached:set(Conn, "6", "6"),
+    ok = memcached:set(Conn, "7", "7"),
+
+    ?assertMatch({ok, [{"2","2"}, {"3","3"}, {"4","4"}, {"5","5"}, {"6","6"}]}, memcached:get_multi(Conn, ["mio:range-search", "11", "6", "10", "asc"])),
+
+    ok = memcached:disconnect(Conn),
+
+    %% Kill them.
+    process_flag(trap_exit, true),
+    exit(Mio1, normal).
+
+
 %% range_search_alphabet() ->
 %%     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
 %%     ok = memcached:set(Conn, "Higepon", "Hello"),
@@ -97,4 +122,3 @@ range_search() ->
 %%     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "asc"]),
 %%     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
 %%     ok = memcached:disconnect(Conn).
-
