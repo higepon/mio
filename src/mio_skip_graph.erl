@@ -129,15 +129,42 @@ search_bucket_op(StartBucket, SearchKey, StartLevel) ->
 
 range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key1),
-    mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit);
+    range_search_asc_rec(Bucket, Key1, Key2, [], 0, Limit);
 range_search_asc_op(_StartBucket, _Key1, _Key2, _Limit) ->
     [].
+
+range_search_asc_rec(_Bucket, _Key1, _Key2, Accum, Count, Limit) when Count =:= Limit ->
+    Accum;
+range_search_asc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
+    KeyValues = mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit - Count),
+    case length(KeyValues) < Limit - Count of
+        true ->
+            case mio_bucket:get_right_op(Bucket) of
+                [] ->
+                    ?debugHere,
+                    Accum ++ KeyValues;
+                RightBucket ->
+                    ?debugHere,
+                    {{RMin, _RMinEncompass}, _} = mio_bucket:get_range_op(RightBucket),
+                    case Key2 >= RMin of
+                        true ->
+                            ?debugHere,
+                            range_search_asc_rec(RightBucket, Key1, Key2, Accum ++ KeyValues, Count + length(KeyValues), Limit);
+                        _ ->
+                            Accum ++ KeyValues
+                    end
+            end;
+        _ ->
+            Accum ++ KeyValues
+    end.
+
 
 range_search_desc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key2),
     mio_bucket:get_range_values_op(Bucket, Key2, Key1, Limit);
 range_search_desc_op(_StartBucket, _Key1, _Key2, _Limit) ->
     [].
+
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.

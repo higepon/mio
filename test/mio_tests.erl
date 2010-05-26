@@ -90,6 +90,7 @@ range_search_many_buckets_test() ->
     ok = memcached:set(Conn, "7", "7"),
 
     ?assertMatch({ok, [{"2","2"}, {"3","3"}, {"4","4"}, {"5","5"}, {"6","6"}]}, memcached:get_multi(Conn, ["mio:range-search", "11", "6", "10", "asc"])),
+    ?assertMatch({ok, [{"2","2"}, {"3","3"}, {"4","4"}, {"5","5"}, {"6","6"}]}, memcached:get_multi(Conn, ["mio:range-search", "11", "6", "10", "desc"])),
 
     ok = memcached:disconnect(Conn),
 
