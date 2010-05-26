@@ -193,8 +193,9 @@ in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
       andalso
     ((MaxEncompass andalso Key =< Max) orelse (not MaxEncompass andalso Key < Max)).
 
-search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-    Self;
+%% coverage says this is not necessary
+%% search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
+%%     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
     case neighbor_node(State, right, Level) of
         [] ->
@@ -209,8 +210,9 @@ search_to_right(From, State, Self, SearchKey, Level) ->
             end
     end.
 
-search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-    Self;
+%% coverage says this is not necessary
+%% search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
+%%     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
     case neighbor_node(State, left, Level) of
         [] ->
@@ -271,11 +273,15 @@ start_level(State, []) ->
 start_level(_State, Level) ->
     Level.
 
+%% coverage says this is not necessary
+%% node_on_level(Nodes, Level) ->
+%%     case Nodes of
+%%         [] -> [];
+%%         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
+%%     end.
+
 node_on_level(Nodes, Level) ->
-    case Nodes of
-        [] -> [];
-        _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
-    end.
+    lists:nth(Level + 1, Nodes). %% Erlang array is 1 origin.
 
 neighbor_node(State, Direction, Level) ->
     case Direction of
