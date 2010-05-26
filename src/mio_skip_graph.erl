@@ -79,7 +79,6 @@ insert_op(Introducer, Key, Value) ->
 insert_op_call(From, Self, Key, Value) ->
     StartLevel = [],
     Bucket = gen_server:call(Self, {skip_graph_search_op, Key, StartLevel}, infinity),
-%%    ?debugFmt("<Bucket=~p: SearchKey=~p ~p~n>Self=~p~n~n", [Bucket, Key, get_key_op(Bucket), get_key_op(Self)]),
     Ret = mio_bucket:insert_op(Bucket, Key, Value),
     gen_server:reply(From, Ret).
 
@@ -142,15 +141,11 @@ range_search_asc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
         true ->
             case mio_bucket:get_right_op(Bucket) of
                 [] ->
-                    ?debugHere,
                     Accum ++ KeyValues;
                 RightBucket ->
-                    ?debugHere,
                     {{RMin, _RMinEncompass}, _} = mio_bucket:get_range_op(RightBucket),
-                    ?debugFmt("Key2=~p RMin=~p", [Key2, RMin]),
                     case Key2 >= RMin of
                         true ->
-                            ?debugHere,
                             range_search_asc_rec(RightBucket, Key1, Key2, Accum ++ KeyValues, Count + length(KeyValues), Limit);
                         _ ->
                             Accum ++ KeyValues
@@ -171,23 +166,17 @@ range_search_desc_rec(_Bucket, _Key1, _Key2, Accum, Count, Limit) when Count =:=
     Accum;
 range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
     KeyValues = mio_bucket:get_range_values_op(Bucket, Key2, Key1, Limit - Count),
-    ?debugFmt("KeyValues=~p", [KeyValues]),
     case length(KeyValues) < Limit - Count of
         true ->
             case mio_bucket:get_left_op(Bucket) of
                 [] ->
-                    ?debugHere,
                     Accum ++ KeyValues;
                 LeftBucket ->
-                    ?debugHere,
                     {_, {LMax, _}} = mio_bucket:get_range_op(LeftBucket),
-                    ?debugFmt("Key2=~p LMax=~p", [Key2, LMax]),
                     case Key1 =< LMax of
                         true ->
-                            ?debugHere,
                             range_search_desc_rec(LeftBucket, Key1, Key2, Accum ++ KeyValues, Count + length(KeyValues), Limit);
                         _ ->
-                            ?debugHere,
                             Accum ++ KeyValues
                     end
             end;
@@ -207,7 +196,6 @@ in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    %%   ?debugFmt("Right State=~p SearchKey=~p Level=~p~n", [State, SearchKey, Level]),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -224,7 +212,6 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    %%   ?debugFmt("Left State=~p SearchKey=~p Level=~p~n", [State, SearchKey, Level]),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
@@ -260,9 +247,9 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 
 dump_op_call(State) ->
     Key = get_key(State),
-    ?debugFmt("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, get_range(State)]),
+    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, get_range(State)]),
     lists:foreach(fun(K) ->
-                          ?debugFmt("    ~p~n", [K])
+                          ?INFOF("    ~p~n", [K])
                   end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];

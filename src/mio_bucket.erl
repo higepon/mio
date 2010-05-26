@@ -426,9 +426,7 @@ make_c_o_c(State, Left, Right) ->
     %%    O*(C1_stored_max, O2_min)
     %%    C2(O2_min, O2_max)
     {ok, EmptyBucket} = make_empty_bucket(State, c_o_c_m),
-    ?debugFmt("EmptyBucketMaxKey=~p", [EmptyBucketMinKey]),
     set_range_op(EmptyBucket, {EmptyBucketMinKey, false}, {EmptyBucketMaxKey, false}),
-    ?debugFmt("EmptyBucketMaxKey=~p", [EmptyBucketMaxKey]),
     set_min_key_op(Right, EmptyBucketMaxKey, true),
     set_max_key_op(Left, NewLeftMaxKey, true),
 
@@ -450,7 +448,6 @@ insert_c_o_l_overflow(State, Left, Right) ->
             %% C1-O -> C1'-O'
             {NewMaxKey, _} = get_largest_op(Left),
             set_max_key_op(Left, NewMaxKey, true),
-    ?debugFmt("EmptyBucketMaxKey=~p", [NewMaxKey]),
             set_min_key_op(Right, NewMaxKey, false),
             []
     end.
@@ -468,7 +465,6 @@ insert_c_o_c_l_overflow(State, Left, Middle) ->
             %% C1-O2-C3 -> C1'-O2'-C3
             {LeftMax, _} = get_largest_op(Left),
             set_max_key_op(Left, LeftMax, true),
-    ?debugFmt("EmptyBucketMaxKey=~p", [LeftMax]),
             set_min_key_op(Middle, LeftMax, false),
             []
     end,
@@ -489,7 +485,6 @@ insert_alone_full(State, Self) ->
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
-    ?debugFmt("EmptyBucketMaxKey=~p", [EmptyMinKey]),
     set_range_op(EmptyBucket, {EmptyMinKey, false}, {EmptyMaxKey, State#node.encompass_max}),
 
     %% link on Level >= 1
@@ -514,11 +509,8 @@ adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     EmptyMinKey = RightMaxKey,
     MiddleMinKey = LeftMaxKey,
     set_max_key_op(Left, LeftMaxKey, true),
-    ?debugFmt("EmptyBucketMaxKey=~p", [MiddleMinKey]),
     set_range_op(Middle, {MiddleMinKey, false}, {MiddleMaxKey, true}),
-    ?debugFmt("EmptyBucketMaxKey=~p", [MiddleMaxKey]),
     set_range_op(Right, {MiddleMaxKey, false}, {RightMaxKey, true}),
-    ?debugFmt("EmptyBucketMaxKey=~p", [EmptyMinKey]),
     set_range_op(EmptyBucket, {EmptyMinKey, false}, {OldRightMaxKey, OldEncompassMax}),
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0).
@@ -567,9 +559,7 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     {NewMiddleMaxKey, _} = get_smallest_op(Right),
     set_max_key_op(Middle, NewMiddleMaxKey, false),
     set_range_op(Right, {NewMiddleMaxKey, true}, {NewRightMaxKey, true}),
-    ?debugFmt("EmptyBucketMaxKey=~p", [NewMiddleMaxKey]),
     set_range_op(EmptyBucket, {NewRightMaxKey, false}, {OldMaxKey, OldEncompassMax}),
-    ?debugFmt("EmptyBucketMaxKey=~p", [NewRightMaxKey]),
 
     %% C3'-O4 | C ...
     link_three_nodes(Right, EmptyBucket, PrevRight, 0),
