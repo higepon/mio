@@ -110,6 +110,7 @@ get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
             lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
     end;
 get_range(KeyA, KeyB, Limit, Store) when KeyA > KeyB ->
+    ?debugFmt("get_range KeyA=~p Keyb=~p", [KeyA, KeyB]),
     case ets:lookup(Store#store.ets, KeyA) of
         [] ->
             lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
@@ -133,6 +134,7 @@ get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) when StartKey 
             end
     end;
 get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) when StartKey > EndKey ->
+    ?debugFmt("get_range ~p ~p", [ets:prev(Store#store.ets, StartKey), ets:tab2list(Store#store.ets)]),
     case ets:prev(Store#store.ets, StartKey) of
         '$end_of_table' ->
             AccumValues;
