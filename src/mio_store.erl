@@ -108,16 +108,36 @@ get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
             lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
         [{KeyA, Value}] ->
             lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
+    end;
+get_range(KeyA, KeyB, Limit, Store) when KeyA > KeyB ->
+    case ets:lookup(Store#store.ets, KeyA) of
+        [] ->
+            lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
+        [{KeyA, Value}] ->
+            lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
     end.
 
 get_range_rec(_StartKey, _EndKey, Count, Limit, AccumValues, _Store) when Count =:= Limit ->
     AccumValues;
-get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) ->
+get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) when StartKey =< EndKey ->
     case ets:next(Store#store.ets, StartKey) of
         '$end_of_table' ->
             AccumValues;
         NextKey ->
             case NextKey > EndKey of
+                true ->
+                    AccumValues;
+                _ ->
+                    {ok, Value} = get(NextKey, Store),
+                    get_range_rec(NextKey, EndKey, Count + 1, Limit, [{NextKey, Value} | AccumValues], Store)
+            end
+    end;
+get_range_rec(StartKey, EndKey, Count, Limit, AccumValues, Store) when StartKey > EndKey ->
+    case ets:prev(Store#store.ets, StartKey) of
+        '$end_of_table' ->
+            AccumValues;
+        NextKey ->
+            case NextKey < EndKey of
                 true ->
                     AccumValues;
                 _ ->

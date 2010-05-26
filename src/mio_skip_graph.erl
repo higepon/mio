@@ -41,6 +41,7 @@
 %% API
 -export([search_op/2, search_op/3,
          range_search_asc_op/4,
+         range_search_desc_op/4,
          get_key_op/1,
          insert_op/3,
          dump_op/1
@@ -126,9 +127,17 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
-range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 < Key2 ->
+range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key1),
-    mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit).
+    mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit);
+range_search_asc_op(_StartBucket, _Key1, _Key2, _Limit) ->
+    [].
+
+range_search_desc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
+    Bucket = search_bucket_op(StartBucket, Key2),
+    mio_bucket:get_range_values_op(Bucket, Key2, Key1, Limit);
+range_search_desc_op(_StartBucket, _Key1, _Key2, _Limit) ->
+    [].
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.

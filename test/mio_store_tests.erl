@@ -123,3 +123,47 @@ range4_test() ->
     B4 = mio_store:set(key_d, value_d, B3),
 
     ?assertMatch([{key_b, value_b}, {key_c, value_c}, {key_d, value_d}], mio_store:get_range(key_b, key_z, 3, B4)).
+
+range5_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_a, value_a, B1),
+    B3 = mio_store:set(key_d, value_c, B2),
+    B4 = mio_store:set(key_d, value_d, B3),
+
+    ?assertMatch([{key_b, value_b}], mio_store:get_range(key_bb, key_aa, 10, B4)).
+
+range6_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_a, value_a, B1),
+    B3 = mio_store:set(key_c, value_c, B2),
+    B4 = mio_store:set(key_d, value_d, B3),
+
+    ?assertMatch([{key_b, value_b}], mio_store:get_range(key_bb, key_aa, 1, B4)).
+
+range7_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_a, value_a, B1),
+    B3 = mio_store:set(key_c, value_c, B2),
+    B4 = mio_store:set(key_d, value_d, B3),
+
+    ?assertMatch([{key_d, value_d}, {key_c, value_c}, {key_b, value_b}, {key_a, value_a}], mio_store:get_range(key_z, key_a, 10, B4)).
+
+range8_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_a, value_a, B1),
+    B3 = mio_store:set(key_c, value_c, B2),
+    B4 = mio_store:set(key_d, value_d, B3),
+
+    ?assertMatch([{key_d, value_d}, {key_c, value_c}], mio_store:get_range(key_d, key_b, 2, B4)).
+
+range9_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_b, value_b, B),
+    B2 = mio_store:set(key_c, value_c, B1),
+    B3 = mio_store:set(key_d, value_d, B2),
+
+    ?assertMatch([{key_d, value_d} , {key_c, value_c}, {key_b, value_b} ], mio_store:get_range(key_d, key_a, 10, B3)).

@@ -131,9 +131,9 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
-%%                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-%%                     process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+                ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
+                    process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
+                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpireDate, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
 %%                    ?INFOF("Start set ~p", [self()]),
@@ -238,6 +238,12 @@ process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
     Values = mio_skip_graph:range_search_asc_op(StartNode, Key1, Key2, Limit),
     P = process_values(Values),
     ok = gen_tcp:send(Sock, P).
+
+process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+    Values = mio_skip_graph:range_search_desc_op(StartNode, Key1, Key2, Limit),
+    P = process_values(Values),
+    ok = gen_tcp:send(Sock, P).
+
 
 process_values([{Key, Value} | More]) ->
     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
