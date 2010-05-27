@@ -56,8 +56,7 @@
          get_op/2,
           buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
           link_right_op/3, link_left_op/3,
-         set_expire_time_op/2, buddy_op/4,
-         range_search_asc_op/4, range_search_desc_op/4,
+         buddy_op/4,
          node_on_level/2,
          %% For testability
          set_gen_mvector_op/2
@@ -569,43 +568,6 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 
     EmptyBucket.
 
-%% Skip graphs
-
-%%--------------------------------------------------------------------
-%%  set expire_time operation
-%%--------------------------------------------------------------------
-set_expire_time_op(Node, ExpireTime) ->
-    gen_server:call(Node, {set_expire_time_op, ExpireTime}).
-
-%%--------------------------------------------------------------------
-%%  insert operation
-%%--------------------------------------------------------------------
-%% insert_op(Introducer, NodeToInsert) ->
-%%     %% Insertion timeout should be infinity since they are serialized and waiting.
-%%     gen_server:call(NodeToInsert, {insert_op, Introducer}, 5000).
-
-%%--------------------------------------------------------------------
-%%  delete operation
-%%--------------------------------------------------------------------
-%% delete_op(Introducer, Key) ->
-%%     {FoundNode, FoundKey, _, _} = mio_skip_graph:search_op(Introducer, Key),
-%%     case string:equal(FoundKey, Key) of
-%%         true ->
-%%             delete_op(FoundNode),
-%%             ok;
-%%         false -> ng
-%%     end.
-
-%% delete_op(Node) ->
-%%     gen_server:call(Node, delete_op, 30000), %% todo proper timeout value
-
-%%     %% Since the node to delete may be still referenced,
-%%     %% We wait 1 minitue.
-%%     OneMinute = 60000,
-%%     terminate_node(Node, OneMinute),
-%%     ok.
-
-
 %% stats_op(Node, MaxLevel) ->
 %%     stats_status(Node, MaxLevel).
 
@@ -626,33 +588,6 @@ set_expire_time_op(Node, ExpireTime) ->
 %%     spawn_link(fun() ->
 %%                   receive after After -> ok end
 %%           end).
-
-%%--------------------------------------------------------------------
-%%  range search operation
-%%--------------------------------------------------------------------
-%% Key1 and Key2 are not in the search result.
-range_search_asc_op(StartNode, Key1, Key2, Limit) ->
-    range_search_order_op_(StartNode, Key1, Key2, Limit, asc).
-
-range_search_desc_op(StartNode, Key1, Key2, Limit) ->
-    range_search_order_op_(StartNode, Key1, Key2, Limit, desc).
-
-%% Since StartNodes may be in between Key1 and Key2, we have to avoid being gen_server:call blocked.
-%% For this purpose, we do range search in this process, which is not node process.
-range_search_order_op_(StartNode, Key1, Key2, Limit, Order) ->
-    {StartKey, CastOp} = case Order of
-                               asc -> {Key1, range_search_asc_op_cast};
-                               _ -> {Key2, range_search_desc_op_cast}
-                         end,
-    {ClosestNode, _, _, _} = mio_skip_graph:search_op(StartNode, StartKey),
-    ReturnToMe = self(),
-    gen_server:cast(ClosestNode, {CastOp, ReturnToMe, Key1, Key2, [], Limit}),
-    receive
-        {range_search_accumed, Accumed} ->
-            Accumed
-    after 100000 ->
-            range_search_timeout %% should never happen
-    end.
 
 %%--------------------------------------------------------------------
 %%  Search operation
@@ -817,29 +752,11 @@ handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
     spawn_link(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
-%% Write Operations start
-handle_call({insert_op, Introducer}, From, State) ->
-
-    Self = self(),
-    spawn_link(?MODULE, insert_op_call, [From, State, Self, Introducer]),
-    {noreply, State};
-
-handle_call(delete_op, From, State) ->
-    Self = self(),
-    spawn_link(?MODULE, delete_op_call, [From, Self, State]),
-    {noreply, State};
-
-%% handle_call({set_op, NewValue}, _From, State) ->
-%%     set_op_call(State, NewValue);
-
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode)};
 
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
-    {reply, ok, set_left(State, Level, LeftNode)};
-
-handle_call(Args, _From, State) ->
-    io:format("Unknown handle call on mio_bucket : ~p:State=~p", [Args, State]).
+    {reply, ok, set_left(State, Level, LeftNode)}.
 
 
 %%--------------------------------------------------------------------

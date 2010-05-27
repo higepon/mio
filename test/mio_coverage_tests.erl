@@ -47,7 +47,12 @@ for_better_coverage_test() ->
 
 
     {ok, Bucket} = mio_bucket:start_link([1, 1, 1, []]),
-    ?assertMatch(ok, for_better_coverage(mio_bucket, Bucket)),
+    ?assertMatch(ok, for_better_coverage(mio_bucket, Bucket,
+                fun() ->
+                        mio_bucket:is_empty_op(Bucket),
+                        mio_bucket:is_full_op(Bucket)
+                end
+                       )),
 
     {ok, BootStrap} = mio_bootstrap:start_link(1, 2, 3),
     ?assertMatch(ok, for_better_coverage(mio_bootstrap, BootStrap,
