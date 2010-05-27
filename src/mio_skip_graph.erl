@@ -52,7 +52,6 @@
          insert_op_call/4,
          dump_op_call/1,
          get_key/1
-
         ]).
 %%--------------------------------------------------------------------
 %%  accessors
@@ -72,11 +71,9 @@ dump_op(StartBucket) ->
 insert_op(Introducer, Key, Value) ->
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
 
-
-
 insert_op_call(From, Self, Key, Value) ->
     StartLevel = [],
-    Bucket = gen_server:call(Self, {skip_graph_search_op, Key, StartLevel}, infinity),
+    Bucket = search_bucket_op(Self, Key, StartLevel),
     Ret = mio_bucket:insert_op(Bucket, Key, Value),
     gen_server:reply(From, Ret).
 
@@ -167,9 +164,6 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
             Accum
     end.
 
-get_range(State) ->
-    {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
-
 in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
     ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
       andalso
@@ -212,7 +206,7 @@ search_to_left(From, State, Self, SearchKey, Level) ->
 search_op_call(From, State, Self, SearchKey, Level) ->
     dynomite_prof:start_prof(in_range),
     dynomite_prof:start_prof(in_range2),
-    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
@@ -231,7 +225,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 
 dump_op_call(State) ->
     Key = get_key(State),
-    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, get_range(State)]),
+    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, mio_bucket:get_range(State)]),
     lists:foreach(fun(K) ->
                           ?INFOF("    ~p~n", [K])
                   end, mio_store:keys(State#node.store)),

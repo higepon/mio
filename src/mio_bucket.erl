@@ -41,6 +41,7 @@
 
 %% API
 -export([start_link/1,
+         get_range/1,
          get_range_values_op/4,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
@@ -681,7 +682,7 @@ handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->
-    {reply, {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}, State};
+    {reply, get_range(State), State};
 
 handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
     {reply, mio_store:get_range(Key1, Key2, Limit, State#node.store), State};
@@ -904,3 +905,7 @@ my_key(State) ->
 
 get_op(Bucket, Key) ->
     gen_server:call(Bucket, {get_op, Key}).
+
+get_range(State) ->
+    {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
+
