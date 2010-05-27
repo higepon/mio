@@ -54,7 +54,7 @@
          set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
          get_op/2,
-          buddy_op_call/6, get_op_call/2, get_neighbor_op_call/4,
+          buddy_op_call/6, get_op_call/2,
           link_right_op/3, link_left_op/3,
          buddy_op/4,
          node_on_level/2,
@@ -568,49 +568,6 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 
     EmptyBucket.
 
-%% stats_op(Node, MaxLevel) ->
-%%     stats_status(Node, MaxLevel).
-
-%% stats_curr_items(Node) ->
-%%     {"curr_items", integer_to_list(length(dump_op(Node, 0)))}.
-
-%% stats_status(Node, MaxLevel) ->
-%%     case mio_util:do_times_with_index(0, MaxLevel,
-%%                              fun(Level) ->
-%%                                      mio_debug:check_sanity(Node, Level, stats, 0)
-%%                              end) of
-%%         ok -> {"mio_status", "OK"};
-%%         Other ->
-%%             {"mio_status", io_lib:format("STAT check_sanity NG Broken : ~p", [Other])}
-%%     end.
-
-%% terminate_node(Node, After) ->
-%%     spawn_link(fun() ->
-%%                   receive after After -> ok end
-%%           end).
-
-%%--------------------------------------------------------------------
-%%  Search operation
-%%
-%%--------------------------------------------------------------------
-
-%%     %% If Level is not specified, the start node checkes his max level and use it
-
-%%     ?LOGF(""),
-%%     {FoundNode, FoundKey, Value, ExpireTime} = gen_server:call(StartNode, {search_op, Key, StartLevel}, infinity),
-%%     ?LOGF(""),
-%%     case Key =< FoundKey of
-%%         true ->
-%%             ?LOGF(""),
-%%             get_op(FoundNode, Key);
-%%         _ ->
-%% %%             ?LOGF(""),
-%% %%             io:format("Key=~p FoundKey=~p", [Key, FoundKey]),
-%% %%             ?assert(false),
-%% %%             {error, not_found}
-%%             get_op(FoundNode, Key)
-%%     end.
-
 %%--------------------------------------------------------------------
 %%  buddy operation
 %%--------------------------------------------------------------------
@@ -642,15 +599,6 @@ link_left_op(Node, Level, Left) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 
-%%--------------------------------------------------------------------
-%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% Description: Handling call messages
-%%--------------------------------------------------------------------
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
 %%                                      {reply, Reply, State, Timeout} |
@@ -737,7 +685,6 @@ handle_call(get_range_op, _From, State) ->
 handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
     {reply, mio_store:get_range(Key1, Key2, Limit, State#node.store), State};
 
-%% Read Only Operations start
 handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     Self = self(),
     spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level]),
@@ -765,67 +712,6 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%%  dump operation
-%%--------------------------------------------------------------------
-%% handle_cast({dump_side_cast, Direction, Level, ReturnToMe, Accum}, State) ->
-%%     MyKey = my_key(State),
-%%     MyValue = State#node.value,
-%%     MyMVector = State#node.membership_vector,
-%%     case neighbor_node(State, Direction, Level) of
-%%         [] ->
-%%             Ret = case Direction of
-%%                       right ->
-%%                           lists:reverse([{self(), MyKey, MyValue, MyMVector} | Accum]);
-%%                       left ->
-%%                           [{self(), MyKey, MyValue, MyMVector} | Accum]
-%%                   end,
-%%             ReturnToMe ! {dump_side_accumed, Ret};
-%%         NeighborNode ->
-%%             gen_server:cast(NeighborNode, {dump_side_cast, Direction, Level, ReturnToMe, [{self(), MyKey, MyValue, MyMVector} | Accum]})
-%%     end,
-%%     {noreply, State};
-
-%%--------------------------------------------------------------------
-%%  range search operation
-%%--------------------------------------------------------------------
-%% handle_cast({range_search_asc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
-%%     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
-%%                   range_search_asc_op_cast, right, my_key(State) =< Key1),
-%%     {noreply, State};
-
-%% handle_cast({range_search_desc_op_cast, ReturnToMe, Key1, Key2, Accum, Limit}, State) ->
-%%     range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State,
-%%                   range_search_desc_op_cast, left, my_key(State) >= Key2),
-%%     {noreply, State}.
-
-%% range_search_(ReturnToMe, _Key1, _Key2, Accum, Limit, _State, _Op, _Direction, _IsOutOfRange) when Limit =:= 0 ->
-%%     ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-%% range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, Direction, IsOutOfRange) when IsOutOfRange ->
-%%     case neighbor_node(State, Direction, 0) of
-%%         [] ->
-%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)};
-%%         NextNode ->
-%%             gen_server:cast(NextNode,
-%%                             {Op, ReturnToMe, Key1, Key2, Accum, Limit})
-%%     end;
-%% range_search_(ReturnToMe, Key1, Key2, Accum, Limit, State, Op, Direction, _IsOutOfRange) ->
-%%     MyKey = my_key(State),
-%%     MyValue = State#node.value,
-%%     MyExpireTime = State#node.expire_time,
-%%     if
-%%        Key1 < MyKey andalso MyKey < Key2 ->
-%%             case neighbor_node(State, Direction, 0) of
-%%                 [] ->
-%%                     ReturnToMe ! {range_search_accumed, lists:reverse([{self(), MyKey, MyValue, MyExpireTime} | Accum])};
-%%                 NextNode ->
-%%                     gen_server:cast(NextNode,
-%%                                     {Op, ReturnToMe, Key1, Key2, [{self(), MyKey, MyValue, MyExpireTime} | Accum], Limit - 1})
-%%             end;
-%%        true ->
-%%             ReturnToMe ! {range_search_accumed, lists:reverse(Accum)}
-%%     end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -857,19 +743,11 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-
 %%--------------------------------------------------------------------
 %%% Implementation of genserver:call
 %%--------------------------------------------------------------------
 get_op_call(From, State) ->
     gen_server:reply(From, {my_key(State), dummy_value_todo, State#node.membership_vector, State#node.left, State#node.right}).
-%% get_neighbor_op_call(From, State, Direction, Level) ->
-%%     NeighborNode = neighbor_node(State, Direction, Level),
-%%     NeighborKey = neighbor_key(State, Direction, Level),
-%%     gen_server:reply(From, {NeighborNode, NeighborKey}).
-
-%% set_op_call(State, NewValue) ->
-%%     {reply, dummy_todo, State}.
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
@@ -891,63 +769,6 @@ buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
             end
     end.
 
-
-
-%%--------------------------------------------------------------------
-%%  delete operation
-%%--------------------------------------------------------------------
-%% delete_op_call(From, Self, State) ->
-%%     LockedNodes = lock_or_exit([Self], ?LINE, [my_key(State)]),
-%%     IsDeleted = gen_server:call(Self, get_deleted_op),
-%%     if IsDeleted ->
-%%             %% already deleted.
-%%             unlock(LockedNodes, ?LINE),
-%%             gen_server:reply(From, ok);
-%%        true ->
-%%             case gen_server:call(Self, get_inserted_op) of
-%%                 true ->
-%%                     MaxLevel = length(State#node.membership_vector),
-%%                     %% My State will not be changed, since I will be killed soon.
-%%                     gen_server:call(Self, set_deleted_op),
-%%                     %% N.B.
-%%                     %% To prevent deadlock, we unlock the Self after deleted mark is set.
-%%                     %% In delete_loop, Self will be locked/unlocked with left/right nodes on each level for the same reason.
-%%                     unlock(LockedNodes, ?LINE),
-%%                     delete_loop_(Self, MaxLevel),
-%%                     gen_server:reply(From, ok);
-%%                 _ ->
-%%                     unlock(LockedNodes, ?LINE),
-%%                     %% Not inserted yet, wait.
-%%                     mio_util:random_sleep(0),
-%%                     ?INFO("not inserted yet. waiting ..."),
-%%                     delete_op_call(From, Self, State)
-%%             end
-%%     end.
-
-%% delete_loop_(_Self, Level) when Level < 0 ->
-%%     [];
-%% delete_loop_(Self, Level) ->
-%%     RightNode = get_right_op(Self, Level),
-%%     LeftNode = get_left_op(Self, Level),
-%%     LockedNodes = lock_or_exit([RightNode, Self, LeftNode], ?LINE, []),
-
-%%     ?CHECK_SANITY(Self, Level),
-
-%%     ok = link_left_op(RightNode, Level, LeftNode),
-%%     ok = link_right_op(LeftNode, Level, RightNode),
-
-%%     ?CHECK_SANITY(Self, Level),
-%%     unlock(LockedNodes, ?LINE),
-%%     %% N.B.
-%%     %% We keep the right/left node of Self, since it may be still located on search path.
-%%     delete_loop_(Self, Level - 1).
-
-
-get_neighbor_op_call(From, State, Direction, Level) ->
-    NeighborNode = neighbor_node(State, Direction, Level),
-    {NeighborKey, _} = mio_skip_graph:get_key_op(NeighborNode),
-    gen_server:reply(From, {NeighborNode, NeighborKey}).
-
 link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left] -> [Center]  [Right]
     link_right_op(LeftNode, Level, CenterNode),
@@ -960,12 +781,6 @@ link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
 
     %% [Left]    [Center] -> [Right]
     link_right_op(CenterNode, Level, RightNode).
-
-%%--------------------------------------------------------------------
-%%  Insert operation
-%%--------------------------------------------------------------------
-
-
 
 buddy_op_proxy([], [], _MyMV, _Level) ->
     not_found;
