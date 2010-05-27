@@ -65,6 +65,19 @@ get_key_op(Bucket) ->
 dump_op(StartBucket) ->
     gen_server:call(StartBucket, skip_graph_dump_op).
 
+
+dump_op_call(State) ->
+    Key = get_key(State),
+    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, mio_bucket:get_range(State)]),
+    lists:foreach(fun(K) ->
+                          ?INFOF("    ~p~n", [K])
+                  end, mio_store:keys(State#node.store)),
+    case neighbor_node(State, right, 0) of
+        [] -> [];
+        RightBucket ->
+            dump_op(RightBucket)
+    end.
+
 %%--------------------------------------------------------------------
 %%  Insertion operation
 %%--------------------------------------------------------------------
@@ -103,27 +116,75 @@ insert_op_call(From, Self, Key, Value) ->
 %%  Condition : SearchKey < NodeKey && left not exist
 %%    Level ge 1 : to the lower level
 %%    Level 0    : not_found  (On mio this case can't be happen, since it handles ?MIX_KEY)
-
+%%
 %%--------------------------------------------------------------------
 search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
-    dynomite_prof:start_prof(search_get),
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    dynomite_prof:stop_prof(search_get),
-    dynomite_prof:start_prof(store_get),
-    Ret = mio_bucket:get_op(Bucket, SearchKey),
-    dynomite_prof:stop_prof(store_get),
-    Ret.
+    mio_bucket:get_op(Bucket, SearchKey).
 
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
+search_op_call(From, State, Self, SearchKey, Level) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
+    case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        %% Key may be found in Self.
+        true ->
+            gen_server:reply(From, Self);
+        _ ->
+            StartLevel = start_level(State, Level),
+            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
+                true ->
+                    gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
+                _ ->
+                    gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
+            end
+    end.
+
+%% coverage says this is not necessary
+%% search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
+%%     Self;
+search_to_right(From, State, Self, SearchKey, Level) ->
+    case neighbor_node(State, right, Level) of
+        [] ->
+            search_to_right(From, State, Self, SearchKey, Level - 1);
+        Right ->
+            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
+            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
+                true ->
+                    search_bucket_op(Right, SearchKey, Level);
+                _ ->
+                    search_to_right(From, State, Self, SearchKey, Level - 1)
+            end
+    end.
+
+%% coverage says this is not necessary
+%% search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
+%%     Self;
+search_to_left(From, State, Self, SearchKey, Level) ->
+    case neighbor_node(State, left, Level) of
+        [] ->
+            search_to_left(From, State, Self, SearchKey, Level - 1);
+        Left ->
+            {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
+            case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
+                true ->
+                    search_bucket_op(Left, SearchKey, Level);
+                _ ->
+                    search_to_left(From, State, Self, SearchKey, Level - 1)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%%  Range search operation
+%%
+%%--------------------------------------------------------------------
 range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key1),
-    mio_skip_graph:dump_op(Bucket),
     range_search_asc_rec(Bucket, Key1, Key2, [], 0, Limit);
 range_search_asc_op(_StartBucket, _Key1, _Key2, _Limit) ->
     [].
@@ -164,81 +225,13 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
             Accum
     end.
 
+%%--------------------------------------------------------------------
+%%% Internal functions
+%%--------------------------------------------------------------------
 in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
     ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
       andalso
     ((MaxEncompass andalso Key =< Max) orelse (not MaxEncompass andalso Key < Max)).
-
-%% coverage says this is not necessary
-%% search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-%%     Self;
-search_to_right(From, State, Self, SearchKey, Level) ->
-    case neighbor_node(State, right, Level) of
-        [] ->
-            search_to_right(From, State, Self, SearchKey, Level - 1);
-        Right ->
-            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
-            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
-                true ->
-                    search_bucket_op(Right, SearchKey, Level);
-                _ ->
-                    search_to_right(From, State, Self, SearchKey, Level - 1)
-            end
-    end.
-
-%% coverage says this is not necessary
-%% search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-%%     Self;
-search_to_left(From, State, Self, SearchKey, Level) ->
-    case neighbor_node(State, left, Level) of
-        [] ->
-            search_to_left(From, State, Self, SearchKey, Level - 1);
-        Left ->
-            {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
-            case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
-                true ->
-                    search_bucket_op(Left, SearchKey, Level);
-                _ ->
-                    search_to_left(From, State, Self, SearchKey, Level - 1)
-            end
-    end.
-
-search_op_call(From, State, Self, SearchKey, Level) ->
-    dynomite_prof:start_prof(in_range),
-    dynomite_prof:start_prof(in_range2),
-    {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
-    case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
-        %% Key may be found in Self.
-        true ->
-            dynomite_prof:stop_prof(in_range),
-            gen_server:reply(From, Self);
-        _ ->
-            dynomite_prof:stop_prof(in_range2),
-            StartLevel = start_level(State, Level),
-            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
-                true ->
-                    gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
-                _ ->
-                    gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
-            end
-    end.
-
-dump_op_call(State) ->
-    Key = get_key(State),
-    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, mio_bucket:get_range(State)]),
-    lists:foreach(fun(K) ->
-                          ?INFOF("    ~p~n", [K])
-                  end, mio_store:keys(State#node.store)),
-    case neighbor_node(State, right, 0) of
-        [] -> [];
-        RightBucket ->
-            dump_op(RightBucket)
-    end.
-
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
 
 %% My key is max_range.
 get_key(State) ->
@@ -255,7 +248,6 @@ start_level(_State, Level) ->
 %%         [] -> [];
 %%         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
 %%     end.
-
 node_on_level(Nodes, Level) ->
     lists:nth(Level + 1, Nodes). %% Erlang array is 1 origin.
 

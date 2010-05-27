@@ -784,8 +784,8 @@ link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left]    [Center] -> [Right]
     link_right_op(CenterNode, Level, RightNode).
 
-buddy_op_proxy([], [], _MyMV, _Level) ->
-    not_found;
+%% buddy_op_proxy([], [], _MyMV, _Level) ->
+%%     not_found;
 buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
     case buddy_op(LeftOnLower, MyMV, left, Level) of
         not_found ->
@@ -796,9 +796,9 @@ buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
     case buddy_op(RightOnLower, MyMV, right, Level) of
         not_found ->
-            not_found;
-        {ok, Buddy, BuddyKey, BuddyLeft} ->
-            {ok, right, Buddy, BuddyKey, BuddyLeft}
+            not_found
+%%         {ok, Buddy, BuddyKey, BuddyLeft} ->
+%%             {ok, right, Buddy, BuddyKey, BuddyLeft}
     end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
@@ -844,37 +844,28 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             %% We have no buddy on this level.
             %% On higher Level, we have no buddy also.
             %% So we've done.
-            ?CHECK_SANITY(Self, Level),
-            dynomite_prof:stop_prof(link_on_level_ge1),
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, _BuddyKey, BuddyRight} ->
-            dynomite_prof:start_prof(link_on_level_ge1),
-            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left),
-            ?CHECK_SANITY(Self, Level),
-            dynomite_prof:stop_prof(link_on_level_ge1);
-        %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-        {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
-            dynomite_prof:start_prof(link_on_level_ge1),
-            do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right),
-            ?CHECK_SANITY(Self, Level),
-            dynomite_prof:stop_prof(link_on_level_ge1)
+            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left)
+%%         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
+%%         {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
+%%             do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
     end.
 
 do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
     case Direction of
-        right ->
-            link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
+%%         right ->
+%%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
         left ->
             link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
     end,
-    ?CHECK_SANITY(Self, Level),
     %% Go up to next Level.
     link_on_level_ge1(Self, Level + 1, MaxLevel).
 
 node_on_level(Nodes, Level) ->
     case Nodes of
-        [] -> [];
+%%         [] -> [];
         _ ->  lists:nth(Level + 1, Nodes) %% Erlang array is 1 origin.
     end.
 
@@ -888,8 +879,8 @@ neighbor_node(State, Direction, Level) ->
 
 reverse_direction(Direction) ->
     case Direction of
-        right ->
-             left;
+%%         right ->
+%%              left;
         left ->
             right
     end.

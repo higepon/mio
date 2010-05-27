@@ -135,7 +135,6 @@ init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]) ->
     add_disk_logger(LogDir),
     %% todo
     %% Make this simple_one_for_one
-    ?PROFILER_START(self()),
     Sup = self(),
     {ok, {{one_for_one, 10, 20},
           %% logger should be the first.
