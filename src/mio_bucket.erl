@@ -41,6 +41,7 @@
 
 %% API
 -export([start_link/1,
+         delete_op/2,
          get_range/1, my_key/1,
          get_range_values_op/4,
          get_left_op/1, get_right_op/1,
@@ -264,6 +265,9 @@ set_max_key_op(Bucket, MaxKey, EncompassMax) ->
 
 set_min_key_op(Bucket, MinKey, EncompassMin) ->
     gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
+
+delete_op(Bucket, Key) ->
+    {ok, false}.
 
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
