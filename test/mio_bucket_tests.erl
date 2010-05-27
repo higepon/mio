@@ -37,7 +37,8 @@ sg_test_() ->
       [?_test(insert_c_o_c_6())],
       [?_test(insert_c_o_c_7())],
       [?_test(insert_c_o_c_8())],
-      [?_test(insert_c_o_c_9())]
+      [?_test(insert_c_o_c_9())],
+      [?_test(delete_c_o())]
      ]
     }.
 
@@ -77,7 +78,8 @@ insert_c_o_1() ->
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)),
 
-    {ok, value3} = mio_bucket:get_op(Right, "key3").
+    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    Bucket.
 
 %% C1-O2 -> C1'-O2'
 insert_c_o_2() ->
@@ -632,6 +634,9 @@ insert_c_o_c_9() ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
+delete_c_o() ->
+    Bucket = insert_c_o_1(),
+    ?assertMatch({ok, false},  mio_bucket:delete_op(Bucket, "key1")).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
