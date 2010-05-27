@@ -636,7 +636,13 @@ insert_c_o_c_9() ->
 
 delete_c_o() ->
     Bucket = insert_c_o_1(),
-    ?assertMatch({ok, false},  mio_bucket:delete_op(Bucket, "key1")).
+    ?assertMatch({ok, false},  mio_bucket:delete_op(Bucket, "key1")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")).
+
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
@@ -672,4 +678,3 @@ make_bucket(Type) ->
     MaxLevel = 3,
     Allocator = [],
     mio_sup:make_bucket(Allocator, Capacity, Type, MaxLevel).
-
