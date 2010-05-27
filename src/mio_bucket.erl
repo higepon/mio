@@ -577,8 +577,9 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
-link_right_op([], _Level, _Right) ->
-    ok;
+%% coverage says this is not necessary
+%% link_right_op([], _Level, _Right) ->
+%%     ok;
 link_right_op(Node, Level, Right) ->
     gen_server:call(Node, {link_right_op, Level, Right}).
 

@@ -45,8 +45,6 @@
          get_key_op/1,
          insert_op/3,
          dump_op/1
-
-
         ]).
 
 %% Exported for handle_call
@@ -148,33 +146,11 @@ range_search_asc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
             Accum
     end.
 
-
-%%     KeyValues = mio_bucket:get_range_values_op(Bucket, Key1, Key2, Limit - Count),
-%%     case length(KeyValues) < Limit - Count of
-%%         true ->
-%%             case mio_bucket:get_right_op(Bucket) of
-%%                 [] ->
-%%                     range_search_asc_rec([], Key1, Key2, Accum ++ KeyValues, Count + length(KeyValues), Limit);
-%%                 RightBucket ->
-%%                     {{RMin, _RMinEncompass}, _} = mio_bucket:get_range_op(RightBucket),
-%%                     case Key2 >= RMin of
-%%                         true ->
-%%                             range_search_asc_rec(RightBucket, Key1, Key2, Accum ++ KeyValues, Count + length(KeyValues), Limit);
-%%                         _ ->
-%%                             Accum ++ KeyValues
-%%                     end
-%%             end;
-%%         _ ->
-%%             Accum ++ KeyValues
-%%     end.
-
-
 range_search_desc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key2),
     range_search_desc_rec(Bucket, Key1, Key2, [], 0, Limit);
 range_search_desc_op(_StartBucket, _Key1, _Key2, _Limit) ->
     [].
-
 
 range_search_desc_rec([], _Key1, _Key2, Accum, _Count, _Limit) ->
     Accum;
