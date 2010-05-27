@@ -41,7 +41,7 @@
 
 %% API
 -export([start_link/1,
-         get_range/1,
+         get_range/1, my_key/1,
          get_range_values_op/4,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
@@ -55,9 +55,7 @@
          set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
          get_op/2,
-          buddy_op_call/6, get_op_call/2,
-          link_right_op/3, link_left_op/3,
-         buddy_op/4,
+         get_op_call/2,
          node_on_level/2,
          %% For testability
          set_gen_mvector_op/2
@@ -430,11 +428,11 @@ make_c_o_c(State, Left, Right) ->
     set_min_key_op(Right, EmptyBucketMaxKey, true),
     set_max_key_op(Left, NewLeftMaxKey, true),
 
-    link_three_nodes(Left, EmptyBucket, Right, 0),
+    mio_skip_graph:link_three_nodes(Left, EmptyBucket, Right, 0),
     ok = set_type_op(Right, c_o_c_r),
     ok = set_type_op(Left, c_o_c_l),
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
+    mio_skip_graph:link_on_level_ge1(EmptyBucket, State),
     EmptyBucket.
 
 insert_c_o_l_overflow(State, Left, Right) ->
@@ -480,15 +478,15 @@ insert_alone_full(State, Self) ->
     set_type_op(Self, c_o_l),
 
     %% link on Level 0
-    link_right_op(Self, 0, EmptyBucket),
-    link_left_op(EmptyBucket, 0, Self),
+    mio_skip_graph:link_right_op(Self, 0, EmptyBucket),
+    mio_skip_graph:link_left_op(EmptyBucket, 0, Self),
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
     set_range_op(EmptyBucket, {EmptyMinKey, false}, {EmptyMaxKey, State#node.encompass_max}),
 
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
+    mio_skip_graph:link_on_level_ge1(EmptyBucket, State),
     EmptyBucket.
 
 prepare_split_c_o_c(State, Left, Middle, Right) ->
@@ -513,7 +511,7 @@ adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket) ->
     set_range_op(Right, {MiddleMaxKey, false}, {RightMaxKey, true}),
     set_range_op(EmptyBucket, {EmptyMinKey, false}, {OldRightMaxKey, OldEncompassMax}),
     %% C3'-O4 | C ...
-    link_three_nodes(Right, EmptyBucket, PrevRight, 0).
+    mio_skip_graph:link_three_nodes(Right, EmptyBucket, PrevRight, 0).
 
 
 %% Insertion to the Left causes overflow
@@ -528,7 +526,7 @@ split_c_o_c_by_l(State, Left, Middle, Right) ->
     adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket),
 
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
+    mio_skip_graph:link_on_level_ge1(EmptyBucket, State),
     EmptyBucket.
 
 %% Insertion to the Middle causes overflow
@@ -543,7 +541,7 @@ split_c_o_c_by_m(State, Left, Middle, Right) ->
     adjust_range_link_c_o_c(Left, Middle, Right, PrevRight, EmptyBucket),
 
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
+    mio_skip_graph:link_on_level_ge1(EmptyBucket, State),
     EmptyBucket.
 
 
@@ -562,32 +560,12 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
     set_range_op(EmptyBucket, {NewRightMaxKey, false}, {OldMaxKey, OldEncompassMax}),
 
     %% C3'-O4 | C ...
-    link_three_nodes(Right, EmptyBucket, PrevRight, 0),
+    mio_skip_graph:link_three_nodes(Right, EmptyBucket, PrevRight, 0),
 
     %% link on Level >= 1
-    link_on_level_ge1(EmptyBucket, State),
+    mio_skip_graph:link_on_level_ge1(EmptyBucket, State),
 
     EmptyBucket.
-
-%%--------------------------------------------------------------------
-%%  buddy operation
-%%--------------------------------------------------------------------
-buddy_op(Node, MembershipVector, Direction, Level) ->
-    gen_server:call(Node, {buddy_op, MembershipVector, Direction, Level}).
-
-%%--------------------------------------------------------------------
-%%  link operation
-%%--------------------------------------------------------------------
-%% coverage says this is not necessary
-%% link_right_op([], _Level, _Right) ->
-%%     ok;
-link_right_op(Node, Level, Right) ->
-    gen_server:call(Node, {link_right_op, Level, Right}).
-
-link_left_op([], _Level, _Left) ->
-    ok;
-link_left_op(Node, Level, Left) ->
-    gen_server:call(Node, {link_left_op, Level, Left}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -696,9 +674,9 @@ handle_call(get_op, From, State) ->
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
 
-handle_call({buddy_op, MembershipVector, Direction, Level}, From, State) ->
+handle_call({skip_graph_buddy_op, MembershipVector, Direction, Level}, From, State) ->
     Self = self(),
-    spawn_link(?MODULE, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
+    spawn_link(mio_skip_graph, buddy_op_call, [From, State, Self, MembershipVector, Direction, Level]),
     {noreply, State};
 
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
@@ -751,118 +729,6 @@ handle_call({link_left_op, Level, LeftNode}, _From, State) ->
 get_op_call(From, State) ->
     gen_server:reply(From, {my_key(State), dummy_value_todo, State#node.membership_vector, State#node.left, State#node.right}).
 
-buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
-    IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
-    %% N.B.
-    %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = node_on_level(State#node.inserted, Level),
-    if
-        IsSameMV andalso IsInserted ->
-            MyKey = my_key(State),
-            ReverseDirection = reverse_direction(Direction),
-            MyNeighbor = neighbor_node(State, ReverseDirection, Level),
-            gen_server:reply(From, {ok, Self, MyKey, MyNeighbor});
-        true ->
-            case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
-                [] ->
-                    gen_server:reply(From, not_found);
-                NeighborNode ->
-                    gen_server:reply(From, buddy_op(NeighborNode, MembershipVector, Direction, Level))
-            end
-    end.
-
-link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
-    %% [Left] -> [Center]  [Right]
-    link_right_op(LeftNode, Level, CenterNode),
-
-    %% [Left]    [Center] <- [Right]
-    link_left_op(RightNode, Level, CenterNode),
-
-    %% [Left] <- [Center]    [Right]
-    link_left_op(CenterNode, Level, LeftNode),
-
-    %% [Left]    [Center] -> [Right]
-    link_right_op(CenterNode, Level, RightNode).
-
-%% buddy_op_proxy([], [], _MyMV, _Level) ->
-%%     not_found;
-buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
-    case buddy_op(LeftOnLower, MyMV, left, Level) of
-        not_found ->
-            not_found;
-        {ok, Buddy, BuddyKey, BuddyRight} ->
-            {ok, left, Buddy, BuddyKey, BuddyRight}
-    end;
-buddy_op_proxy([], RightOnLower, MyMV, Level) ->
-    case buddy_op(RightOnLower, MyMV, right, Level) of
-        not_found ->
-            not_found
-%%         {ok, Buddy, BuddyKey, BuddyLeft} ->
-%%             {ok, right, Buddy, BuddyKey, BuddyLeft}
-    end;
-buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
-    case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
-        not_found ->
-            buddy_op_proxy([], RightOnLower, MyMV, Level);
-        Other ->
-            Other
-    end.
-
-%% link on Level >= 1
-link_on_level_ge1(Self, State) ->
-    MaxLevel = length(State#node.membership_vector),
-    link_on_level_ge1(Self, 1, MaxLevel).
-
-%% Link on all levels done.
-link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
-    [];
-%% buddy node has same membership_vector on this level.
-%% Insert Sample
-%%
-%%   Node = [NodeName:MemberShip on Level]
-%%
-%%   Start State
-%%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-%%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
-%%
-%%   Insert
-%%     1. Search node to the right side that has membership_vector m start from NodeToInsert.
-%%     2. [D:m] found.
-%%     3. Link and insert [NodeToInsert:m]
-%%     4. Go up to next Level = Level + 1
-%%
-%%   End State
-%%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
-%%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
-%%
-link_on_level_ge1(Self, Level, MaxLevel) ->
-    {_MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
-    LeftOnLower = node_on_level(MyLeft, Level - 1),
-    RightOnLower = node_on_level(MyRight, Level - 1),
-    case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
-        not_found ->
-            %% We have no buddy on this level.
-            %% On higher Level, we have no buddy also.
-            %% So we've done.
-            [];
-        %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
-        {ok, left, Buddy, _BuddyKey, BuddyRight} ->
-            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left)
-%%         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-%%         {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
-%%             do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
-    end.
-
-do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
-    case Direction of
-%%         right ->
-%%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
-        left ->
-            link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
-    end,
-    %% Go up to next Level.
-    link_on_level_ge1(Self, Level + 1, MaxLevel).
-
 node_on_level(Nodes, Level) ->
     case Nodes of
 %%         [] -> [];
@@ -875,14 +741,6 @@ neighbor_node(State, Direction, Level) ->
             node_on_level(State#node.right, Level);
         left ->
             node_on_level(State#node.left, Level)
-    end.
-
-reverse_direction(Direction) ->
-    case Direction of
-%%         right ->
-%%              left;
-        left ->
-            right
     end.
 
 set_right(State, Level, Node) ->

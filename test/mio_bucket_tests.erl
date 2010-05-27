@@ -647,10 +647,10 @@ setup_full_bucket() ->
     {ok, Right } = make_bucket(right),
     {ok, Left } = make_bucket(left),
 
-    ok = mio_bucket:link_left_op(Bucket, 0, Left),
-    ok = mio_bucket:link_right_op(Left, 0, Bucket),
-    ok = mio_bucket:link_right_op(mio_bucket:get_right_op(Bucket), 0, Right),
-    ok = mio_bucket:link_left_op(Right, 0, mio_bucket:get_right_op(Bucket)),
+    ok = mio_skip_graph:link_left_op(Bucket, 0, Left),
+    ok = mio_skip_graph:link_right_op(Left, 0, Bucket),
+    ok = mio_skip_graph:link_right_op(mio_bucket:get_right_op(Bucket), 0, Right),
+    ok = mio_skip_graph:link_left_op(Right, 0, mio_bucket:get_right_op(Bucket)),
     Bucket.
 
 get_left_type(Bucket) ->

@@ -44,13 +44,20 @@
          range_search_desc_op/4,
          get_key_op/1,
          insert_op/3,
-         dump_op/1
+         buddy_op/4,
+         dump_op/1,
+         link_right_op/3, link_left_op/3,
+
+         link_three_nodes/4,
+         link_on_level_ge1/2
         ]).
 
 %% Exported for handle_call
 -export([search_op_call/5,
          insert_op_call/4,
+         buddy_op_call/6,
          dump_op_call/1,
+
          get_key/1
         ]).
 %%--------------------------------------------------------------------
@@ -181,7 +188,6 @@ search_to_left(From, State, Self, SearchKey, Level) ->
 
 %%--------------------------------------------------------------------
 %%  Range search operation
-%%
 %%--------------------------------------------------------------------
 range_search_asc_op(StartBucket, Key1, Key2, Limit) when Key1 =< Key2 ->
     Bucket = search_bucket_op(StartBucket, Key1),
@@ -226,8 +232,130 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
     end.
 
 %%--------------------------------------------------------------------
+%%  link operation
+%%--------------------------------------------------------------------
+%% coverage says this is not necessary
+%% link_right_op([], _Level, _Right) ->
+%%     ok;
+link_right_op(Node, Level, Right) ->
+    gen_server:call(Node, {link_right_op, Level, Right}).
+
+link_left_op([], _Level, _Left) ->
+    ok;
+link_left_op(Node, Level, Left) ->
+    gen_server:call(Node, {link_left_op, Level, Left}).
+
+%%--------------------------------------------------------------------
+%%  Buddy operation
+%%--------------------------------------------------------------------
+%%--------------------------------------------------------------------
+%%  buddy operation
+%%--------------------------------------------------------------------
+buddy_op(Node, MembershipVector, Direction, Level) ->
+    gen_server:call(Node, {skip_graph_buddy_op, MembershipVector, Direction, Level}).
+
+buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
+    IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
+    %% N.B.
+    %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
+    IsInserted = node_on_level(State#node.inserted, Level),
+    if
+        IsSameMV andalso IsInserted ->
+            MyKey = mio_bucket:my_key(State),
+            ReverseDirection = reverse_direction(Direction),
+            MyNeighbor = neighbor_node(State, ReverseDirection, Level),
+            gen_server:reply(From, {ok, Self, MyKey, MyNeighbor});
+        true ->
+            case neighbor_node(State, Direction, Level - 1) of %% N.B. should be on LowerLevel
+                [] ->
+                    gen_server:reply(From, not_found);
+                NeighborNode ->
+                    gen_server:reply(From, buddy_op(NeighborNode, MembershipVector, Direction, Level))
+            end
+    end.
+
+%% buddy_op_proxy([], [], _MyMV, _Level) ->
+%%     not_found;
+buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
+    case buddy_op(LeftOnLower, MyMV, left, Level) of
+        not_found ->
+            not_found;
+        {ok, Buddy, BuddyKey, BuddyRight} ->
+            {ok, left, Buddy, BuddyKey, BuddyRight}
+    end;
+buddy_op_proxy([], RightOnLower, MyMV, Level) ->
+    case buddy_op(RightOnLower, MyMV, right, Level) of
+        not_found ->
+            not_found
+%%         {ok, Buddy, BuddyKey, BuddyLeft} ->
+%%             {ok, right, Buddy, BuddyKey, BuddyLeft}
+    end;
+buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
+    case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
+        not_found ->
+            buddy_op_proxy([], RightOnLower, MyMV, Level);
+        Other ->
+            Other
+    end.
+
+%%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+%% link on Level >= 1
+link_on_level_ge1(Self, State) ->
+    MaxLevel = length(State#node.membership_vector),
+    link_on_level_ge1(Self, 1, MaxLevel).
+
+%% Link on all levels done.
+link_on_level_ge1(_Self, Level, MaxLevel) when Level > MaxLevel ->
+    [];
+%% buddy node has same membership_vector on this level.
+%% Insert Sample
+%%
+%%   Node = [NodeName:MemberShip on Level]
+%%
+%%   Start State
+%%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
+%%     <Level>    : [A:m] <-> [D:m] <-> [F:m]
+%%
+%%   Insert
+%%     1. Search node to the right side that has membership_vector m start from NodeToInsert.
+%%     2. [D:m] found.
+%%     3. Link and insert [NodeToInsert:m]
+%%     4. Go up to next Level = Level + 1
+%%
+%%   End State
+%%     <Level - 1>: [A:m] <-> [B:n] <-> [NodeToInsert:m] <-> [C:n] <-> [D:m] <-> [E:n] <-> [F:m]
+%%     <Level>    : [A:m] <-> [NodeToInsert:m] <-> [D:m] <-> [F:m]
+%%
+link_on_level_ge1(Self, Level, MaxLevel) ->
+    {_MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
+    LeftOnLower = node_on_level(MyLeft, Level - 1),
+    RightOnLower = node_on_level(MyRight, Level - 1),
+    case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
+        not_found ->
+            %% We have no buddy on this level.
+            %% On higher Level, we have no buddy also.
+            %% So we've done.
+            [];
+        %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
+        {ok, left, Buddy, _BuddyKey, BuddyRight} ->
+            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left)
+%%         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
+%%         {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
+%%             do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
+    end.
+
+do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
+    case Direction of
+%%         right ->
+%%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
+        left ->
+            link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
+    end,
+    %% Go up to next Level.
+    link_on_level_ge1(Self, Level + 1, MaxLevel).
+
 in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
     ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
       andalso
@@ -258,3 +386,24 @@ neighbor_node(State, Direction, Level) ->
         left ->
             node_on_level(State#node.left, Level)
     end.
+
+reverse_direction(Direction) ->
+    case Direction of
+%%         right ->
+%%              left;
+        left ->
+            right
+    end.
+
+link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
+    %% [Left] -> [Center]  [Right]
+    link_right_op(LeftNode, Level, CenterNode),
+
+    %% [Left]    [Center] <- [Right]
+    link_left_op(RightNode, Level, CenterNode),
+
+    %% [Left] <- [Center]    [Right]
+    link_left_op(CenterNode, Level, LeftNode),
+
+    %% [Left]    [Center] -> [Right]
+    link_right_op(CenterNode, Level, RightNode).
