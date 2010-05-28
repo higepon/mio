@@ -654,7 +654,11 @@ delete_c_o() ->
     ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")),
 
     ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch(true, mio_bucket:is_empty_op(Right)).
+    ?assertMatch(true, mio_bucket:is_empty_op(Right)),
+
+    %% type
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(Bucket)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(Right)).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
