@@ -52,6 +52,7 @@
          take_largest_op/1,
          get_largest_op/1, get_smallest_op/1,
          insert_op_call/5,
+         delete_op_call/4,
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
          %% Skip Graph layer
@@ -267,7 +268,7 @@ set_min_key_op(Bucket, MinKey, EncompassMin) ->
     gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
 
 delete_op(Bucket, Key) ->
-    {ok, false}.
+    gen_server:call(Bucket, {delete_op, Key}).
 
 insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {insert_op, Key, Value}).
@@ -381,6 +382,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+delete_op_call(From, State, Self, Key) ->
+    case State#node.type of
+        c_o_l ->
+            mio_store:remove(Key, State#node.store),
+            gen_server:reply(From, {ok, false});
+        _ ->
+            gen_server:reply(From, {ok, todo})
+    end.
+
 insert_op_call(From, State, Self, Key, Value)  ->
     InsertState = just_insert_op(Self, Key, Value),
     NewlyAllocatedBucket =
@@ -592,6 +602,11 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({delete_op, Key}, From, State) ->
+    Self = self(),
+    spawn_link(?MODULE, delete_op_call, [From, State, Self, Key]),
+    {noreply, State};
+
 handle_call(stop_op, _From, State) ->
     {stop, normal, State};
 handle_call(is_empty_op, _From, State) ->
@@ -761,4 +776,3 @@ get_op(Bucket, Key) ->
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
-

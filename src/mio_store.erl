@@ -52,7 +52,7 @@
 %% Description: make a store
 %%--------------------------------------------------------------------
 new(Capacity) ->
-    Ets = ets:new(store, [private, ordered_set]),
+    Ets = ets:new(store, [public, ordered_set]),
     #store{capacity=Capacity, ets=Ets}.
 
 %%--------------------------------------------------------------------
@@ -213,6 +213,7 @@ smallest(Store) ->
 %% Description: remove value by key
 %%--------------------------------------------------------------------
 remove(Key, Store) ->
+    ?debugFmt("Key=~p Store=~p", [Key, Store]),
     true = ets:delete(Store#store.ets, Key),
     Store.
 

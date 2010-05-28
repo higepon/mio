@@ -32,7 +32,8 @@ remove_test() ->
     {ok, value_a} = mio_store:get(key_a, B3),
 
     B4 = mio_store:remove(key_a, B3),
-    {error, not_found} = mio_store:get(key_a, B4).
+    B5 = mio_store:remove(key_a, B4),
+    {error, not_found} = mio_store:get(key_a, B5).
 
 overflow_test() ->
     B = mio_store:new(3),

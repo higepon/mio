@@ -79,7 +79,7 @@ insert_c_o_1() ->
     right = get_right_type(mio_bucket:get_right_op(Bucket)),
 
     {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    Bucket.
+    {Bucket, Right}.
 
 %% C1-O2 -> C1'-O2'
 insert_c_o_2() ->
@@ -635,14 +635,19 @@ insert_c_o_c_9() ->
     ok.
 
 delete_c_o() ->
-    Bucket = insert_c_o_1(),
-    ?assertMatch({ok, false},  mio_bucket:delete_op(Bucket, "key1")),
+    %% [0 1 2] [3]
+    {Bucket, Right} = insert_c_o_1(),
+
+    %% [0 2 3] []
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
     ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
     ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")).
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")),
 
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch(true, mio_bucket:is_empty_op(Right)).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
