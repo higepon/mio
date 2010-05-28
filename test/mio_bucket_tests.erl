@@ -662,7 +662,7 @@ delete_c_o() ->
 
     %% range
     ?assertMatch({{?MIN_KEY, false}, {"key3", true}}, mio_bucket:get_range_op(Bucket)),
-    ?assertMatch({{"key3", false}, {?MIN_KEY, false}}, mio_bucket:get_range_op(Right)).
+    ?assertMatch({{"key3", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),

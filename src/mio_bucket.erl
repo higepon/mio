@@ -394,6 +394,10 @@ delete_op_call(From, State, Self, Key) ->
                     RightBucket = get_right_op(Self),
                     {MinKey, MinValue} = take_smallest_op(RightBucket),
                     just_insert_op(Self, MinKey, MinValue),
+
+                    {MaxKey, _} = get_largest_op(Self),
+                    set_max_key_op(Self, MaxKey, true),
+                    set_min_key_op(RightBucket, MaxKey, false),
                     gen_server:reply(From, {ok, false});
                 _ ->
                     gen_server:reply(From, {ok, todo})
