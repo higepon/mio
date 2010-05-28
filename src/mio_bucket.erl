@@ -49,7 +49,7 @@
          insert_op/3, just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
-         take_largest_op/1,
+         take_largest_op/1, take_smallest_op/1,
          get_largest_op/1, get_smallest_op/1,
          insert_op_call/5,
          delete_op_call/4,
@@ -291,6 +291,9 @@ get_smallest_op(Bucket) ->
 take_largest_op(Bucket) ->
     gen_server:call(Bucket, take_largest_op).
 
+take_smallest_op(Bucket) ->
+    gen_server:call(Bucket, take_smallest_op).
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -383,12 +386,20 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 delete_op_call(From, State, Self, Key) ->
-    case State#node.type of
-        c_o_l ->
-            mio_store:remove(Key, State#node.store),
-            gen_server:reply(From, {ok, false});
+    case mio_store:get(Key, State#node.store) of
+        {ok, _Value} ->
+            case State#node.type of
+                c_o_l ->
+                    mio_store:remove(Key, State#node.store),
+                    RightBucket = get_right_op(Self),
+                    {MinKey, MinValue} = take_smallest_op(RightBucket),
+                    just_insert_op(Self, MinKey, MinValue),
+                    gen_server:reply(From, {ok, false});
+                _ ->
+                    gen_server:reply(From, {ok, todo})
+            end;
         _ ->
-            gen_server:reply(From, {ok, todo})
+            gen_server:reply(From, {ok, false})
     end.
 
 insert_op_call(From, State, Self, Key, Value)  ->
@@ -650,6 +661,10 @@ handle_call(get_type_op, _From, State) ->
 
 handle_call(take_largest_op, _From, State) ->
     {Key, Value, NewStore} = mio_store:take_largest(State#node.store),
+    {reply, {Key, Value}, State#node{store=NewStore}};
+
+handle_call(take_smallest_op, _From, State) ->
+    {Key, Value, NewStore} = mio_store:take_smallest(State#node.store),
     {reply, {Key, Value}, State#node{store=NewStore}};
 
 handle_call(get_largest_op, _From, State) ->
