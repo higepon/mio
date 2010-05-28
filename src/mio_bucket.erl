@@ -390,6 +390,7 @@ delete_op_call(From, State, Self, Key) ->
         {ok, _Value} ->
             case State#node.type of
                 c_o_l ->
+                    %% C-O -> C'-O' | C-O*
                     mio_store:remove(Key, State#node.store),
                     RightBucket = get_right_op(Self),
                     {MinKey, MinValue} = take_smallest_op(RightBucket),

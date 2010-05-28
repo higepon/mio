@@ -10,11 +10,11 @@
 
 for_better_coverage_test() ->
     {ok, Serializer} = mio_serializer:start_link(),
-    ?assertMatch(ok, mio_util:for_better_coverage(mio_serializer, Serializer)),
+    ?assertEqual(ok, mio_util:for_better_coverage(mio_serializer, Serializer)),
     process_flag(trap_exit, true),
 
     {ok, Allocator} = mio_allocator:start_link(),
-    ?assertMatch(ok, mio_util:for_better_coverage(mio_bootstrap, Allocator)),
+    ?assertEqual(ok, mio_util:for_better_coverage(mio_bootstrap, Allocator)),
 
     exit(Serializer, normal),
     exit(Allocator, normal).

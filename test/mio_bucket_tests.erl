@@ -45,7 +45,7 @@ sg_test_() ->
 
 more_coverage() ->
     {ok, Bucket} = mio_bucket:start_link([1, 1, 1, []]),
-    ?assertMatch(ok, mio_util:for_better_coverage(mio_bucket, Bucket)),
+    ?assertEqual(ok, mio_util:for_better_coverage(mio_bucket, Bucket)),
     process_flag(trap_exit, true),
     exit(Bucket, normal).
 

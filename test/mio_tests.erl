@@ -21,7 +21,7 @@ teardown_mio(_) ->
 
 coverage_test() ->
     {ok, BootStrap} = mio_bootstrap:start_link(1, 2, 3),
-    ?assertMatch(ok, mio_util:for_better_coverage(mio_bootstrap, BootStrap,
+    ?assertEqual(ok, mio_util:for_better_coverage(mio_bootstrap, BootStrap,
                                          fun() ->
                                                  ?assertMatch({ok, 1, 2, 3}, mio_bootstrap:get_boot_info(node())) end)),
     process_flag(trap_exit, true),
