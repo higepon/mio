@@ -19,6 +19,14 @@ setup_mio() ->
 teardown_mio(_) ->
     ok = application:stop(mio).
 
+coverage_test() ->
+    {ok, BootStrap} = mio_bootstrap:start_link(1, 2, 3),
+    ?assertMatch(ok, mio_util:for_better_coverage(mio_bootstrap, BootStrap,
+                                         fun() ->
+                                                 ?assertMatch({ok, 1, 2, 3}, mio_bootstrap:get_boot_info(node())) end)),
+    process_flag(trap_exit, true),
+    exit(BootStrap, normal).
+
 mio_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
@@ -31,6 +39,7 @@ mio_test_() ->
 %%       [?_test(range_search_expiration())]
      ]
     }.
+
 
 set_and_get() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),

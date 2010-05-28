@@ -213,7 +213,6 @@ smallest(Store) ->
 %% Description: remove value by key
 %%--------------------------------------------------------------------
 remove(Key, Store) ->
-    ?debugFmt("Key=~p Store=~p", [Key, Store]),
     true = ets:delete(Store#store.ets, Key),
     Store.
 

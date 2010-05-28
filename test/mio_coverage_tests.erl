@@ -13,15 +13,8 @@ for_better_coverage_test() ->
     ?assertMatch(ok, mio_util:for_better_coverage(mio_serializer, Serializer)),
     process_flag(trap_exit, true),
 
-
-    {ok, BootStrap} = mio_bootstrap:start_link(1, 2, 3),
-    ?assertMatch(ok, mio_util:for_better_coverage(mio_bootstrap, BootStrap,
-                                         fun() ->
-                                                 ?assertMatch({ok, 1, 2, 3}, mio_bootstrap:get_boot_info(node())) end)),
-
     {ok, Allocator} = mio_allocator:start_link(),
     ?assertMatch(ok, mio_util:for_better_coverage(mio_bootstrap, Allocator)),
 
     exit(Serializer, normal),
-    exit(BootStrap, normal),
     exit(Allocator, normal).
