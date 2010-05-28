@@ -74,10 +74,7 @@ for_better_coverage(Mod, Pid, Fun) ->
                end),
     receive
         {'EXIT', _, normal} -> ok;
-        {'EXIT',_ ,{normal,{gen_server,call,[_ ,stop_op]}}} -> ok;
-        Other ->
-            ?debugFmt("Other=~p", [Other]),
-            {error, Other}
+        {'EXIT',_ ,{normal,{gen_server,call,[_ ,stop_op]}}} -> ok
     end.
 
 

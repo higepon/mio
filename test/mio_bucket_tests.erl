@@ -658,7 +658,11 @@ delete_c_o() ->
 
     %% type
     ?assertMatch(c_o_l, mio_bucket:get_type_op(Bucket)),
-    ?assertMatch(c_o_r, mio_bucket:get_type_op(Right)).
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(Right)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {"key3", true}}, mio_bucket:get_range_op(Bucket)),
+    ?assertMatch({{"key3", false}, {?MIN_KEY, false}}, mio_bucket:get_range_op(Right)).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
