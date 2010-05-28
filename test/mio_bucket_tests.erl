@@ -22,6 +22,7 @@ teardown_mio(_) ->
 sg_test_() ->
     {foreach, fun setup_mio/0, fun teardown_mio/1,
      [
+      [?_test(more_coverage())], %% should be first, this test does re-covercompile.
       [?_test(insert())],
       [?_test(insert_c_o_1())],
       [?_test(insert_c_o_2())],
@@ -41,6 +42,12 @@ sg_test_() ->
       [?_test(delete_c_o())]
      ]
     }.
+
+more_coverage() ->
+    {ok, Bucket} = mio_bucket:start_link([1, 1, 1, []]),
+    ?assertMatch(ok, mio_util:for_better_coverage(mio_bucket, Bucket)),
+    process_flag(trap_exit, true),
+    exit(Bucket, normal).
 
 %% 0$ -> C-O*
 insert() ->
