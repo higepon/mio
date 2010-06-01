@@ -332,8 +332,9 @@ delete_op_call(From, State, Self, Key) ->
     case mio_store:get(Key, State#node.store) of
         {ok, _Value} ->
             case State#node.type of
+                %% C1-O2
+                %%   Deletion from C1: C1'-O2'
                 c_o_l ->
-                    %% C-O -> C'-O' | C-O*
                     mio_store:remove(Key, State#node.store),
                     RightBucket = get_right_op(Self),
                     {MinKey, MinValue} = take_smallest_op(RightBucket),
@@ -342,6 +343,11 @@ delete_op_call(From, State, Self, Key) ->
                     {MaxKey, _} = get_largest_op(Self),
                     set_max_key_op(Self, MaxKey, true),
                     set_min_key_op(RightBucket, MaxKey, false),
+                    gen_server:reply(From, {ok, false});
+                %% C1-O2
+                %%   Deletion from O2: C1-O2'
+                c_o_r ->
+                    mio_store:remove(Key, State#node.store),
                     gen_server:reply(From, {ok, false});
                 _ ->
                     gen_server:reply(From, {ok, todo})

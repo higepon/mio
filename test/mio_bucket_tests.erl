@@ -677,7 +677,7 @@ delete_c_o_2() ->
     ?assertMatch({ok, false}, mio_bucket:delete_op(Right, "key3")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
     ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
 
     ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
