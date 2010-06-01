@@ -345,9 +345,8 @@ delete_op_call(From, State, Self, Key) ->
                     {MinKey, MinValue} = take_smallest_op(RightBucket),
                     just_insert_op(Self, MinKey, MinValue),
 
-                    {MaxKey, _} = get_largest_op(Self),
-                    set_max_key_op(Self, MaxKey, true),
-                    set_min_key_op(RightBucket, MaxKey, false),
+                    set_max_key_op(Self, MinKey, true),
+                    set_min_key_op(RightBucket, MinKey, false),
                     gen_server:reply(From, {ok, false});
                 %% C1-O2
                 %%   Deletion from O2: C1-O2'
