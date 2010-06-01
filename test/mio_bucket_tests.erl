@@ -40,6 +40,7 @@ sg_test_() ->
       [?_test(insert_c_o_c_8())],
       [?_test(insert_c_o_c_9())],
       [?_test(delete_o())],
+      [?_test(delete_o_empty())],
       [?_test(delete_c_o())],
       [?_test(delete_c_o_2())]
      ]
@@ -642,6 +643,25 @@ insert_c_o_c_9() ->
     right = get_right_type(MostRight),
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
+
+%%  O1*
+%%    O1* -> O1*
+delete_o_empty() ->
+
+    %% []
+    {ok, Bucket} = make_bucket(alone),
+
+    %% []
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
+
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+
+    %% type
+    ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Bucket)).
+
 
 %%  O1
 %%    O1 -> O2 or O2*
