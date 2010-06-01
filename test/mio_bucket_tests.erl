@@ -41,7 +41,7 @@ sg_test_() ->
       [?_test(insert_c_o_c_9())],
       [?_test(delete_o())],
       [?_test(delete_o_empty())],
-      [?_test(delete_c_o())],
+      [?_test(delete_c_o_1())],
       [?_test(delete_c_o_2())]
      ]
     }.
@@ -686,7 +686,7 @@ delete_o() ->
 
 %%  C1-O2
 %%    Deletion from C1: C1'-O2'
-delete_c_o() ->
+delete_c_o_1() ->
     %% [0 1 2] [3]
     {Bucket, Right} = insert_c_o_1(),
 
