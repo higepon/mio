@@ -332,6 +332,11 @@ delete_op_call(From, State, Self, Key) ->
     case mio_store:get(Key, State#node.store) of
         {ok, _Value} ->
             case State#node.type of
+                %% O1
+                %%   O1 -> O2 or O2*
+                alone ->
+                    mio_store:remove(Key, State#node.store),
+                    gen_server:reply(From, {ok, false});
                 %% C1-O2
                 %%   Deletion from C1: C1'-O2'
                 c_o_l ->
