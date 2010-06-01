@@ -39,6 +39,7 @@ sg_test_() ->
       [?_test(insert_c_o_c_7())],
       [?_test(insert_c_o_c_8())],
       [?_test(insert_c_o_c_9())],
+      [?_test(delete_o())],
       [?_test(delete_c_o())],
       [?_test(delete_c_o_2())]
      ]
@@ -642,8 +643,29 @@ insert_c_o_c_9() ->
     MostRight = mio_bucket:get_left_op(mio_bucket:get_right_op(MostRight)),
     ok.
 
-%%    (c) C1-O2
-%%      Deletion from C1: C1'-O2'
+%%  O1
+%%    O1 -> O2 or O2*
+delete_o() ->
+
+    %% [key1]
+    {ok, Bucket} = make_bucket(alone),
+    {ok, _} = mio_bucket:insert_op(Bucket, "key1", value1),
+
+    ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
+
+    %% []
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
+
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+
+    %% type
+    ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Bucket)).
+
+%%  C1-O2
+%%    Deletion from C1: C1'-O2'
 delete_c_o() ->
     %% [0 1 2] [3]
     {Bucket, Right} = insert_c_o_1(),
@@ -667,8 +689,8 @@ delete_c_o() ->
     ?assertMatch({{?MIN_KEY, false}, {"key3", true}}, mio_bucket:get_range_op(Bucket)),
     ?assertMatch({{"key3", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
-%%    (c) C1-O2
-%%      Deletion from O2: C1-O2'
+%%  C1-O2
+%%    Deletion from O2: C1-O2'
 delete_c_o_2() ->
     %% [0 1 2] [3]
     {Bucket, Right} = insert_c_o_1(),
