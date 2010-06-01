@@ -42,7 +42,8 @@ sg_test_() ->
       [?_test(delete_o())],
       [?_test(delete_o_empty())],
       [?_test(delete_c_o_1())],
-      [?_test(delete_c_o_2())]
+      [?_test(delete_c_o_2())],
+      [?_test(delete_c_o_c_1())]
      ]
     }.
 
@@ -267,8 +268,7 @@ insert_c_o_c_1() ->
     c_o_c_l = mio_bucket:get_type_op(Left),
     c_o_c_m = mio_bucket:get_type_op(Middle),
     c_o_c_r = mio_bucket:get_type_op(Right),
-
-    ok.
+    {Left, Middle, Right}.
 
 %%  C1-O2-C3
 %%    Insertion to C1 : C1'-O2'-C3
@@ -732,6 +732,37 @@ delete_c_o_2() ->
     %% range
     ?assertMatch({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Bucket)),
     ?assertMatch({{"key2", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
+
+%%  C1-O2-C3
+%%    Deletion from C1: C1'-O2'-C3
+delete_c_o_c_1() ->
+    %% [0, 1, 10] [2] [3, 4, 5]
+    {Left, Middle, Right} = insert_c_o_c_1(),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
+
+    %% [0, 1, 2] [] [3, 4, 5]
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Left, "key10")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
+    ?assertMatch({ok, value2}, mio_bucket:get_op(Left, "key2")),
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Left, "key10")),
+
+    ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
+
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch({ok, value4}, mio_bucket:get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+
+    %% type
+    ?assertMatch(c_o_c_l, mio_bucket:get_type_op(Left)),
+    ?assertMatch(c_o_c_m, mio_bucket:get_type_op(Middle)),
+    ?assertMatch(c_o_c_r, mio_bucket:get_type_op(Right)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
+    ?assertMatch({{"key2", false}, {"key3", false}}, mio_bucket:get_range_op(Middle)),
+    ?assertMatch({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
 
 setup_full_bucket() ->
