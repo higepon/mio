@@ -137,97 +137,40 @@
 %%      Insertion to C3  : C1-O2$ | C3'-O4
 %%
 %%  Deletion patterns
+%%    following bucket group appears on deletion.
 %%
-%%    (a) C1-O2 | C3-O4
-%%      Deletion from C1 causes O2 -> C1.
-%%        C1'-O2' | C3-O4.
+%%      O, O*, C-O, C-O-C, C-O* and C-O*-C.
 %%
-%%      Deletion from C3. Same as above.
+%%    (a) O1
+%%      O1 -> O2 or O2*
 %%
-%%    (b) C1-O2 | C3-O4*
-%%      Deletion from C1. Same as (a).
+%%    (b) O*
+%%      O*
 %%
-%%      Deletion from C3 causes O2 -> C3.
-%%        C1-O2'-C3'
+%%    (c) C1-O2
+%%      Deletion from C1: C1'-O2'
+%%      Deletion from O2: C1-O2'
 %%
-%%    (c) C1-O2 | C3-O4-C5
-%%      Deletion from C1. Same as (a).
+%%    (d) C1-O2-C3
+%%      Deletion from C1: C1'-O2'-C3
+%%      Deletion from O2: C1-O2'-C3
+%%      Deletion from C3: C1-O2'-C3'
 %%
-%%      Deletion from C3 causes O4-> C3
-%%        C1-O2 | C3'-O4'-C5
+%%    (e) C1-O2*-C3
+%%      Deletion from C1: C1'-O3'
+%%      Deletion from C3: C1-O3'
 %%
-%%      Deletion from C5 causes O4-> C5
-%%        C1-O2 | C3-O4'-C5'
+%%    (e) C1-O2*-C3
+%%      Deletion from C1: C1'-O3'
+%%      Deletion from C3: C1-O3'
 %%
-%%    (d) C1-O2 | C3-O4*-C5
-%%      Deletion from C1. Same as (a).
+%%    (f) C1-O2*
+%%      Both left and right not exist: O1
+%%      C-O exists on left or right: C-O | C1'-O2* or C1'-O2* | C-O
+%%      C-O-C exists on left or right: C-O-C | C1'-O2* or C1'-O2* | C-O-C
+%%      C-O* exists on left or right: C1'-O3
+%%      C-O*-C exists on left or right: C1'-O3-C4
 %%
-%%      Deletion from C3 causes C5 to C3.
-%%        C1-O2 | C3'-O5
-%%
-%%      Deletion from C5.
-%%        C1-O2 | C3-O5
-%%
-%%    (e) C1-02* | C3-O4
-%%      Deletion from C1.
-%%        -> O1-O2* | C3-O4 -> C1'-O2* | O3-O4 -> C1'-O2* | C3'-O4'
-%%
-%%      Deletion from C3. Same as (a).
-%%
-%%    (f) C1-O2* | C3-O4*
-%%      This should be never appears. C1-O2*C3.
-%%
-%%    (g) C1-O2* | C3-O4-C5
-%%      Deletion from C1.
-%%        O1-O2* | C3-O4-C5 -> C1'-O2* | O3-O4-C5 -> C1'-O2* | C3'-O4'-C5
-%%
-%%      Deletion from C3 or C5 same as (c).
-%%
-%%    (h) C1-O2* | C3-O4*-C5
-%%      Deletion from C1.
-%%        O1-O2* | C3-O4*-C5 -> C1'-O2* | O3-O4*-C5 -> C1'-O2* | C3'-O5'
-%%
-%%    (i) C1-O2-C3 | C4-O5
-%%       Same as (a) and (c)
-%%
-%%    (j) C1-O2-C3 | C4-O5*
-%%      Deletion from C1 or C3. Same as (c).
-%%
-%%      Deletion from C4
-%%        C1-O2-C3 | O4-O5* -> C1-O2 | C3-O4
-%%
-%%    (k) C-O2-C3 | C4-O5-C6
-%%      Same as (c)
-%%
-%%    (l) C1-O2-C3 | C4-O5*-C6
-%%      Deletion from C1 or C3. Same as (c).
-%%
-%%      Deletion from C4.
-%%        C1-O2-C3 | O4-O5*-C6 -> C1-O2-C3 | C4'-O6
-%%
-%%      Deletion from C6.
-%%        C1-O2-C3 | C4-O5*-O6 -> C1-O2-C3 | C4-O6
-%%
-%%    (m) C1-O2*-C3 | C4-O5
-%%      Deletion from C1.
-%%        O1-O2*-C3 | C4-O5 -> C1'-O3' | C4-O5
-%%
-%%      Deletion from C3.
-%%        C1-O2*-O3 | C4-O5 -> C1-O3 | C4-O5
-%%
-%%    (n) C1-O2*-C3 | C4-O5*
-%%      Deletion from C1 or C3. Same as (m).
-%%
-%%      Deletion from C4.
-%%        C1-O2*-C3 | O4-O5* -> C1-O2* | C3-O4
-%%
-%%    (o) C1-O2*-C3 | C4-O5-C6
-%%      Deletion from C1 or C3. Same as (m)
-%%      Deletion from C4 or C6. Same as (c)
-%%
-%%    (p) C1-O2*-C3 | C4-O5*-C6
-%%      Same as (m)
-
 %%====================================================================
 %% API
 %%====================================================================
