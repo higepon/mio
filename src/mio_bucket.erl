@@ -354,6 +354,19 @@ delete_op_call(From, State, Self, Key) ->
                 c_o_r ->
                     mio_store:remove(Key, State#node.store),
                     gen_server:reply(From, {ok, false});
+                %% C1-O2-C3
+                %%   Deletion from C1: C1'-O2'-C3
+                c_o_c_l ->
+                    mio_store:remove(Key, State#node.store),
+                    RightBucket = get_right_op(Self),
+                    {MinKey, MinValue} = take_smallest_op(RightBucket),
+                    just_insert_op(Self, MinKey, MinValue),
+
+                    %% the inserted key becomes largest on C1
+                    set_max_key_op(Self, MinKey, true),
+                    set_min_key_op(RightBucket, MinKey, false),
+
+                    gen_server:reply(From, {ok, false});
                 _ ->
                     gen_server:reply(From, {ok, todo})
             end;
