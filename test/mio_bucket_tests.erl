@@ -791,8 +791,8 @@ delete_c_o_c_2() ->
     ?assertMatch(c_o_c_r, mio_bucket:get_type_op(Right)),
 
     %% range
-    ?assertMatch({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
-    ?assertMatch({{"key2", false}, {"key3", false}}, mio_bucket:get_range_op(Middle)),
+    ?assertMatch({{?MIN_KEY, false}, {"key10", true}}, mio_bucket:get_range_op(Left)),
+    ?assertMatch({{"key10", false}, {"key3", false}}, mio_bucket:get_range_op(Middle)),
     ?assertMatch({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
 
