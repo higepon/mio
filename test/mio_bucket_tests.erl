@@ -44,7 +44,8 @@ sg_test_() ->
       [?_test(delete_c_o_1())],
       [?_test(delete_c_o_2())],
       [?_test(delete_c_o_c_1())],
-      [?_test(delete_c_o_c_2())]
+      [?_test(delete_c_o_c_2())],
+      [?_test(delete_c_o_c_3())]
      ]
     }.
 
@@ -794,6 +795,35 @@ delete_c_o_c_2() ->
     ?assertMatch({{?MIN_KEY, false}, {"key10", true}}, mio_bucket:get_range_op(Left)),
     ?assertMatch({{"key10", false}, {"key3", false}}, mio_bucket:get_range_op(Middle)),
     ?assertMatch({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
+
+%%  C1-O2-C3
+%%    Deletion from C3: C1-O2'-C3'
+delete_c_o_c_3() ->
+    %% [0, 1, 10] [2] [3, 4, 5]
+    {Left, Middle, Right} = insert_c_o_c_1(),
+
+    %% [0, 1, 10] [] [2, 3, 5]
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Right, "key4")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Middle, "key2")),
+
+    ?assertMatch({ok, value2}, mio_bucket:get_op(Right, "key2")),
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+
+    %% type
+    ?assertMatch(c_o_c_l, mio_bucket:get_type_op(Left)),
+    ?assertMatch(c_o_c_m, mio_bucket:get_type_op(Middle)),
+    ?assertMatch(c_o_c_r, mio_bucket:get_type_op(Right)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {"key10", true}}, mio_bucket:get_range_op(Left)),
+    ?assertMatch({{"key10", false}, {"key2", false}}, mio_bucket:get_range_op(Middle)),
+    ?assertMatch({{"key2", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
 
 
