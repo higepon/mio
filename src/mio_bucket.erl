@@ -393,19 +393,39 @@ delete_op_call(From, State, Self, Key) ->
                 c_o_r ->
                     mio_store:remove(Key, State#node.store),
                     gen_server:reply(From, {ok, false});
-                %% C1-O2-C3
-                %%   Deletion from C1: C1'-O2'-C3
                 c_o_c_l ->
                     mio_store:remove(Key, State#node.store),
                     RightBucket = get_right_op(Self),
-                    {MinKey, MinValue} = take_smallest_op(RightBucket),
-                    just_insert_op(Self, MinKey, MinValue),
+                    case is_empty_op(RightBucket) of
+                        %% C1-O2*-C3
+                        %%   Deletion from C1: C1'-O3'
+                        true ->
+                            MostRightBucket = get_right_op(RightBucket),
+                            {MinKey, MinValue} = take_smallest_op(MostRightBucket),
+                            just_insert_op(Self, MinKey, MinValue),
 
-                    %% the inserted key becomes largest on C1
-                    set_max_key_op(Self, MinKey, true),
-                    set_min_key_op(RightBucket, MinKey, false),
+                            %% link
+                            mio_skip_graph:link_right_op(Self, 0, MostRightBucket),
+                            mio_skip_graph:link_left_op(MostRightBucket, 0, Self),
 
-                    gen_server:reply(From, {ok, false});
+                            %% type
+                            set_type_op(Self, c_o_l),
+                            set_type_op(MostRightBucket, c_o_r),
+
+                            set_max_key_op(Self, MinKey, true),
+                            set_min_key_op(MostRightBucket, MinKey, false),
+                            gen_server:reply(From, {ok, RightBucket});
+                        %% C1-O2-C3
+                        %%   Deletion from C1: C1'-O2'-C3
+                        false ->
+                            {MinKey, MinValue} = take_smallest_op(RightBucket),
+                            just_insert_op(Self, MinKey, MinValue),
+
+                            %% the inserted key becomes largest on C1
+                            set_max_key_op(Self, MinKey, true),
+                            set_min_key_op(RightBucket, MinKey, false),
+                            gen_server:reply(From, {ok, false})
+                    end;
                 %% C1-O2-C3
                 %%   Deletion from O2: C1-O2'-C3
                 c_o_c_m ->

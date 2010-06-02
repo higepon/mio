@@ -830,7 +830,7 @@ make_c_O_c() ->
     %% [0, 1, 10] [2] [3, 4, 5]
     {Left, Middle, Right} = insert_c_o_c_1(),
     %% [0, 1, 10] [] [2, 3, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Right, "key2")),
+    ?assertMatch({ok, false}, mio_bucket:delete_op(Middle, "key2")),
     {Left, Middle, Right}.
 
 
@@ -842,7 +842,7 @@ delete_c_O_c_1() ->
 
     %% [0, 1, 3] [] [4, 5]
     %% the Middle bucket is removed from Skip Graph
-    ?assertMatch({ok, true}, mio_bucket:delete_op(Middle, "key10")),
+    ?assertMatch({ok, Middle}, mio_bucket:delete_op(Left, "key10")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
