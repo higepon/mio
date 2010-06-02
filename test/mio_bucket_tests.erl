@@ -46,7 +46,8 @@ sg_test_() ->
       [?_test(delete_c_o_c_1())],
       [?_test(delete_c_o_c_2())],
       [?_test(delete_c_o_c_3())],
-      [?_test(delete_c_O_c_1())]
+      [?_test(delete_c_O_c_1())],
+      [?_test(delete_c_O_c_2())]
      ]
     }.
 
@@ -865,6 +866,39 @@ delete_c_O_c_1() ->
     %% range
     ?assertMatch({{?MIN_KEY, false}, {"key3", true}}, mio_bucket:get_range_op(Left)),
     ?assertMatch({{"key3", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
+
+%%  C1-O2*-C3
+%%    Deletion from C3: C1-O3'
+delete_c_O_c_2() ->
+    %% [0, 1, 10] [] [3, 4, 5]
+    {Left, Middle, Right} = make_c_O_c(),
+
+    %% [0, 1, 10] [] [3, 5]
+    %% the Middle bucket is removed from Skip Graph
+    ?assertMatch({ok, Middle}, mio_bucket:delete_op(Right, "key4")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
+
+    ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
+
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+
+    %% type
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(Left)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(Right)),
+
+    %% link
+    ?assertEqual(Right, mio_bucket:get_right_op(Left)),
+    ?assertEqual(Left, mio_bucket:get_left_op(Right)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {"key3", false}}, mio_bucket:get_range_op(Left)),
+    ?assertMatch({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
+
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
