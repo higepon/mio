@@ -143,33 +143,73 @@
 %%
 %%    (a) O1
 %%      O1 -> O2 or O2*
+%%        Range never change.
 %%
 %%    (b) O*
 %%      O*
+%%        Range never change.
 %%
 %%    (c) C1-O2
 %%      Deletion from C1: C1'-O2'
+%%        C1'->max = {moved key, true}.
+%%        O2'->min = {moved key, false}.
 %%      Deletion from O2: C1-O2'
+%%        Range never change.
 %%
 %%    (d) C1-O2-C3
 %%      Deletion from C1: C1'-O2'-C3
+%%        C1'->max = {moved key, true}.
+%%        O2'->min = {moved key, false}.
 %%      Deletion from O2: C1-O2'-C3
+%%        Range never change.
 %%      Deletion from C3: C1-O2'-C3'
+%%        O2'->max = {moved key, false}.
+%%        C3'->min = {moved key, true}.
 %%
 %%    (e) C1-O2*-C3
 %%      Deletion from C1: C1'-O3'
+%%        C1'->max = {moved key, true}.
+%%        O3'->min = {moved key, false}.
 %%      Deletion from C3: C1-O3'
-%%
-%%    (e) C1-O2*-C3
-%%      Deletion from C1: C1'-O3'
-%%      Deletion from C3: C1-O3'
+%%        C1->max = not(C3'->min)
 %%
 %%    (f) C1-O2*
 %%      Both left and right not exist: O1
-%%      C-O exists on left or right: C-O | C1'-O2* or C1'-O2* | C-O
-%%      C-O-C exists on left or right: C-O-C | C1'-O2* or C1'-O2* | C-O-C
-%%      C-O* exists on left or right: C1'-O3
+%%        O1->max = O2*->max
+%%      C-O exists on left or right: C3-O4 | C1'-O2* or C1'-O2* | C5-O6
+%%        C1'->min = {moved_key, true}
+%%        O4->max = {moved_key, false}
+%%                or
+%%        C1'->max = {moved_key, true}
+%%        C5->min = {moved_key, false}
+%%        C5->max = {moved_key2, true}
+%%        O6->minx = {moved_key2, false}
+%%      C-O-C exists on left or right: C3-O4-C5 | C1'-O2* or C1'-O2* | C6-O7-C8
+%%        C1'->min = {moved_key, true}
+%%        C5->max = {moved_key, false}
+%%        C5->min = {moved_key, true}
+%%        O4->max = {moved_key, false}
+%%                or
+%%        C1'->max = {moved_key, true}
+%%        C6->min = {moved_key, false}
+%%        C6->max = {moved_key2, true}
+%%        O7->min = {moved_key2, false}
+%%      C4-O5* exists on left or right: C1'-O3
+%%        C1'->max = O2*->max
+%%        C3->max = C1->min
+%%                or
+%%        C3->max = O4*->max
+%%        C3->min = {moved_key, false}
+%%        C1->max = {moved_key, true}
 %%      C-O*-C exists on left or right: C1'-O3-C4
+%%        C1->max = {moved_key, true}
+%%        O3->min = {moved_key, false}
+%%        C3->max = not(C5)
+%%                or
+%%        C1->max = O2*->max
+%%        C1->min = {moved_key, true}
+%%        C5->max = {moved_key, false}
+%%        C5->min = not(C3->max)
 %%
 %%====================================================================
 %% API
