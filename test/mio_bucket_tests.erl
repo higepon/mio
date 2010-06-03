@@ -981,7 +981,7 @@ delete_c_O_2() ->
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
 
-    ?assertMatch({{"key10", true}, {"key2", false}}, mio_bucket:get_range_op(O2)),
+    ?assertMatch({{"key10", false}, {"key2", false}}, mio_bucket:get_range_op(O2)),
     ?assertMatch({{"key2", true}, _}, mio_bucket:get_range_op(C3)),
     ok.
 

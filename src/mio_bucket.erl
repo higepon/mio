@@ -394,8 +394,18 @@ delete_op_call(From, State, Self, Key) ->
                                     {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
                                     set_max_key_op(Self, MaxKey, EncompassMax),
                                     gen_server:reply(From, {ok, RightBucket});
-                                {Left, Right} ->
-                                    gen_server:reply(From, {ok, todo})
+                                {Left, _Right} ->
+                                    case get_type_op(Left) of
+                                        %%  C-O exists on left
+                                        c_o_r ->
+                                            {MaxKey, MaxValue} = take_largest_op(Left),
+                                            just_insert_op(Self, MaxKey, MaxValue),
+                                            set_min_key_op(Self, MaxKey, true),
+                                            set_max_key_op(Left, MaxKey, false),
+                                            gen_server:reply(From, {ok, false});
+                                        _ ->
+                                            gen_server:reply(From, {ok, todo})
+                                    end
                             end;
                         %% C1-O2
                         %%   Deletion from C1: C1'-O2'
