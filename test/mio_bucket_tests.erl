@@ -917,6 +917,8 @@ delete_c_O_1() ->
     %% [1 2 3] []
     {Bucket, Right} = make_alone_c_O(),
 
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(Bucket)),
+
     %% [2 3]
     ?assertMatch({ok, Right}, mio_bucket:delete_op(Bucket, "key1")),
 
