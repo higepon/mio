@@ -368,6 +368,49 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+delete_from_alone(From, State, Key) ->
+    mio_store:remove(Key, State#node.store),
+    gen_server:reply(From, {ok, false}).
+
+delete_from_c_o_l(From, State, Self, Key) ->
+    mio_store:remove(Key, State#node.store),
+    RightBucket = get_right_op(Self),
+    case take_smallest_op(RightBucket) of
+        %% C1-O2*
+        %%   Both left and right not exist: O1
+        none ->
+            case {get_left_op(Self), get_right_op(RightBucket)} of
+                %% C1-O2*
+                %%   Both left and right not exist: O1
+                {[], []}->
+                    %% unlink
+                    mio_skip_graph:link_right_op(Self, 0, []),
+                    set_type_op(Self, alone),
+                    {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
+                    set_max_key_op(Self, MaxKey, EncompassMax),
+                    gen_server:reply(From, {ok, RightBucket});
+                {Left, _Right} ->
+                    case get_type_op(Left) of
+                        %%  C-O exists on left
+                        c_o_r ->
+                            {MaxKey, MaxValue} = take_largest_op(Left),
+                            just_insert_op(Self, MaxKey, MaxValue),
+                            set_min_key_op(Self, MaxKey, true),
+                            set_max_key_op(Left, MaxKey, false),
+                            gen_server:reply(From, {ok, false});
+                        _ ->
+                            gen_server:reply(From, {ok, todo})
+                    end
+            end;
+        %% C1-O2
+        %%   Deletion from C1: C1'-O2'
+        {MinKey, MinValue} ->
+            just_insert_op(Self, MinKey, MinValue),
+            set_max_key_op(Self, MinKey, true),
+            set_min_key_op(RightBucket, MinKey, false),
+            gen_server:reply(From, {ok, false})
+    end.
+
 delete_op_call(From, State, Self, Key) ->
     case mio_store:get(Key, State#node.store) of
         {ok, _Value} ->
@@ -375,46 +418,9 @@ delete_op_call(From, State, Self, Key) ->
                 %% O1
                 %%   O1 -> O2 or O2*
                 alone ->
-                    mio_store:remove(Key, State#node.store),
-                    gen_server:reply(From, {ok, false});
+                    delete_from_alone(From, State, Key);
                 c_o_l ->
-                    mio_store:remove(Key, State#node.store),
-                    RightBucket = get_right_op(Self),
-                    case take_smallest_op(RightBucket) of
-                        %% C1-O2*
-                        %%   Both left and right not exist: O1
-                        none ->
-                            case {get_left_op(Self), get_right_op(RightBucket)} of
-                                %% C1-O2*
-                                %%   Both left and right not exist: O1
-                                {[], []}->
-                                    %% unlink
-                                    mio_skip_graph:link_right_op(Self, 0, []),
-                                    set_type_op(Self, alone),
-                                    {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
-                                    set_max_key_op(Self, MaxKey, EncompassMax),
-                                    gen_server:reply(From, {ok, RightBucket});
-                                {Left, _Right} ->
-                                    case get_type_op(Left) of
-                                        %%  C-O exists on left
-                                        c_o_r ->
-                                            {MaxKey, MaxValue} = take_largest_op(Left),
-                                            just_insert_op(Self, MaxKey, MaxValue),
-                                            set_min_key_op(Self, MaxKey, true),
-                                            set_max_key_op(Left, MaxKey, false),
-                                            gen_server:reply(From, {ok, false});
-                                        _ ->
-                                            gen_server:reply(From, {ok, todo})
-                                    end
-                            end;
-                        %% C1-O2
-                        %%   Deletion from C1: C1'-O2'
-                        {MinKey, MinValue} ->
-                            just_insert_op(Self, MinKey, MinValue),
-                            set_max_key_op(Self, MinKey, true),
-                            set_min_key_op(RightBucket, MinKey, false),
-                            gen_server:reply(From, {ok, false})
-                    end;
+                    delete_from_c_o_l(From, State, Self, Key);
                 %% C1-O2
                 %%   Deletion from O2: C1-O2'
                 c_o_r ->
