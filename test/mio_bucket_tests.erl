@@ -47,7 +47,8 @@ sg_test_() ->
       [?_test(delete_c_o_c_2())],
       [?_test(delete_c_o_c_3())],
       [?_test(delete_c_O_c_1())],
-      [?_test(delete_c_O_c_2())]
+      [?_test(delete_c_O_c_2())],
+      [?_test(delete_c_O_1())]
      ]
     }.
 
@@ -899,6 +900,35 @@ delete_c_O_c_2() ->
     ?assertMatch({{?MIN_KEY, false}, {"key3", false}}, mio_bucket:get_range_op(Left)),
     ?assertMatch({{"key3", true}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Right)).
 
+%% [1 2 3] []
+make_alone_c_O() ->
+    {ok, Bucket} = make_bucket(alone),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key1", value1)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key2", value2)),
+    ?assertEqual([], mio_bucket:get_left_op(Bucket)),
+    ?assertEqual([], mio_bucket:get_right_op(Bucket)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(Bucket, "key3", value3)),
+    {Bucket, mio_bucket:get_right_op(Bucket)}.
+
+
+%% C1-O2*
+%%   Both left and right not exist: O1
+delete_c_O_1() ->
+    %% [1 2 3] []
+    {Bucket, Right} = make_alone_c_O(),
+
+    %% [2 3]
+    ?assertMatch({ok, Right}, mio_bucket:delete_op(Bucket, "key1")),
+
+    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
+    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")),
+
+    %% type
+    ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
+
+    %% range
+    ?assertMatch({{?MIN_KEY, false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(Bucket)).
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
