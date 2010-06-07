@@ -411,6 +411,10 @@ delete_from_c_o_l(From, State, Self, Key) ->
             gen_server:reply(From, {ok, false})
     end.
 
+delete_from_c_o_r(From, State, Key) ->
+    mio_store:remove(Key, State#node.store),
+    gen_server:reply(From, {ok, false}).
+
 delete_op_call(From, State, Self, Key) ->
     case mio_store:get(Key, State#node.store) of
         {ok, _Value} ->
@@ -424,8 +428,7 @@ delete_op_call(From, State, Self, Key) ->
                 %% C1-O2
                 %%   Deletion from O2: C1-O2'
                 c_o_r ->
-                    mio_store:remove(Key, State#node.store),
-                    gen_server:reply(From, {ok, false});
+                    delete_from_c_o_r(From, State, Key);
                 c_o_c_l ->
                     mio_store:remove(Key, State#node.store),
                     RightBucket = get_right_op(Self),
