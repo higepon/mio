@@ -368,11 +368,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-delete_from_alone(From, State, Key) ->
+delete_from_alone(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
-delete_from_c_o_l(From, State, Self, Key) ->
+delete_from_c_o_l(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
     RightBucket = get_right_op(Self),
     case take_smallest_op(RightBucket) of
@@ -411,11 +411,11 @@ delete_from_c_o_l(From, State, Self, Key) ->
             {ok, false}
     end.
 
-delete_from_c_o_r(From, State, Key) ->
+delete_from_c_o_r(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
-delete_from_c_o_c_l(From, State, Self, Key) ->
+delete_from_c_o_c_l(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
     RightBucket = get_right_op(Self),
     case is_empty_op(RightBucket) of
@@ -449,11 +449,11 @@ delete_from_c_o_c_l(From, State, Self, Key) ->
             {ok, false}
     end.
 
-delete_from_c_o_c_m(From, State, Key) ->
+delete_from_c_o_c_m(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
-delete_from_c_o_c_r(From, State, Self, Key) ->
+delete_from_c_o_c_r(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
     LeftBucket = get_left_op(Self),
     case is_empty_op(LeftBucket) of
@@ -491,21 +491,21 @@ delete_op_call(From, State, Self, Key) ->
                     %% O1
                     %%   O1 -> O2 or O2*
                     alone ->
-                        delete_from_alone(From, State, Key);
+                        delete_from_alone(State, Key);
                     c_o_l ->
-                        delete_from_c_o_l(From, State, Self, Key);
+                        delete_from_c_o_l(State, Self, Key);
                     %% C1-O2
                     %%   Deletion from O2: C1-O2'
                     c_o_r ->
-                        delete_from_c_o_r(From, State, Key);
+                        delete_from_c_o_r(State, Key);
                     c_o_c_l ->
-                        delete_from_c_o_c_l(From, State, Self, Key);
+                        delete_from_c_o_c_l(State, Self, Key);
                     %% C1-O2-C3
                     %%   Deletion from O2: C1-O2'-C3
                     c_o_c_m ->
-                        delete_from_c_o_c_m(From, State, Key);
+                        delete_from_c_o_c_m(State, Key);
                     c_o_c_r ->
-                        delete_from_c_o_c_r(From, State, Self, Key);
+                        delete_from_c_o_c_r(State, Self, Key);
                     _ ->
                         {ok, todo}
                 end;
