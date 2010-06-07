@@ -453,6 +453,35 @@ delete_from_c_o_c_m(From, State, Key) ->
     mio_store:remove(Key, State#node.store),
     gen_server:reply(From, {ok, false}).
 
+delete_from_c_o_c_r(From, State, Self, Key) ->
+    mio_store:remove(Key, State#node.store),
+    LeftBucket = get_left_op(Self),
+    case is_empty_op(LeftBucket) of
+        %% C1-O2*-C3
+        %%   Deletion from C3: C1-O3'
+        true ->
+            MostLeftBucket = get_left_op(LeftBucket),
+            {{MinKey, EncompassMin}, _} = get_range(State),
+            set_max_key_op(MostLeftBucket, MinKey, not EncompassMin),
+
+            %% link
+            mio_skip_graph:link_right_op(MostLeftBucket, 0, Self),
+            mio_skip_graph:link_left_op(Self, 0, MostLeftBucket),
+
+            %% type
+            set_type_op(MostLeftBucket, c_o_l),
+            set_type_op(Self, c_o_r),
+
+            gen_server:reply(From, {ok, LeftBucket});
+        %% C1-O2-C3
+        %%   Deletion from C3: C1-O2'-C3'
+        false ->
+            {MaxKey, MaxValue} = take_largest_op(LeftBucket),
+            just_insert_op(Self, MaxKey, MaxValue),
+            set_max_key_op(LeftBucket, MaxKey, false),
+            set_min_key_op(Self, MaxKey, true),
+            gen_server:reply(From, {ok, false})
+    end.
 
 delete_op_call(From, State, Self, Key) ->
     case mio_store:get(Key, State#node.store) of
@@ -475,34 +504,7 @@ delete_op_call(From, State, Self, Key) ->
                 c_o_c_m ->
                     delete_from_c_o_c_m(From, State, Key);
                 c_o_c_r ->
-                    mio_store:remove(Key, State#node.store),
-                    LeftBucket = get_left_op(Self),
-                    case is_empty_op(LeftBucket) of
-                        %% C1-O2*-C3
-                        %%   Deletion from C3: C1-O3'
-                        true ->
-                            MostLeftBucket = get_left_op(LeftBucket),
-                            {{MinKey, EncompassMin}, _} = get_range(State),
-                            set_max_key_op(MostLeftBucket, MinKey, not EncompassMin),
-
-                            %% link
-                            mio_skip_graph:link_right_op(MostLeftBucket, 0, Self),
-                            mio_skip_graph:link_left_op(Self, 0, MostLeftBucket),
-
-                            %% type
-                            set_type_op(MostLeftBucket, c_o_l),
-                            set_type_op(Self, c_o_r),
-
-                            gen_server:reply(From, {ok, LeftBucket});
-                        %% C1-O2-C3
-                        %%   Deletion from C3: C1-O2'-C3'
-                        false ->
-                            {MaxKey, MaxValue} = take_largest_op(LeftBucket),
-                            just_insert_op(Self, MaxKey, MaxValue),
-                            set_max_key_op(LeftBucket, MaxKey, false),
-                            set_min_key_op(Self, MaxKey, true),
-                            gen_server:reply(From, {ok, false})
-                    end;
+                    delete_from_c_o_c_r(From, State, Self, Key);
                 _ ->
                     gen_server:reply(From, {ok, todo})
             end;
