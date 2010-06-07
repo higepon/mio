@@ -389,12 +389,27 @@ delete_from_c_o_l(State, Self, Key) ->
                     {ok, RightBucket};
                 {Left, Right} ->
                     case get_type_op(Left) of
-                        %%  C-O exists on left
+                        %% C-O exists on left
                         c_o_r ->
                             {MaxKey, MaxValue} = take_largest_op(Left),
                             just_insert_op(Self, MaxKey, MaxValue),
                             set_min_key_op(Self, MaxKey, true),
                             set_max_key_op(Left, MaxKey, false),
+                            {ok, false};
+                        %% C-O-C exists on left
+                        c_o_c_r ->
+                            %% C1-O2-C3 | C4-O5*
+                            {O2, C3, C4} = {get_left_op(Left), Left, Self},
+
+                            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+                            just_insert_op(C4, C3MaxKey, C3MaxValue),
+                            set_min_key_op(C4, C3MaxKey, true),
+
+                            {O2MaxKey, O2MaxValue} = take_largest_op(O2),
+                            just_insert_op(C3, O2MaxKey, O2MaxValue),
+                            set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
+
+                            set_max_key_op(O2, O2MaxKey, false),
                             {ok, false};
                         _ ->
                             %% C-O exists on right
