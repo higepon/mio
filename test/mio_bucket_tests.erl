@@ -49,7 +49,8 @@ sg_test_() ->
       [?_test(delete_c_O_c_1())],
       [?_test(delete_c_O_c_2())],
       [?_test(delete_c_O_1())],
-      [?_test(delete_c_O_2())]
+      [?_test(delete_c_O_2())],
+      [?_test(delete_c_O_3())]
      ]
     }.
 
@@ -959,6 +960,35 @@ make_c_o__c_O() ->
 
     {C1, O2, C3, O4}.
 
+%% C1-O2 | C3-O4*
+%%   Returns [0, 1, 10] [] | [3, 4, 5] [6]
+make_c_O__c_o() ->
+    %% [0, 1, 10] [2] [3, 4, 5]
+    {C1, O2, C3} = insert_c_o_c_1(),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(C3, "key6", value6)),
+    O4 = mio_bucket:get_right_op(C3),
+    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+
+    ?assertMatch({error, not_found}, mio_bucket:get_op(O2, "key2")),
+
+    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+
+    ?assertMatch({ok, value6}, mio_bucket:get_op(O4, "key6")),
+
+    {C1, O2, C3, O4}.
+
+
 %% C1-O2*
 %%   C-O exists on left
 delete_c_O_2() ->
@@ -984,6 +1014,35 @@ delete_c_O_2() ->
     ?assertMatch({{"key10", false}, {"key2", false}}, mio_bucket:get_range_op(O2)),
     ?assertMatch({{"key2", true}, _}, mio_bucket:get_range_op(C3)),
     ok.
+
+%% C1-O2*
+%%   C-O exists on right
+delete_c_O_3() ->
+    %%   [0, 1, 10] [] | [3, 4, 5] [6]
+    {C1, O2, C3, O4} = make_c_O__c_o(),
+
+    %%   [0, 10, 3] [] | [4, 5, 6] []
+    ?assertMatch({ok, false}, mio_bucket:delete_op(C1, "key1")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+
+    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value6}, mio_bucket:get_op(C3, "key6")),
+
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
+
+    ?assertMatch({_, {"key3", true}}, mio_bucket:get_range_op(C1)),
+    ?assertMatch({{"key3", false}, {"key4", false}}, mio_bucket:get_range_op(O2)),
+    ?assertMatch({{"key4", true}, {"key6", true}}, mio_bucket:get_range_op(C3)),
+    ?assertMatch({{"key6", false}, _}, mio_bucket:get_range_op(O4)),
+    ok.
+
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
