@@ -376,8 +376,6 @@ delete_from_c_o_l(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
     RightBucket = get_right_op(Self),
     case take_smallest_op(RightBucket) of
-        %% C1-O2*
-        %%   Both left and right not exist: O1
         none ->
             case {get_left_op(Self), get_right_op(RightBucket)} of
                 %% C1-O2*
@@ -389,7 +387,7 @@ delete_from_c_o_l(State, Self, Key) ->
                     {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
                     set_max_key_op(Self, MaxKey, EncompassMax),
                     {ok, RightBucket};
-                {Left, _Right} ->
+                {Left, Right} ->
                     case get_type_op(Left) of
                         %%  C-O exists on left
                         c_o_r ->
@@ -399,7 +397,27 @@ delete_from_c_o_l(State, Self, Key) ->
                             set_max_key_op(Left, MaxKey, false),
                             {ok, false};
                         _ ->
-                            {ok, todo}
+                            %% C-O exists on right
+                            case get_type_op(Right) of
+                                c_o_l ->
+                                    %% C1-O2* | C3-O4
+                                    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                                    just_insert_op(C1, C3MinKey, C3MinValue),
+                                    set_max_key_op(C1, C3MinKey, true),
+
+                                    {NewC3MinKey, _} = get_smallest_op(C3),
+                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+                                    {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
+                                    just_insert_op(C3, C3MaxKey, C3MaxValue),
+                                    set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
+
+                                    set_min_key_op(O4, C3MaxKey, false),
+                                    {ok, false};
+                                _ ->
+                                    {ok, todo}
+                            end
                     end
             end;
         %% C1-O2
