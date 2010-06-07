@@ -483,35 +483,38 @@ delete_from_c_o_c_r(State, Self, Key) ->
             {ok, false}
     end.
 
+%% pre-condition: Store has the key
+delete(State, Self, Key) ->
+    case State#node.type of
+        %% O1
+        %%   O1 -> O2 or O2*
+        alone ->
+            delete_from_alone(State, Key);
+        c_o_l ->
+            delete_from_c_o_l(State, Self, Key);
+        %% C1-O2
+        %%   Deletion from O2: C1-O2'
+        c_o_r ->
+            delete_from_c_o_r(State, Key);
+        c_o_c_l ->
+            delete_from_c_o_c_l(State, Self, Key);
+        %% C1-O2-C3
+        %%   Deletion from O2: C1-O2'-C3
+        c_o_c_m ->
+            delete_from_c_o_c_m(State, Key);
+        c_o_c_r ->
+            delete_from_c_o_c_r(State, Self, Key);
+        _ ->
+            {ok, todo}
+    end.
+
 delete_op_call(From, State, Self, Key) ->
-    Ret =
-        case mio_store:get(Key, State#node.store) of
-            {ok, _Value} ->
-                case State#node.type of
-                    %% O1
-                    %%   O1 -> O2 or O2*
-                    alone ->
-                        delete_from_alone(State, Key);
-                    c_o_l ->
-                        delete_from_c_o_l(State, Self, Key);
-                    %% C1-O2
-                    %%   Deletion from O2: C1-O2'
-                    c_o_r ->
-                        delete_from_c_o_r(State, Key);
-                    c_o_c_l ->
-                        delete_from_c_o_c_l(State, Self, Key);
-                    %% C1-O2-C3
-                    %%   Deletion from O2: C1-O2'-C3
-                    c_o_c_m ->
-                        delete_from_c_o_c_m(State, Key);
-                    c_o_c_r ->
-                        delete_from_c_o_c_r(State, Self, Key);
-                    _ ->
-                        {ok, todo}
-                end;
-            _ ->
-                {ok, false}
-        end,
+    Ret = case mio_store:get(Key, State#node.store) of
+              {ok, _Value} ->
+                  delete(State, Self, Key);
+              _ ->
+                  {ok, false}
+          end,
     gen_server:reply(From, Ret).
 
 insert_op_call(From, State, Self, Key, Value)  ->
