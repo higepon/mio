@@ -50,7 +50,8 @@ sg_test_() ->
       [?_test(delete_c_O_c_2())],
       [?_test(delete_c_O_1())],
       [?_test(delete_c_O_2())],
-      [?_test(delete_c_O_3())]
+      [?_test(delete_c_O_3())],
+      [?_test(delete_c_O_4())]
      ]
     }.
 
@@ -960,6 +961,40 @@ make_c_o__c_O() ->
 
     {C1, O2, C3, O4}.
 
+%% C1-O2-C3 | C4-O5*
+%%   [0, 1, 10] [2] [21, 22, 23] | [3, 4, 5] []
+make_c_o_c__c_O() ->
+    %%   [0, 1, 10] [2] | [3, 4, 5] []
+    {C1, O2, C3, O4} = make_c_o__c_O(),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(O2, "key21", value21)),
+    {ok, NewBucket} = mio_bucket:insert_op(O2, "key22", value22),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(NewBucket, "key19", value19)),
+
+    ?assertMatch(c_o_c_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_c_m, mio_bucket:get_type_op(NewBucket)),
+    ?assertMatch(c_o_c_r, mio_bucket:get_type_op(O2)),
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+
+    ?assertMatch({ok, value19}, mio_bucket:get_op(NewBucket, "key19")),
+
+    ?assertMatch({ok, value2}, mio_bucket:get_op(O2, "key2")),
+    ?assertMatch({ok, value21}, mio_bucket:get_op(O2, "key21")),
+    ?assertMatch({ok, value22}, mio_bucket:get_op(O2, "key22")),
+
+
+    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+
+    {C1, NewBucket, O2, C3, O4}.
+
+
+
 %% C1-O2 | C3-O4*
 %%   Returns [0, 1, 10] [] | [3, 4, 5] [6]
 make_c_O__c_o() ->
@@ -1041,6 +1076,14 @@ delete_c_O_3() ->
     ?assertMatch({{"key3", false}, {"key4", false}}, mio_bucket:get_range_op(O2)),
     ?assertMatch({{"key4", true}, {"key6", true}}, mio_bucket:get_range_op(C3)),
     ?assertMatch({{"key6", false}, _}, mio_bucket:get_range_op(O4)),
+    ok.
+
+%% C1-O2*
+%%   C-O-C exists on left
+delete_c_O_4() ->
+    %%   [0, 1, 10] [] | [3, 4, 5] [6]
+    {C1, O2, C3, C4, O5} = make_c_o_c__c_O(),
+
     ok.
 
 
