@@ -52,7 +52,8 @@ sg_test_() ->
       [?_test(delete_c_O_2())],
       [?_test(delete_c_O_3())],
       [?_test(delete_c_O_4())],
-      [?_test(delete_c_O_5())]
+      [?_test(delete_c_O_5())],
+      [?_test(delete_c_O_6())]
      ]
     }.
 
@@ -997,6 +998,12 @@ make_c_O__c_o_c() ->
 
     {C1, O2, C3, NewBucket, O4}.
 
+make_c_O__c_O() ->
+    %% [0, 1, 10] [2] | [3, 4, 5] []
+    {C1, O2, C3, O4} = make_c_o__c_O(),
+    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+    {C1, O2, C3, O4}.
+
 %% C1-O2-C3 | C4-O5*
 %%   [0, 1, 10] [19] [2, 21, 22] | [3, 4, 5] []
 make_c_o_c__c_O() ->
@@ -1187,6 +1194,14 @@ delete_c_O_5() ->
     ?assertMatch({{"key4", true}, {"key55", true}}, mio_bucket:get_range_op(C3)),
     ?assertMatch({{"key55", false}, _}, mio_bucket:get_range_op(O4)),
     ok.
+
+%% C1-O2*
+%%   C-O* exists on left
+delete_c_O_6() ->
+    %% [0, 1, 10] [] | [3, 4, 5] [55] [6 7 8]
+    {C1, O2, C3, O4} = make_c_O__c_O(),
+    ok.
+
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
