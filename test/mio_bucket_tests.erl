@@ -1003,6 +1003,12 @@ make_c_O__c_O() ->
     %% [0, 1, 10] [2] | [3, 4, 5] []
     {C1, O2, C3, O4} = make_c_o__c_O(),
     ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
+
     {C1, O2, C3, O4}.
 
 %% C1-O2-C3 | C4-O5*
@@ -1200,13 +1206,13 @@ delete_c_O_5() ->
 %%   C-O* exists on left
 delete_c_O_6() ->
     %% [0, 1, 10] [] | [3, 4, 5] []
-    {C1, _O2, C3, O4} = make_c_O__c_O(),
+    {C1, O2, C3, O4} = make_c_O__c_O(),
 
     O4Right = mio_bucket:get_right_op(O4),
-    {_, {O4MaxKey, O4MaxEncompass}} = mio_bucket:get_right_op(O4),
+    {_, {O4MaxKey, O4MaxEncompass}} = mio_bucket:get_range_op(O4),
 
     %% [0, 1, 10] [3, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(C3, "key4")),
+    ?assertMatch({ok, [O2, O4]}, mio_bucket:delete_op(C3, "key4")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),

@@ -385,13 +385,28 @@ delete_from_c_O_l(Self, RightBucket) ->
             {ok, RightBucket};
         {Left, Right} ->
             case get_type_op(Left) of
-                %% C-O exists on left
                 c_o_r ->
-                    {MaxKey, MaxValue} = take_largest_op(Left),
-                    just_insert_op(Self, MaxKey, MaxValue),
-                    set_min_key_op(Self, MaxKey, true),
-                    set_max_key_op(Left, MaxKey, false),
-                    {ok, false};
+                    case take_largest_op(Left) of
+                        %% C-O* exists on left
+                        none ->
+                            {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
+                            {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
+                            mio_skip_graph:link_right_op(C3, 0, O4Right),
+                            mio_skip_graph:link_left_op(C3, 0, C1),
+                            mio_skip_graph:link_right_op(C1, 0, C3),
+
+                            {C3MinKey, _} = get_smallest_op(C3),
+                            set_max_key_op(C1, C3MinKey, false),
+                            set_range_op(C3, {C3MinKey, true}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
+                            set_type_op(C3, c_o_r),
+                            {ok, [O2, O4]};
+                        %% C-O exists on left
+                        {MaxKey, MaxValue} ->
+                            just_insert_op(Self, MaxKey, MaxValue),
+                            set_min_key_op(Self, MaxKey, true),
+                            set_max_key_op(Left, MaxKey, false),
+                            {ok, false}
+                    end;
                 %% C-O-C exists on left
                 c_o_c_r ->
                     %% C1-O2-C3 | C4-O5*
@@ -830,8 +845,12 @@ handle_call(get_type_op, _From, State) ->
     {reply, State#node.type, State};
 
 handle_call(take_largest_op, _From, State) ->
-    {Key, Value, NewStore} = mio_store:take_largest(State#node.store),
-    {reply, {Key, Value}, State#node{store=NewStore}};
+    case mio_store:take_largest(State#node.store) of
+        none ->
+            {reply, none, State};
+        {Key, Value, NewStore} ->
+            {reply, {Key, Value}, State#node{store=NewStore}}
+    end;
 
 handle_call(take_smallest_op, _From, State) ->
     case mio_store:take_smallest(State#node.store) of
