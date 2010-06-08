@@ -430,6 +430,24 @@ delete_from_c_o_l(State, Self, Key) ->
 
                                     set_min_key_op(O4, C3MaxKey, false),
                                     {ok, false};
+                                %% C-O-C exists on right
+                                c_o_c_l ->
+                                    %% C1-O2* | C3 O4 O5
+                                    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+
+                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                                    just_insert_op(C1, C3MinKey, C3MinValue),
+                                    set_max_key_op(C1, C3MinKey, true),
+
+                                    {NewC3MinKey, _} = get_smallest_op(C3),
+                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+                                    {O4MinKey, O4MinValue} = take_smallest_op(O4),
+                                    set_min_key_op(O4, O4MinKey, false),
+
+                                    just_insert_op(C3, O4MinKey, O4MinValue),
+                                    set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
+                                    {ok, false};
                                 _ ->
                                     {ok, todo}
                             end

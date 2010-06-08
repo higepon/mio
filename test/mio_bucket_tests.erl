@@ -1153,10 +1153,10 @@ delete_c_O_4() ->
 %% C1-O2*
 %%   C-O-C exists on right
 delete_c_O_5() ->
-    %% [0, 1, 10] [] | [3, 4, 5] | [55] | [6 7 8]
+    %% [0, 1, 10] [] | [3, 4, 5] [55] [6 7 8]
     {C1, O2, C3, O4, C5} = make_c_O__c_o_c(),
 
-    %% [0, 10, 3] [] | [4, 5, 55] | [] | [6 7 8]
+    %% [0, 10, 3] [] | [4, 5, 55] [] [6 7 8]
     ?assertMatch({ok, false}, mio_bucket:delete_op(C1, "key1")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
@@ -1171,9 +1171,9 @@ delete_c_O_5() ->
 
     ?assertEqual(true, mio_bucket:is_empty_op(O4)),
 
-    ?assertMatch({ok, value6}, mio_bucket:get_op(C3, "key6")),
-    ?assertMatch({ok, value7}, mio_bucket:get_op(C3, "key7")),
-    ?assertMatch({ok, value8}, mio_bucket:get_op(C3, "key8")),
+    ?assertMatch({ok, value6}, mio_bucket:get_op(C5, "key6")),
+    ?assertMatch({ok, value7}, mio_bucket:get_op(C5, "key7")),
+    ?assertMatch({ok, value8}, mio_bucket:get_op(C5, "key8")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
