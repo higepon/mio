@@ -372,87 +372,91 @@ delete_from_alone(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
+delete_from_c_O_l(Self, RightBucket) ->
+    case {get_left_op(Self), get_right_op(RightBucket)} of
+        %% C1-O2*
+        %%   Both left and right not exist: O1
+        {[], []}->
+            %% unlink
+            mio_skip_graph:link_right_op(Self, 0, []),
+            set_type_op(Self, alone),
+            {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
+            set_max_key_op(Self, MaxKey, EncompassMax),
+            {ok, RightBucket};
+        {Left, Right} ->
+            case get_type_op(Left) of
+                %% C-O exists on left
+                c_o_r ->
+                    {MaxKey, MaxValue} = take_largest_op(Left),
+                    just_insert_op(Self, MaxKey, MaxValue),
+                    set_min_key_op(Self, MaxKey, true),
+                    set_max_key_op(Left, MaxKey, false),
+                    {ok, false};
+                %% C-O-C exists on left
+                c_o_c_r ->
+                    %% C1-O2-C3 | C4-O5*
+                    {O2, C3, C4} = {get_left_op(Left), Left, Self},
+
+                    {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+                    just_insert_op(C4, C3MaxKey, C3MaxValue),
+                    set_min_key_op(C4, C3MaxKey, true),
+
+                    {O2MaxKey, O2MaxValue} = take_largest_op(O2),
+                    just_insert_op(C3, O2MaxKey, O2MaxValue),
+                    set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
+
+                    set_max_key_op(O2, O2MaxKey, false),
+                    {ok, false};
+                _ ->
+                    %% C-O exists on right
+                    case get_type_op(Right) of
+                        c_o_l ->
+                            %% C1-O2* | C3-O4
+                            {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+                            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                            just_insert_op(C1, C3MinKey, C3MinValue),
+                            set_max_key_op(C1, C3MinKey, true),
+
+                            {NewC3MinKey, _} = get_smallest_op(C3),
+                            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+                            {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
+                            just_insert_op(C3, C3MaxKey, C3MaxValue),
+                            set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
+
+                            set_min_key_op(O4, C3MaxKey, false),
+                            {ok, false};
+                        %% C-O-C exists on right
+                        c_o_c_l ->
+                            %% C1-O2* | C3 O4 O5
+                            {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+
+                            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                            just_insert_op(C1, C3MinKey, C3MinValue),
+                            set_max_key_op(C1, C3MinKey, true),
+
+                            {NewC3MinKey, _} = get_smallest_op(C3),
+                            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+                            {O4MinKey, O4MinValue} = take_smallest_op(O4),
+                            set_min_key_op(O4, O4MinKey, false),
+
+                            just_insert_op(C3, O4MinKey, O4MinValue),
+                            set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
+                            {ok, false};
+                        _ ->
+                            {ok, todo}
+                    end
+            end
+    end.
+
 delete_from_c_o_l(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
     RightBucket = get_right_op(Self),
     case take_smallest_op(RightBucket) of
+        %% C1-O2*
         none ->
-            case {get_left_op(Self), get_right_op(RightBucket)} of
-                %% C1-O2*
-                %%   Both left and right not exist: O1
-                {[], []}->
-                    %% unlink
-                    mio_skip_graph:link_right_op(Self, 0, []),
-                    set_type_op(Self, alone),
-                    {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
-                    set_max_key_op(Self, MaxKey, EncompassMax),
-                    {ok, RightBucket};
-                {Left, Right} ->
-                    case get_type_op(Left) of
-                        %% C-O exists on left
-                        c_o_r ->
-                            {MaxKey, MaxValue} = take_largest_op(Left),
-                            just_insert_op(Self, MaxKey, MaxValue),
-                            set_min_key_op(Self, MaxKey, true),
-                            set_max_key_op(Left, MaxKey, false),
-                            {ok, false};
-                        %% C-O-C exists on left
-                        c_o_c_r ->
-                            %% C1-O2-C3 | C4-O5*
-                            {O2, C3, C4} = {get_left_op(Left), Left, Self},
-
-                            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
-                            just_insert_op(C4, C3MaxKey, C3MaxValue),
-                            set_min_key_op(C4, C3MaxKey, true),
-
-                            {O2MaxKey, O2MaxValue} = take_largest_op(O2),
-                            just_insert_op(C3, O2MaxKey, O2MaxValue),
-                            set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
-
-                            set_max_key_op(O2, O2MaxKey, false),
-                            {ok, false};
-                        _ ->
-                            %% C-O exists on right
-                            case get_type_op(Right) of
-                                c_o_l ->
-                                    %% C1-O2* | C3-O4
-                                    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
-                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
-                                    just_insert_op(C1, C3MinKey, C3MinValue),
-                                    set_max_key_op(C1, C3MinKey, true),
-
-                                    {NewC3MinKey, _} = get_smallest_op(C3),
-                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
-
-                                    {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
-                                    just_insert_op(C3, C3MaxKey, C3MaxValue),
-                                    set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
-
-                                    set_min_key_op(O4, C3MaxKey, false),
-                                    {ok, false};
-                                %% C-O-C exists on right
-                                c_o_c_l ->
-                                    %% C1-O2* | C3 O4 O5
-                                    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
-
-                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
-                                    just_insert_op(C1, C3MinKey, C3MinValue),
-                                    set_max_key_op(C1, C3MinKey, true),
-
-                                    {NewC3MinKey, _} = get_smallest_op(C3),
-                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
-
-                                    {O4MinKey, O4MinValue} = take_smallest_op(O4),
-                                    set_min_key_op(O4, O4MinKey, false),
-
-                                    just_insert_op(C3, O4MinKey, O4MinValue),
-                                    set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
-                                    {ok, false};
-                                _ ->
-                                    {ok, todo}
-                            end
-                    end
-            end;
+            delete_from_c_O_l(Self, RightBucket);
         %% C1-O2
         %%   Deletion from C1: C1'-O2'
         {MinKey, MinValue} ->
