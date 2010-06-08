@@ -51,7 +51,8 @@ sg_test_() ->
       [?_test(delete_c_O_1())],
       [?_test(delete_c_O_2())],
       [?_test(delete_c_O_3())],
-      [?_test(delete_c_O_4())]
+      [?_test(delete_c_O_4())],
+      [?_test(delete_c_O_5())]
      ]
     }.
 
@@ -961,6 +962,41 @@ make_c_o__c_O() ->
 
     {C1, O2, C3, O4}.
 
+%% Returns [0, 1, 10] [] | [3, 4, 5] | [55] | [6 7 8]
+make_c_O__c_o_c() ->
+    %% [0, 1, 10] [2] | [3, 4, 5] []
+    {C1, O2, C3, O4} = make_c_o__c_O(),
+
+    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(O4, "key6", value6)),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(O4, "key7", value7)),
+    {ok, NewBucket} = mio_bucket:insert_op(O4, "key8", value8),
+    ?assertMatch({ok, _}, mio_bucket:insert_op(NewBucket, "key55", value55)),
+
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
+    ?assertMatch(c_o_c_l, mio_bucket:get_type_op(C3)),
+    ?assertMatch(c_o_c_m, mio_bucket:get_type_op(NewBucket)),
+    ?assertMatch(c_o_c_r, mio_bucket:get_type_op(O4)),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+
+    ?assertEqual(true, mio_bucket:is_empty_op(O2)),
+
+    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+
+    ?assertMatch({ok, value55}, mio_bucket:get_op(NewBucket, "key55")),
+
+    ?assertMatch({ok, value6}, mio_bucket:get_op(O4, "key6")),
+    ?assertMatch({ok, value7}, mio_bucket:get_op(O4, "key7")),
+    ?assertMatch({ok, value8}, mio_bucket:get_op(O4, "key8")),
+
+    {C1, O2, C3, NewBucket, O4}.
+
 %% C1-O2-C3 | C4-O5*
 %%   [0, 1, 10] [19] [2, 21, 22] | [3, 4, 5] []
 make_c_o_c__c_O() ->
@@ -1113,6 +1149,11 @@ delete_c_O_4() ->
     ?assertMatch({{"key19", true}, {"key22", false}}, mio_bucket:get_range_op(C3)),
     ?assertMatch({{"key22", true}, _}, mio_bucket:get_range_op(C4)),
     ok.
+
+delete_c_O_5() ->
+    {C1, O2, C3, O4, C5} = make_c_O__c_o_c(),
+    ok.
+
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
