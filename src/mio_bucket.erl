@@ -415,10 +415,7 @@ delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right) ->
             set_max_key_op(C1, O2MaxKey, O2MaxEncompass),
             set_range_op(C3, {O2MaxKey, not O2MaxEncompass}, {C3MaxKey, false}),
             set_range_op(C4, {C3MaxKey, true}, {O5MaxKey, O5MaxEncompass}),
-            mio_skip_graph:link_right_op(C1, 0, C3),
-            mio_skip_graph:link_left_op(C3, 0, C1),
-            mio_skip_graph:link_right_op(C3, 0, C4),
-            mio_skip_graph:link_left_op(C4, 0, C3),
+            mio_skip_graph:link_three_nodes(C1, C3, C4, 0),
             mio_skip_graph:link_right_op(C4, 0, O5Right),
             set_type_op(C3, c_o_c_m),
             set_type_op(C4, c_o_c_r),
@@ -484,10 +481,7 @@ delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right) ->
 
             {_, {O4MaxKey, O4MaxEncompass}} = get_range_op(O4),
             set_range_op(C3, {C3MinKey, false}, {O4MaxKey, O4MaxEncompass}),
-            mio_skip_graph:link_right_op(C1, 0, C3),
-            mio_skip_graph:link_left_op(C3, 0, C1),
-            mio_skip_graph:link_right_op(C3, 0, C5),
-            mio_skip_graph:link_left_op(C5, 0, C3),
+            mio_skip_graph:link_three_nodes(C1, C3, C5, 0),
             set_type_op(C1, c_o_c_l),
             set_type_op(C3, c_o_c_m),
             {ok, [O2, O4]};
