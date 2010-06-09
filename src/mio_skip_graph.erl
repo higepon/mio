@@ -48,6 +48,7 @@
          dump_op/1,
          link_right_op/3, link_left_op/3,
 
+         link_two_nodes/3,
          link_three_nodes/4,
          link_on_level_ge1/2
         ]).
@@ -394,6 +395,10 @@ reverse_direction(Direction) ->
         left ->
             right
     end.
+
+link_two_nodes(LeftNode, RightNode, Level) ->
+    link_right_op(LeftNode, Level, RightNode),
+    link_left_op(RightNode, Level, LeftNode).
 
 link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left] -> [Center]  [Right]

@@ -384,8 +384,8 @@ delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
     {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
     {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
     mio_skip_graph:link_right_op(C3, 0, O4Right),
-    mio_skip_graph:link_left_op(C3, 0, C1),
-    mio_skip_graph:link_right_op(C1, 0, C3),
+
+    mio_skip_graph:link_two_nodes(C1, C3, 0),
 
     {C3MinKey, _} = get_smallest_op(C3),
     set_max_key_op(C1, C3MinKey, false),
@@ -441,8 +441,8 @@ delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right) ->
             O4Right = get_right_op(O4),
             {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
             mio_skip_graph:link_right_op(C3, 0, O4Right),
-            mio_skip_graph:link_left_op(C3, 0, C1),
-            mio_skip_graph:link_right_op(C1, 0, C3),
+
+            mio_skip_graph:link_two_nodes(C1, C3, 0),
 
             {C3MinKey, C3MinValue} = get_smallest_op(C3),
             just_insert_op(C1, C3MinKey, C3MinValue),
@@ -568,8 +568,7 @@ delete_from_c_o_c_l(State, Self, Key) ->
             just_insert_op(Self, MinKey, MinValue),
 
             %% link
-            mio_skip_graph:link_right_op(Self, 0, MostRightBucket),
-            mio_skip_graph:link_left_op(MostRightBucket, 0, Self),
+            mio_skip_graph:link_two_nodes(Self, MostRightBucket, 0),
 
             %% type
             set_type_op(Self, c_o_l),
@@ -606,8 +605,7 @@ delete_from_c_o_c_r(State, Self, Key) ->
             set_max_key_op(MostLeftBucket, MinKey, not EncompassMin),
 
             %% link
-            mio_skip_graph:link_right_op(MostLeftBucket, 0, Self),
-            mio_skip_graph:link_left_op(Self, 0, MostLeftBucket),
+            mio_skip_graph:link_two_nodes(MostLeftBucket, Self, 0),
 
             %% type
             set_type_op(MostLeftBucket, c_o_l),
@@ -759,8 +757,7 @@ insert_alone_full(State, Self) ->
     set_type_op(Self, c_o_l),
 
     %% link on Level 0
-    mio_skip_graph:link_right_op(Self, 0, EmptyBucket),
-    mio_skip_graph:link_left_op(EmptyBucket, 0, Self),
+    mio_skip_graph:link_two_nodes(Self, EmptyBucket, 0),
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
