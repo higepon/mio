@@ -53,7 +53,8 @@ sg_test_() ->
       [?_test(delete_c_O_3())],
       [?_test(delete_c_O_4())],
       [?_test(delete_c_O_5())],
-      [?_test(delete_c_O_6())]
+      [?_test(delete_c_O_6())],
+      [?_test(delete_c_O_7())]
      ]
     }.
 
@@ -1232,6 +1233,35 @@ delete_c_O_6() ->
     ?assertMatch({{"key3", true}, {O4MaxKey, O4MaxEncompass}}, mio_bucket:get_range_op(C3)),
     ok.
 
+%% C1-O2*
+%%   C-O* exists on right
+delete_c_O_7() ->
+    %% [0, 1, 10] [] | [3, 4, 5] []
+    {C1, O2, C3, O4} = make_c_O__c_O(),
+
+    O4Right = mio_bucket:get_right_op(O4),
+    {_, {O4MaxKey, O4MaxEncompass}} = mio_bucket:get_range_op(O4),
+
+    %% [0, 10, 3] [4, 5]
+    ?assertMatch({ok, [O2, O4]}, mio_bucket:delete_op(C1, "key1")),
+
+    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+
+    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+
+    ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
+    ?assertMatch(c_o_r, mio_bucket:get_type_op(C3)),
+
+    ?assertEqual(C1, mio_bucket:get_left_op(C3)),
+    ?assertEqual(C3, mio_bucket:get_right_op(C1)),
+    ?assertEqual(O4Right, mio_bucket:get_right_op(C3)),
+
+    ?assertMatch({_, {"key3", true}}, mio_bucket:get_range_op(C1)),
+    ?assertMatch({{"key3", false}, {O4MaxKey, O4MaxEncompass}}, mio_bucket:get_range_op(C3)),
+    ok.
 
 setup_full_bucket() ->
     {ok, Bucket} = make_bucket(alone),
