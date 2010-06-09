@@ -1352,7 +1352,7 @@ delete_c_O_9() ->
     ?assertMatch(c_o_c_m, mio_bucket:get_type_op(C3)),
     ?assertMatch(c_o_c_r, mio_bucket:get_type_op(C5)),
 
-    ?assertEqual(C1, mio_bucket:get_right_op(C3)),
+    ?assertEqual(C3, mio_bucket:get_right_op(C1)),
     ?assertEqual(C1, mio_bucket:get_left_op(C3)),
     ?assertEqual(C5, mio_bucket:get_right_op(C3)),
     ?assertEqual(C3, mio_bucket:get_left_op(C5)),

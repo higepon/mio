@@ -482,22 +482,41 @@ delete_from_c_O_l(Self, RightBucket) ->
                             end;
                         %% C-O-C exists on right
                         c_o_c_l ->
-                            %% C1-O2* | C3 O4 O5
                             {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+                            case is_empty_op(O4) of
+                                %% C1-O2* | C3 O4* C5
+                                true ->
+                                    C5 = get_right_op(O4),
+                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                                    just_insert_op(C1, C3MinKey, C3MinValue),
 
-                            {C3MinKey, C3MinValue} = take_smallest_op(C3),
-                            just_insert_op(C1, C3MinKey, C3MinValue),
-                            set_max_key_op(C1, C3MinKey, true),
+                                    set_max_key_op(C1, C3MinKey, true),
 
-                            {NewC3MinKey, _} = get_smallest_op(C3),
-                            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+                                    {_, {O4MaxKey, O4MaxEncompass}} = get_range_op(O4),
+                                    set_range_op(C3, {C3MinKey, false}, {O4MaxKey, O4MaxEncompass}),
+                                    mio_skip_graph:link_right_op(C1, 0, C3),
+                                    mio_skip_graph:link_left_op(C3, 0, C1),
+                                    mio_skip_graph:link_right_op(C3, 0, C5),
+                                    mio_skip_graph:link_left_op(C5, 0, C3),
+                                    set_type_op(C1, c_o_c_l),
+                                    set_type_op(C3, c_o_c_m),
+                                    {ok, [O2, O4]};
+                                %% C1-O2* | C3 O4 C5
+                                false ->
+                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
+                                    just_insert_op(C1, C3MinKey, C3MinValue),
+                                    set_max_key_op(C1, C3MinKey, true),
 
-                            {O4MinKey, O4MinValue} = take_smallest_op(O4),
-                            set_min_key_op(O4, O4MinKey, false),
+                                    {NewC3MinKey, _} = get_smallest_op(C3),
+                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
 
-                            just_insert_op(C3, O4MinKey, O4MinValue),
-                            set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
-                            {ok, false};
+                                    {O4MinKey, O4MinValue} = take_smallest_op(O4),
+                                    set_min_key_op(O4, O4MinKey, false),
+
+                                    just_insert_op(C3, O4MinKey, O4MinValue),
+                                    set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
+                                    {ok, false}
+                                end;
                         _ ->
                             {ok, todo}
                     end
