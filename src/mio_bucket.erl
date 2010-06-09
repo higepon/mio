@@ -393,7 +393,11 @@ delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
     set_type_op(C3, c_o_r),
     {ok, [O2, O4]}.
 
-
+delete_from_c_O_l_with_left_c_o(Self, Left, MaxKey, MaxValue) ->
+    just_insert_op(Self, MaxKey, MaxValue),
+    set_min_key_op(Self, MaxKey, true),
+    set_max_key_op(Left, MaxKey, false),
+    {ok, false}.
 
 delete_from_c_O_l(Self, RightBucket) ->
     case {get_left_op(Self), get_right_op(RightBucket)} of
@@ -410,10 +414,7 @@ delete_from_c_O_l(Self, RightBucket) ->
                             delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket);
                         %% C-O exists on left
                         {MaxKey, MaxValue} ->
-                            just_insert_op(Self, MaxKey, MaxValue),
-                            set_min_key_op(Self, MaxKey, true),
-                            set_max_key_op(Left, MaxKey, false),
-                            {ok, false}
+                            delete_from_c_O_l_with_left_c_o(Self, Left, MaxKey, MaxValue)
                     end;
                 %% C-O-C exists on left
                 c_o_c_r ->
