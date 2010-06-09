@@ -372,7 +372,7 @@ delete_from_alone(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
-delete_from_c_O_l_no_neibor(Self, RightBucket) ->
+delete_from_c_O_l_no_neighbor(Self, RightBucket) ->
     %% unlink
     mio_skip_graph:link_right_op(Self, 0, []),
     set_type_op(Self, alone),
@@ -380,30 +380,34 @@ delete_from_c_O_l_no_neibor(Self, RightBucket) ->
     set_max_key_op(Self, MaxKey, EncompassMax),
     {ok, RightBucket}.
 
+delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
+    {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
+    {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
+    mio_skip_graph:link_right_op(C3, 0, O4Right),
+    mio_skip_graph:link_left_op(C3, 0, C1),
+    mio_skip_graph:link_right_op(C1, 0, C3),
+
+    {C3MinKey, _} = get_smallest_op(C3),
+    set_max_key_op(C1, C3MinKey, false),
+    set_range_op(C3, {C3MinKey, true}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
+    set_type_op(C3, c_o_r),
+    {ok, [O2, O4]}.
+
+
 
 delete_from_c_O_l(Self, RightBucket) ->
     case {get_left_op(Self), get_right_op(RightBucket)} of
         %% C1-O2*
         %%   Both left and right not exist: O1
         {[], []}->
-            delete_from_c_O_l_no_neibor(Self, RightBucket);
+            delete_from_c_O_l_no_neighbor(Self, RightBucket);
         {Left, Right} ->
             case get_type_op(Left) of
                 c_o_r ->
                     case take_largest_op(Left) of
                         %% C-O* exists on left
                         none ->
-                            {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
-                            {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
-                            mio_skip_graph:link_right_op(C3, 0, O4Right),
-                            mio_skip_graph:link_left_op(C3, 0, C1),
-                            mio_skip_graph:link_right_op(C1, 0, C3),
-
-                            {C3MinKey, _} = get_smallest_op(C3),
-                            set_max_key_op(C1, C3MinKey, false),
-                            set_range_op(C3, {C3MinKey, true}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
-                            set_type_op(C3, c_o_r),
-                            {ok, [O2, O4]};
+                            delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket);
                         %% C-O exists on left
                         {MaxKey, MaxValue} ->
                             just_insert_op(Self, MaxKey, MaxValue),
