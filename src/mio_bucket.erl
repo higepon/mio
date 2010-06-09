@@ -372,17 +372,21 @@ delete_from_alone(State, Key) ->
     mio_store:remove(Key, State#node.store),
     {ok, false}.
 
+delete_from_c_O_l_no_neibor(Self, RightBucket) ->
+    %% unlink
+    mio_skip_graph:link_right_op(Self, 0, []),
+    set_type_op(Self, alone),
+    {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
+    set_max_key_op(Self, MaxKey, EncompassMax),
+    {ok, RightBucket}.
+
+
 delete_from_c_O_l(Self, RightBucket) ->
     case {get_left_op(Self), get_right_op(RightBucket)} of
         %% C1-O2*
         %%   Both left and right not exist: O1
         {[], []}->
-            %% unlink
-            mio_skip_graph:link_right_op(Self, 0, []),
-            set_type_op(Self, alone),
-            {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
-            set_max_key_op(Self, MaxKey, EncompassMax),
-            {ok, RightBucket};
+            delete_from_c_O_l_no_neibor(Self, RightBucket);
         {Left, Right} ->
             case get_type_op(Left) of
                 c_o_r ->
