@@ -428,6 +428,7 @@ delete_from_c_O_l(Self, RightBucket) ->
                         c_o_l ->
                             {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
                             case is_empty_op(O4) of
+                                %% C1-O2 | C3-O4*
                                 true ->
                                     O4Right = get_right_op(O4),
                                     {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
