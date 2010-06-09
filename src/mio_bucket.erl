@@ -436,6 +436,39 @@ delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right) ->
             {ok, false}
     end.
 
+delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right) ->
+    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+    case is_empty_op(O4) of
+        %% C1-O2 | C3-O4*
+        true ->
+            O4Right = get_right_op(O4),
+            {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
+            mio_skip_graph:link_right_op(C3, 0, O4Right),
+            mio_skip_graph:link_left_op(C3, 0, C1),
+            mio_skip_graph:link_right_op(C1, 0, C3),
+
+            {C3MinKey, C3MinValue} = get_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+            set_max_key_op(C1, C3MinKey, true),
+            set_range_op(C3, {C3MinKey, false}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
+            set_type_op(C3, c_o_r),
+            {ok, [O2, O4]};
+        %% C1-O2* | C3-O4
+        false ->
+            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+            set_max_key_op(C1, C3MinKey, true),
+
+            {NewC3MinKey, _} = get_smallest_op(C3),
+            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+            {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
+            just_insert_op(C3, C3MaxKey, C3MaxValue),
+            set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
+
+            set_min_key_op(O4, C3MaxKey, false),
+            {ok, false}
+    end.
 
 delete_from_c_O_l(Self, RightBucket) ->
     case {get_left_op(Self), get_right_op(RightBucket)} of
@@ -461,38 +494,7 @@ delete_from_c_O_l(Self, RightBucket) ->
                     %% C-O exists on right
                     case get_type_op(Right) of
                         c_o_l ->
-                            {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
-                            case is_empty_op(O4) of
-                                %% C1-O2 | C3-O4*
-                                true ->
-                                    O4Right = get_right_op(O4),
-                                    {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
-                                    mio_skip_graph:link_right_op(C3, 0, O4Right),
-                                    mio_skip_graph:link_left_op(C3, 0, C1),
-                                    mio_skip_graph:link_right_op(C1, 0, C3),
-
-                                    {C3MinKey, C3MinValue} = get_smallest_op(C3),
-                                    just_insert_op(C1, C3MinKey, C3MinValue),
-                                    set_max_key_op(C1, C3MinKey, true),
-                                    set_range_op(C3, {C3MinKey, false}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
-                                    set_type_op(C3, c_o_r),
-                                    {ok, [O2, O4]};
-                                %% C1-O2* | C3-O4
-                                false ->
-                                    {C3MinKey, C3MinValue} = take_smallest_op(C3),
-                                    just_insert_op(C1, C3MinKey, C3MinValue),
-                                    set_max_key_op(C1, C3MinKey, true),
-
-                                    {NewC3MinKey, _} = get_smallest_op(C3),
-                                    set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
-
-                                    {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
-                                    just_insert_op(C3, C3MaxKey, C3MaxValue),
-                                    set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
-
-                                    set_min_key_op(O4, C3MaxKey, false),
-                                    {ok, false}
-                            end;
+                            delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right);
                         %% C-O-C exists on right
                         c_o_c_l ->
                             {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
