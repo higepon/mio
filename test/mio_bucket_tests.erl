@@ -1278,7 +1278,7 @@ delete_c_O_8() ->
     {C1, O2, C3, C4, O5} = make_c_O_c__c_O(),
 
     O5Right = mio_bucket:get_right_op(O5),
-    {_, {O5RightMaxKey, O5RightMaxEncompass}} = mio_bucket:get_range_op(O5Right),
+    {_, {O5MaxKey, O5MaxEncompass}} = mio_bucket:get_range_op(O5),
     {_, {O2MaxKey, O2MaxEncompass}} = mio_bucket:get_range_op(O2),
 
     %% [0, 1, 10] [2, 21] [22, 3, 5]
@@ -1291,8 +1291,8 @@ delete_c_O_8() ->
     ?assertMatch({ok, value2}, mio_bucket:get_op(C3, "key2")),
     ?assertMatch({ok, value21}, mio_bucket:get_op(C3, "key21")),
 
+    ?assertMatch({ok, value22}, mio_bucket:get_op(C4, "key22")),
     ?assertMatch({ok, value3}, mio_bucket:get_op(C4, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C4, "key4")),
     ?assertMatch({ok, value5}, mio_bucket:get_op(C4, "key5")),
 
 
@@ -1310,7 +1310,7 @@ delete_c_O_8() ->
     ?assertMatch({_, {O2MaxKey, O2MaxEncompass}}, mio_bucket:get_range_op(C1)),
     NewMaxEncompass = not O2MaxEncompass,
     ?assertMatch({{O2MaxKey, NewMaxEncompass}, {"key22", false}}, mio_bucket:get_range_op(C3)),
-    ?assertMatch({{"key22", true}, {O5RightMaxKey, O5RightMaxEncompass}}, mio_bucket:get_range_op(C4)),
+    ?assertMatch({{"key22", true}, {O5MaxKey, O5MaxEncompass}}, mio_bucket:get_range_op(C4)),
     ok.
 
 setup_full_bucket() ->

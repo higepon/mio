@@ -411,17 +411,39 @@ delete_from_c_O_l(Self, RightBucket) ->
                 c_o_c_r ->
                     %% C1-O2-C3 | C4-O5*
                     {O2, C3, C4} = {get_left_op(Left), Left, Self},
+                    case is_empty_op(O2) of
+                        true ->
+                            C1 = get_left_op(O2),
+                            O5 = RightBucket,
+                            O5Right = Right,
+                            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+                            just_insert_op(C4, C3MaxKey, C3MaxValue),
 
-                    {C3MaxKey, C3MaxValue} = take_largest_op(C3),
-                    just_insert_op(C4, C3MaxKey, C3MaxValue),
-                    set_min_key_op(C4, C3MaxKey, true),
+                            {_, {O5MaxKey, O5MaxEncompass}} = get_range_op(O5),
+                            {_, {O2MaxKey, O2MaxEncompass}} = get_range_op(O2),
+                            set_max_key_op(C1, O2MaxKey, O2MaxEncompass),
+                            set_range_op(C3, {O2MaxKey, not O2MaxEncompass}, {C3MaxKey, false}),
+                            set_range_op(C4, {C3MaxKey, true}, {O5MaxKey, O5MaxEncompass}),
+                            mio_skip_graph:link_right_op(C1, 0, C3),
+                            mio_skip_graph:link_left_op(C3, 0, C1),
+                            mio_skip_graph:link_right_op(C3, 0, C4),
+                            mio_skip_graph:link_left_op(C4, 0, C3),
+                            mio_skip_graph:link_right_op(C4, 0, O5Right),
+                            set_type_op(C3, c_o_c_m),
+                            set_type_op(C4, c_o_c_r),
+                            {ok, [O2, O5]};
+                        false ->
+                            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+                            just_insert_op(C4, C3MaxKey, C3MaxValue),
+                            set_min_key_op(C4, C3MaxKey, true),
 
-                    {O2MaxKey, O2MaxValue} = take_largest_op(O2),
-                    just_insert_op(C3, O2MaxKey, O2MaxValue),
-                    set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
+                            {O2MaxKey, O2MaxValue} = take_largest_op(O2),
+                            just_insert_op(C3, O2MaxKey, O2MaxValue),
+                            set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
 
-                    set_max_key_op(O2, O2MaxKey, false),
-                    {ok, false};
+                            set_max_key_op(O2, O2MaxKey, false),
+                            {ok, false}
+                    end;
                 _ ->
                     %% C-O exists on right
                     case get_type_op(Right) of
