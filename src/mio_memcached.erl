@@ -125,6 +125,9 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
 %%            ?INFO(Token),
             case Token of
+                ["get_start_bucket"] ->
+                    ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
+                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["get", Key] ->
                     process_get(Sock, StartBucket, Key),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);

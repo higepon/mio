@@ -13,6 +13,7 @@
 -define(MEMCACHED_HOST, "127.0.0.1").
 
 setup_mio() ->
+    application:set_env(mio, capacity, 3),
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT).
 
@@ -33,6 +34,7 @@ mio_test_() ->
       [?_test(set_and_get())],
       [?_test(set_and_get_alphabet_key())],
       [?_test(delete())],
+      [?_test(empty())],
 %%       [?_test(expiration())],
       [?_test(range_search())]
 %%       [?_test(range_search_alphabet())],
@@ -60,6 +62,31 @@ delete() ->
     ok = memcached:delete(Conn, "1234"),
     {error, not_found} = memcached:get(Conn, "1234"),
     {error, not_found} = memcached:delete(Conn, "1234"),
+    ok = memcached:disconnect(Conn).
+
+get_start_bucket(Host, Port) ->
+    {ok, Socket} = gen_tcp:connect(Host, Port, [binary, {packet, raw}, {nodelay, true}, {reuseaddr, true}, {active, false},
+                      {sndbuf,16384},{recbuf,4096}]),
+    gen_tcp:send(Socket, <<"get_start_bucket\r\n">>),
+    {ok, Packet}  = gen_tcp:recv(Socket, 0, 10000),
+    ok = gen_tcp:close(Socket),
+    binary_to_term(Packet).
+
+empty() ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    C = get_start_bucket(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "key1", "value1"),
+    ok = memcached:set(Conn, "key2", "value2"),
+    ok = memcached:set(Conn, "key3", "value3"),
+    O = get_start_bucket(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ?assert(C =/= O),
+
+    ok = memcached:delete(Conn, "key1"),
+    ?assertEqual(C, get_start_bucket(?MEMCACHED_HOST, ?MEMCACHED_PORT)),
+    ok = memcached:delete(Conn, "key2"),
+    ?assertEqual(C, get_start_bucket(?MEMCACHED_HOST, ?MEMCACHED_PORT)),
+    ok = memcached:delete(Conn, "key3"),
+    ?assertEqual(C, get_start_bucket(?MEMCACHED_HOST, ?MEMCACHED_PORT)),
     ok = memcached:disconnect(Conn).
 
 %% TODO.
