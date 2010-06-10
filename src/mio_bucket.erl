@@ -652,7 +652,7 @@ delete_op_call(From, State, Self, Key) ->
               {ok, _Value} ->
                   delete(State, Self, Key);
               _ ->
-                  {ok, false}
+                  {error, not_found}
           end,
     gen_server:reply(From, Ret).
 

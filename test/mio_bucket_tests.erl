@@ -665,7 +665,7 @@ delete_o_empty() ->
     {ok, Bucket} = make_bucket(alone),
 
     %% []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
+    ?assertMatch({error, not_found}, mio_bucket:delete_op(Bucket, "key1")),
 
     ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
 

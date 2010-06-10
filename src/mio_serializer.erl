@@ -95,8 +95,7 @@ handle_call({insert_op, Introducer, Key, Value}, _From, State) ->
     {reply, {ok, NewlyAllocatedBucket}, State};
 
 handle_call({delete_op, StartBucket, Key}, _From, State) ->
-    {ok, RemovedBuckets} = mio_skip_graph:delete_op(StartBucket, Key),
-    {reply, {ok, RemovedBuckets}, State};
+    {reply, mio_skip_graph:delete_op(StartBucket, Key), State};
 handle_call(stop_op, _From, State) ->
     {stop, normal, State}.
 
