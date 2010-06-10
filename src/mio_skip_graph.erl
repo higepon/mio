@@ -39,7 +39,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([search_op/2, search_op/3,
+-export([search_op/2, search_op/3, delete_op/2,
          range_search_asc_op/4,
          range_search_desc_op/4,
          get_key_op/1,
@@ -58,7 +58,7 @@
          insert_op_call/4,
          buddy_op_call/6,
          dump_op_call/1,
-
+         delete_op_call/3,
          get_key/1
         ]).
 %%--------------------------------------------------------------------
@@ -97,6 +97,18 @@ insert_op_call(From, Self, Key, Value) ->
     Bucket = search_bucket_op(Self, Key, StartLevel),
     Ret = mio_bucket:insert_op(Bucket, Key, Value),
     gen_server:reply(From, Ret).
+
+%%--------------------------------------------------------------------
+%%  Delete operation
+%%--------------------------------------------------------------------
+delete_op(Introducer, Key) ->
+    gen_server:call(Introducer, {skip_graph_delete_op, Key}).
+
+delete_op_call(From, Self, Key) ->
+    Bucket = search_bucket_op(Self, Key),
+    Ret = mio_bucket:delete_op(Bucket, Key),
+    gen_server:reply(From, Ret).
+
 
 %%--------------------------------------------------------------------
 %%  Search operation

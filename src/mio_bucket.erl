@@ -383,9 +383,9 @@ delete_from_c_O_l_no_neighbor(Self, RightBucket) ->
 delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
     {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
     {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
-    mio_skip_graph:link_right_op(C3, 0, O4Right),
 
     mio_skip_graph:link_two_nodes(C1, C3, 0),
+    mio_skip_graph:link_right_op(C3, 0, O4Right),
 
     {C3MinKey, _} = get_smallest_op(C3),
     set_max_key_op(C1, C3MinKey, false),
@@ -952,6 +952,11 @@ handle_call({insert_op, Key, Value}, From, State) ->
 handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
     Self = self(),
     spawn_link(mio_skip_graph, insert_op_call, [From, Self, Key, Value]),
+    {noreply, State};
+
+handle_call({skip_graph_delete_op, Key}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, delete_op_call, [From, Self, Key]),
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->

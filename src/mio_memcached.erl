@@ -145,9 +145,9 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
 
                     inet:setopts(Sock,[{packet, line}]),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
-%%                 ["delete", Key] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+                ["delete", Key] ->
+                    process_delete(Sock, StartBucket, Serializer, Key),
+                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
 %%                 ["delete", Key, _Time] ->
 %%                     process_delete(Sock, StartBucket, Key),
 %%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
@@ -175,8 +175,13 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
 %%     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
 
 
-%% process_delete(Sock, StartNode, Key) ->
-%%     exit({todo, ?LINE}).
+process_delete(Sock, StartBucket, Serializer, Key) ->
+    case mio_serializer:delete_op(Serializer, StartBucket, Key) of
+        {ok, _DeletedBuckets} ->
+            ok = gen_tcp:send(Sock, "DELETED\r\n");
+        _ ->
+            ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
+    end.
 
 %% %% Expiry format definition
 %% %% Expire:

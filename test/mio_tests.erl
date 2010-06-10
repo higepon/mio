@@ -32,7 +32,7 @@ mio_test_() ->
      [
       [?_test(set_and_get())],
       [?_test(set_and_get_alphabet_key())],
-%%       [?_test(delete())],
+      [?_test(delete())],
 %%       [?_test(expiration())],
       [?_test(range_search())]
 %%       [?_test(range_search_alphabet())],
@@ -53,15 +53,15 @@ set_and_get_alphabet_key() ->
     {ok, "myvalue"} = memcached:get(Conn, "mykey"),
     ok = memcached:disconnect(Conn).
 
-%% TODO.
-%% delete() ->
-%%     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-%%     ok = memcached:set(Conn, "1234", "myvalue"),
-%%     {ok, "myvalue"} = memcached:get(Conn, "1234"),
-%%     ok = memcached:delete(Conn, "1234"),
-%%     {error, not_found} = memcached:get(Conn, "1234"),
-%%     ok = memcached:disconnect(Conn).
+delete() ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "1234", "myvalue"),
+    {ok, "myvalue"} = memcached:get(Conn, "1234"),
+    ok = memcached:delete(Conn, "1234"),
+    {error, not_found} = memcached:get(Conn, "1234"),
+    ok = memcached:disconnect(Conn).
 
+%% TODO.
 %% expiration() ->
 %%     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
 %%     ok = memcached:set(Conn, "1234", "myvalue", 0, 1),
