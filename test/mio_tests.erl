@@ -59,6 +59,7 @@ delete() ->
     {ok, "myvalue"} = memcached:get(Conn, "1234"),
     ok = memcached:delete(Conn, "1234"),
     {error, not_found} = memcached:get(Conn, "1234"),
+    {error, not_found} = memcached:delete(Conn, "1234"),
     ok = memcached:disconnect(Conn).
 
 %% TODO.
