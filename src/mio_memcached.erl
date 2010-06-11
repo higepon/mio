@@ -149,7 +149,7 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                     inet:setopts(Sock,[{packet, line}]),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["delete", Key] ->
-                    process_delete(Sock, StartBucket, Serializer, Key),
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
 %%                 ["delete", Key, _Time] ->
 %%                     process_delete(Sock, StartBucket, Key),
@@ -178,10 +178,23 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
 %%     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
 
 
-process_delete(Sock, StartBucket, Serializer, Key) ->
+process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
     case mio_serializer:delete_op(Serializer, StartBucket, Key) of
-        {ok, _DeletedBuckets} ->
-            ok = gen_tcp:send(Sock, "DELETED\r\n");
+        {ok, DeletedBuckets} ->
+            ok = gen_tcp:send(Sock, "DELETED\r\n"),
+            case mio_local_store:get(LocalSetting, start_buckets) of
+                {ok, [_BootBucket]} ->
+                    ok;
+                {ok, [StartBucket, BootBucket]} ->
+                    %% If start_bucket is deleted, we have to replace the start bucket.
+                    %% N.B. We are sure BootBucket will never be deleted.
+                    case lists:member(StartBucket, DeletedBuckets) of
+                        true ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]);
+                        _ ->
+                            ok
+                    end
+            end;
         _ ->
             ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
     end.
