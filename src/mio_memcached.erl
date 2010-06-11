@@ -50,7 +50,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
             {ok, Allocator} = mio_sup:start_allocator(Sup),
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
-            ok = mio_local_store:set(LocalSetting, start_bucket, Bucket),
+            ok = mio_local_store:set(LocalSetting, start_buckets, [Bucket]),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
@@ -61,7 +61,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
             {ok, BootBucket, Allocator, Serializer} = mio_bootstrap:get_boot_info(BootNode),
             Supervisor = whereis(mio_sup),
             ok = mio_allocator:add_node(Allocator, Supervisor),
-            ok = mio_local_store:set(LocalSetting, start_bucket, BootBucket),
+            ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]),
             {Serializer, LocalSetting}
     end.
 
@@ -119,7 +119,7 @@ mio_accept(Listen, MaxLevel, Serializer, LocalSetting) ->
 
 
 process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
-    {ok, StartBucket} = mio_local_store:get(LocalSetting, start_bucket),
+    {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
@@ -276,8 +276,12 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, _ExpireDate, Bytes, _Ma
             %% It's preferable that start buckt is local.
             case mio_util:is_local_process(NewlyAllocatedBucket) of
                 true ->
-                    %%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
-                    ok = mio_local_store:set(LocalSetting, start_bucket, NewlyAllocatedBucket);
+                    case mio_local_store:get(LocalSetting, start_buckets) of
+                        {ok, [BootBucket]} ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [NewlyAllocatedBucket, BootBucket]);
+                        {ok, [_ ,BootBucket]} ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [NewlyAllocatedBucket, BootBucket])
+                    end;
                 _ ->
                     []
             end;
