@@ -370,7 +370,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 delete_from_alone(State, Key) ->
     mio_store:remove(Key, State#node.store),
-    {ok, false}.
+    {ok, []}.
 
 delete_from_c_O_l_no_neighbor(Self, RightBucket) ->
     %% unlink
@@ -378,7 +378,7 @@ delete_from_c_O_l_no_neighbor(Self, RightBucket) ->
     set_type_op(Self, alone),
     {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
     set_max_key_op(Self, MaxKey, EncompassMax),
-    {ok, RightBucket}.
+    {ok, [RightBucket]}.
 
 delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
     {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
@@ -397,7 +397,7 @@ delete_from_c_O_l_with_left_c_o(Self, Left, MaxKey, MaxValue) ->
     just_insert_op(Self, MaxKey, MaxValue),
     set_min_key_op(Self, MaxKey, true),
     set_max_key_op(Left, MaxKey, false),
-    {ok, false}.
+    {ok, []}.
 
 delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right) ->
     %% C1-O2-C3 | C4-O5*
@@ -430,7 +430,7 @@ delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right) ->
             set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
 
             set_max_key_op(O2, O2MaxKey, false),
-            {ok, false}
+            {ok, []}
     end.
 
 delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right) ->
@@ -464,7 +464,7 @@ delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right) ->
             set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
 
             set_min_key_op(O4, C3MaxKey, false),
-            {ok, false}
+            {ok, []}
     end.
 
 delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right) ->
@@ -499,7 +499,7 @@ delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right) ->
 
             just_insert_op(C3, O4MinKey, O4MinValue),
             set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
-            {ok, false}
+            {ok, []}
     end.
 
 delete_from_c_O_l(Self, RightBucket) ->
@@ -529,9 +529,7 @@ delete_from_c_O_l(Self, RightBucket) ->
                             delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right);
                         %% C-O-C exists on right
                         c_o_c_l ->
-                            delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right);
-                        _ ->
-                            {ok, todo}
+                            delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right)
                     end
             end
     end.
@@ -549,12 +547,12 @@ delete_from_c_o_l(State, Self, Key) ->
             just_insert_op(Self, MinKey, MinValue),
             set_max_key_op(Self, MinKey, true),
             set_min_key_op(RightBucket, MinKey, false),
-            {ok, false}
+            {ok, []}
     end.
 
 delete_from_c_o_r(State, Key) ->
     mio_store:remove(Key, State#node.store),
-    {ok, false}.
+    {ok, []}.
 
 delete_from_c_o_c_l(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
@@ -576,7 +574,7 @@ delete_from_c_o_c_l(State, Self, Key) ->
 
             set_max_key_op(Self, MinKey, true),
             set_min_key_op(MostRightBucket, MinKey, false),
-            {ok, RightBucket};
+            {ok, [RightBucket]};
         %% C1-O2-C3
         %%   Deletion from C1: C1'-O2'-C3
         false ->
@@ -586,12 +584,12 @@ delete_from_c_o_c_l(State, Self, Key) ->
             %% the inserted key becomes largest on C1
             set_max_key_op(Self, MinKey, true),
             set_min_key_op(RightBucket, MinKey, false),
-            {ok, false}
+            {ok, []}
     end.
 
 delete_from_c_o_c_m(State, Key) ->
     mio_store:remove(Key, State#node.store),
-    {ok, false}.
+    {ok, []}.
 
 delete_from_c_o_c_r(State, Self, Key) ->
     mio_store:remove(Key, State#node.store),
@@ -611,7 +609,7 @@ delete_from_c_o_c_r(State, Self, Key) ->
             set_type_op(MostLeftBucket, c_o_l),
             set_type_op(Self, c_o_r),
 
-            {ok, LeftBucket};
+            {ok, [LeftBucket]};
         %% C1-O2-C3
         %%   Deletion from C3: C1-O2'-C3'
         false ->
@@ -619,7 +617,7 @@ delete_from_c_o_c_r(State, Self, Key) ->
             just_insert_op(Self, MaxKey, MaxValue),
             set_max_key_op(LeftBucket, MaxKey, false),
             set_min_key_op(Self, MaxKey, true),
-            {ok, false}
+            {ok, []}
     end.
 
 %% pre-condition: Store has the key
@@ -642,9 +640,7 @@ delete(State, Self, Key) ->
         c_o_c_m ->
             delete_from_c_o_c_m(State, Key);
         c_o_c_r ->
-            delete_from_c_o_c_r(State, Self, Key);
-        _ ->
-            {ok, todo}
+            delete_from_c_o_c_r(State, Self, Key)
     end.
 
 delete_op_call(From, State, Self, Key) ->

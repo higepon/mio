@@ -687,7 +687,7 @@ delete_o() ->
     ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
 
     %% []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Bucket, "key1")),
 
     ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
 
@@ -704,7 +704,7 @@ delete_c_o_1() ->
     {Bucket, Right} = insert_c_o_1(),
 
     %% [0 2 3] []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Bucket, "key1")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Bucket, "key1")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
     ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
@@ -729,7 +729,7 @@ delete_c_o_2() ->
     {Bucket, Right} = insert_c_o_1(),
 
     %% [0 1 2] []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Right, "key3")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Right, "key3")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
@@ -754,7 +754,7 @@ delete_c_o_c_1() ->
     ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
 
     %% [0, 1, 2] [] [3, 4, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Left, "key10")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Left, "key10")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
@@ -784,7 +784,7 @@ delete_c_o_c_2() ->
     {Left, Middle, Right} = insert_c_o_c_1(),
 
     %% [0, 1, 10] [] [3, 4, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Middle, "key2")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Middle, "key2")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
@@ -814,7 +814,7 @@ delete_c_o_c_3() ->
     {Left, Middle, Right} = insert_c_o_c_1(),
 
     %% [0, 1, 10] [] [2, 3, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Right, "key4")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Right, "key4")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
@@ -840,7 +840,7 @@ make_c_O_c() ->
     %% [0, 1, 10] [2] [3, 4, 5]
     {Left, Middle, Right} = insert_c_o_c_1(),
     %% [0, 1, 10] [] [2, 3, 5]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(Middle, "key2")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(Middle, "key2")),
     {Left, Middle, Right}.
 
 
@@ -852,7 +852,7 @@ delete_c_O_c_1() ->
 
     %% [0, 1, 3] [] [4, 5]
     %% the Middle bucket is removed from Skip Graph
-    ?assertMatch({ok, Middle}, mio_bucket:delete_op(Left, "key10")),
+    ?assertMatch({ok, [Middle]}, mio_bucket:delete_op(Left, "key10")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
@@ -884,7 +884,7 @@ delete_c_O_c_2() ->
 
     %% [0, 1, 10] [] [3, 5]
     %% the Middle bucket is removed from Skip Graph
-    ?assertMatch({ok, Middle}, mio_bucket:delete_op(Right, "key4")),
+    ?assertMatch({ok, [Middle]}, mio_bucket:delete_op(Right, "key4")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
@@ -928,7 +928,7 @@ delete_c_O_1() ->
     ?assertMatch(c_o_l, mio_bucket:get_type_op(Bucket)),
 
     %% [2 3]
-    ?assertMatch({ok, Right}, mio_bucket:delete_op(Bucket, "key1")),
+    ?assertMatch({ok, [Right]}, mio_bucket:delete_op(Bucket, "key1")),
 
     ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
     ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
@@ -947,7 +947,7 @@ make_c_o__c_O() ->
     {C1, O2, C3} = insert_c_o_c_1(),
     ?assertMatch({ok, _}, mio_bucket:insert_op(C3, "key6", value6)),
     O4 = mio_bucket:get_right_op(C3),
-    ?assertMatch({ok, false}, mio_bucket:delete_op(O4, "key6")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(O4, "key6")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -971,7 +971,7 @@ make_c_O__c_o_c() ->
     %% [0, 1, 10] [2] | [3, 4, 5] []
     {C1, O2, C3, O4} = make_c_o__c_O(),
 
-    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(O2, "key2")),
     ?assertMatch({ok, _}, mio_bucket:insert_op(O4, "key6", value6)),
     ?assertMatch({ok, _}, mio_bucket:insert_op(O4, "key7", value7)),
     {ok, NewBucket} = mio_bucket:insert_op(O4, "key8", value8),
@@ -1005,7 +1005,7 @@ make_c_O__c_o_c() ->
 make_c_O__c_O() ->
     %% [0, 1, 10] [2] | [3, 4, 5] []
     {C1, O2, C3, O4} = make_c_o__c_O(),
-    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(O2, "key2")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -1051,7 +1051,7 @@ make_c_o_c__c_O() ->
 make_c_O_c__c_O() ->
     %% [0, 1, 10] [19] [2, 21, 22] | [3, 4, 5] []
     {C1, O2, C3, C4, O5} = make_c_o_c__c_O(),
-    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key19")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(O2, "key19")),
     {C1, O2, C3, C4, O5}.
 
 %% C1-O2 | C3-O4*
@@ -1061,7 +1061,7 @@ make_c_O__c_o() ->
     {C1, O2, C3} = insert_c_o_c_1(),
     ?assertMatch({ok, _}, mio_bucket:insert_op(C3, "key6", value6)),
     O4 = mio_bucket:get_right_op(C3),
-    ?assertMatch({ok, false}, mio_bucket:delete_op(O2, "key2")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(O2, "key2")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -1103,7 +1103,7 @@ delete_c_O_2() ->
     {C1, O2, C3, O4} = make_c_o__c_O(),
 
     %%   [0, 1, 10] [] | [2, 4, 5] []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(C3, "key3")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(C3, "key3")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
@@ -1129,7 +1129,7 @@ delete_c_O_3() ->
     {C1, O2, C3, O4} = make_c_O__c_o(),
 
     %%   [0, 10, 3] [] | [4, 5, 6] []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(C1, "key1")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(C1, "key1")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
     ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
@@ -1157,7 +1157,7 @@ delete_c_O_4() ->
     {C1, O2, C3, C4, O5} = make_c_o_c__c_O(),
 
     %% [0, 1, 10] [] [19, 2, 21] | [22, 3, 5] []
-    ?assertMatch({ok, false}, mio_bucket:delete_op(C4, "key4")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(C4, "key4")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
     ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
@@ -1193,7 +1193,7 @@ delete_c_O_5() ->
     {C1, O2, C3, O4, C5} = make_c_O__c_o_c(),
 
     %% [0, 10, 3] [] | [4, 5, 55] [] [6 7 8]
-    ?assertMatch({ok, false}, mio_bucket:delete_op(C1, "key1")),
+    ?assertMatch({ok, []}, mio_bucket:delete_op(C1, "key1")),
 
     ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
     ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
