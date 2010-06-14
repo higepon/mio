@@ -47,7 +47,8 @@ sg_test_() ->
       [?_test(insert_o_1())],
       [?_test(insert_o_2())],
       [?_test(insert_o_3())],
-      [?_test(insert_many())]
+      [?_test(insert_many())],
+      [?_test(remove_bucet())]
       ]
      }.
 
@@ -1157,6 +1158,20 @@ do_insert_many() ->
     ?assertEqual({ok, "7b077f782f5239c6"}, mio_skip_graph:search_op(Bucket, "7b077f782f5239c6")),
     ?assertEqual({ok, "d4bd50c13cb2c368"}, mio_skip_graph:search_op(Bucket, "d4bd50c13cb2c368")).
 
+remove_bucet() ->
+    {C, O} = make_c_o_same_mv(),
+
+    ?assertEqual(O, mio_bucket:get_right_op(C, 0)),
+    ?assertEqual(C, mio_bucket:get_left_op(O, 0)),
+
+    ?assertEqual(O, mio_bucket:get_right_op(C, 1)),
+    ?assertEqual(C, mio_bucket:get_left_op(O, 1)),
+
+    ?assertEqual({ok, [O]}, mio_skip_graph:delete_op(C, "key1")),
+
+    ?assertEqual([], mio_bucket:get_right_op(C, 0)),
+    ?assertEqual([], mio_bucket:get_right_op(C, 1)),
+    ok.
 
 %% Helper
 
