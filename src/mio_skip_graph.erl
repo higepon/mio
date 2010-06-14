@@ -58,7 +58,7 @@
          insert_op_call/4,
          buddy_op_call/6,
          dump_op_call/1,
-         delete_op_call/3,
+         delete_op_call/4,
          get_key/1
         ]).
 %%--------------------------------------------------------------------
@@ -104,11 +104,24 @@ insert_op_call(From, Self, Key, Value) ->
 delete_op(Introducer, Key) ->
     gen_server:call(Introducer, {skip_graph_delete_op, Key}).
 
-delete_op_call(From, Self, Key) ->
+delete_op_call(From, State, Self, Key) ->
     Bucket = search_bucket_op(Self, Key),
-    Ret = mio_bucket:delete_op(Bucket, Key),
-    gen_server:reply(From, Ret).
+    case mio_bucket:delete_op(Bucket, Key) of
+        {error, Reason} ->
+            gen_server:reply(From, {error, Reason});
+        {ok, BucketsToDelete} ->
+            lists:foreach(fun (B) -> delete_loop(B, length(State#node.membership_vector)) end, BucketsToDelete),
+            gen_server:reply(From, {ok, BucketsToDelete})
+    end.
 
+
+delete_loop(_Self, Level) when Level < 0 ->
+    [];
+delete_loop(Self, Level) ->
+    RightBucket = mio_bucket:get_right_op(Self, Level),
+    LeftBucket = mio_bucket:get_left_op(Self, Level),
+    link_two_nodes(LeftBucket, RightBucket, Level),
+    delete_loop(Self, Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Search operation
@@ -247,9 +260,8 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
-%% coverage says this is not necessary
-%% link_right_op([], _Level, _Right) ->
-%%     ok;
+link_right_op([], _Level, _Right) ->
+    ok;
 link_right_op(Node, Level, Right) ->
     gen_server:call(Node, {link_right_op, Level, Right}).
 

@@ -952,7 +952,7 @@ handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
 
 handle_call({skip_graph_delete_op, Key}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, delete_op_call, [From, Self, Key]),
+    spawn_link(mio_skip_graph, delete_op_call, [From, State, Self, Key]),
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->
