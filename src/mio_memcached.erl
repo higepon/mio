@@ -266,18 +266,22 @@ process_values([{Key, Value} | More]) ->
 process_values([]) ->
     "END\r\n".
 
-%% process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
-%%     exit({todo, ?LINE}).
-%% %%     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-%% %%     ActiveValues = filter_expired(WriteSerializer, Values),
-%% %%     P = process_values(ActiveValues),
-%% %%     ok = gen_tcp:send(Sock, P).
+unixtime() ->
+    {Msec, Sec, _} = now(),
+    Msec * 1000 + Sec.
 
-%% %% See expiry format definition on process_get
+
+normalize_expiration_time(Time) when Time =:= ?NEVER_EXPIRE ->
+    ?NEVER_EXPIRE;
+normalize_expiration_time(Time) when Time > 60*60*24*30 ->
+    Time;
+normalize_expiration_time(Time) ->
+    unixtime() + Time.
+
 process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, ExpirationTime),
+            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, normalize_expiration_time(ExpirationTime)),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             %% It's preferable that start buckt is local.
@@ -300,6 +304,3 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, 
             Introducer
     end.
 
-%% unixtime() ->
-%%     {Msec, Sec, _} = now(),
-%%     Msec * 1000 + Sec.
