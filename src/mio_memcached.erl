@@ -137,15 +137,9 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
-                ["set", Key, Flags, ExpireDate, Bytes] ->
+                ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-%%                    ?INFOF("Start set ~p", [self()]),
-                    process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
-%%                    ?INFOF("End set ~p", [self()]),
-                    %% process_set increses process memory size and never shrink.
-                    %% We have to collect them here.
-%%                    erlang:garbage_collect(InsertedNode),
-
+                    process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
                     inet:setopts(Sock,[{packet, line}]),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["delete", Key] ->
@@ -280,10 +274,10 @@ process_values([]) ->
 %% %%     ok = gen_tcp:send(Sock, P).
 
 %% %% See expiry format definition on process_get
-process_set(Sock, Introducer, LocalSetting, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
+process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value),
+            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, ExpirationTime),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             %% It's preferable that start buckt is local.

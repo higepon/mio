@@ -41,7 +41,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, insert_op/4, delete_op/3]).
+-export([start_link/0, insert_op/5, delete_op/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -61,7 +61,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-insert_op(Serializer, Introducer, Key, Value) ->
+insert_op(Serializer, Introducer, Key, Value, ExpirationTime) ->
     gen_server:call(Serializer, {insert_op, Introducer, Key, Value}, infinity).
 
 delete_op(Serializer, StartBucket, Key) ->
