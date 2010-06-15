@@ -222,22 +222,6 @@ process_get(Sock, StartBucket, Serializer, Key) ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end.
 
-%% %%     %% enqueue to the delete queue
-%% %%     if NeedEnqueue ->
-%% %%             enqueue_to_delete(WriteSerializer, Node);
-%% %%        true -> []
-%% %%     end.
-
-%% process_values([{_, Key, Value, _} | More]) ->
-%%     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
-%%                   [Key, size(Value), Value, process_values(More)]);
-%% process_values([]) ->
-%%     "END\r\n".
-
-%% enqueue_to_delete(WriteSerializer, Node) ->
-%%     mio_node:set_expire_time_op(Node, -1),
-%%     spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
-
 filter_expired(Serializer, StartBucket, Values) ->
     lists:map(fun({Key, {Value, _ExpirationTime}}) ->
                  {Key, Value}
