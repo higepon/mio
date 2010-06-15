@@ -43,7 +43,7 @@
          range_search_asc_op/4,
          range_search_desc_op/4,
          get_key_op/1,
-         insert_op/3,
+         insert_op/3, insert_op/4,
          buddy_op/4,
          dump_op/1,
          link_right_op/3, link_left_op/3,
@@ -53,12 +53,9 @@
          link_on_level_ge1/2
         ]).
 
--define(NEVER_EXPIRE, 0).
--define(MARKED_EXPIRED, -1).
-
 %% Exported for handle_call
 -export([search_op_call/5,
-         insert_op_call/4,
+         insert_op_call/5,
          buddy_op_call/6,
          dump_op_call/1,
          delete_op_call/4,
@@ -93,9 +90,12 @@ dump_op_call(State) ->
 %%  Insertion operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, Key, Value) ->
-    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
+    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ?NEVER_EXPIRE}).
 
-insert_op_call(From, Self, Key, Value) ->
+insert_op(Introducer, Key, Value, ExpirationTime) ->
+    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ExpirationTime}).
+
+insert_op_call(From, Self, Key, Value, ExpirationTime) ->
     StartLevel = [],
     Bucket = search_bucket_op(Self, Key, StartLevel),
     Ret = mio_bucket:insert_op(Bucket, Key, Value),

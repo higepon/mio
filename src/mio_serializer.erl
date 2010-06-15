@@ -41,7 +41,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, insert_op/5, delete_op/3]).
+-export([start_link/0, insert_op/4, insert_op/5, delete_op/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -61,8 +61,11 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+insert_op(Serializer, Introducer, Key, Value) ->
+    gen_server:call(Serializer, {insert_op, Introducer, Key, Value, ?NEVER_EXPIRE}, infinity).
+
 insert_op(Serializer, Introducer, Key, Value, ExpirationTime) ->
-    gen_server:call(Serializer, {insert_op, Introducer, Key, Value}, infinity).
+    gen_server:call(Serializer, {insert_op, Introducer, Key, Value, ExpirationTime}, infinity).
 
 delete_op(Serializer, StartBucket, Key) ->
     gen_server:call(Serializer, {delete_op, StartBucket, Key}, infinity).
@@ -90,8 +93,8 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({insert_op, Introducer, Key, Value}, _From, State) ->
-    {ok, NewlyAllocatedBucket} = mio_skip_graph:insert_op(Introducer, Key, Value),
+handle_call({insert_op, Introducer, Key, Value, ExpirationTime}, _From, State) ->
+    {ok, NewlyAllocatedBucket} = mio_skip_graph:insert_op(Introducer, Key, Value, ExpirationTime),
     {reply, {ok, NewlyAllocatedBucket}, State};
 
 handle_call({delete_op, StartBucket, Key}, _From, State) ->

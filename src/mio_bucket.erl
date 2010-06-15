@@ -945,9 +945,9 @@ handle_call({insert_op, Key, Value}, From, State) ->
     spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value]),
     {noreply, State};
 
-handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
+handle_call({skip_graph_insert_op, Key, Value, ExpirationTime}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, insert_op_call, [From, Self, Key, Value]),
+    spawn_link(mio_skip_graph, insert_op_call, [From, Self, Key, Value, ExpirationTime]),
     {noreply, State};
 
 handle_call({skip_graph_delete_op, Key}, From, State) ->

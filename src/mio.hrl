@@ -23,3 +23,5 @@
 -define(WARNF(Msg, Args), error_logger:warn_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
 -define(WARN(Msg), ?WARNF(Msg, [])).
 
+-define(NEVER_EXPIRE, 0).
+-define(MARKED_EXPIRED, -1).
