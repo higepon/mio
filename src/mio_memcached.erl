@@ -132,10 +132,10 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                     process_get(Sock, StartBucket, Serializer, Key),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
+                    process_range_search_asc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
+                    process_range_search_desc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
@@ -238,24 +238,37 @@ process_get(Sock, StartBucket, Serializer, Key) ->
 %%     mio_node:set_expire_time_op(Node, -1),
 %%     spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
 
-%% filter_expired(WriteSerializer, Values) ->
-%%     lists:filter(fun({Node, _, _, ExpireDate}) ->
-%%                          {Expired, NeedEnqueue} = check_expired(ExpireDate),
-%%                          if NeedEnqueue ->
-%%                                  enqueue_to_delete(WriteSerializer, Node);
-%%                             true -> []
-%%                          end,
-%%                          not Expired
-%%                  end, Values).
+filter_expired(Serializer, StartBucket, Values) ->
+    lists:map(fun({Key, {Value, _ExpirationTime}}) ->
+                 {Key, Value}
+              end,
+              lists:filter(fun({Key, {Value, ExpirationTime}}) ->
+                                   case ExpirationTime of
+                                       ?NEVER_EXPIRE ->
+                                           true;
+                                       ?MARKED_EXPIRED ->
+                                           false;
+                                       _ ->
+                                           case unixtime() < ExpirationTime of
+                                               true ->
+                                                   true;
+                                               false ->
+                                                   enqueue_to_delete(Serializer, StartBucket, Key),
+                                                   mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
+                                                   false
+                                           end
+                                   end
+                           end,
+                           Values)).
 
-process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-    Values = mio_skip_graph:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    P = process_values(Values),
+process_range_search_asc(Sock, StartBucket, Serializer, Key1, Key2, Limit) ->
+    Values = mio_skip_graph:range_search_asc_op(StartBucket, Key1, Key2, Limit),
+    P = process_values(filter_expired(Serializer, StartBucket, Values)),
     ok = gen_tcp:send(Sock, P).
 
-process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+process_range_search_desc(Sock, StartNode, Serializer, Key1, Key2, Limit) ->
     Values = mio_skip_graph:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    P = process_values(Values),
+    P = process_values(filter_expired(Serializer, StartNode, Values)),
     ok = gen_tcp:send(Sock, P).
 
 
@@ -268,7 +281,6 @@ process_values([]) ->
 unixtime() ->
     {Msec, Sec, _} = now(),
     Msec * 1000 + Sec.
-
 
 normalize_expiration_time(Time) when Time =:= ?NEVER_EXPIRE ->
     ?NEVER_EXPIRE;
