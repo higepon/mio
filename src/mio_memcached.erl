@@ -129,7 +129,7 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                     ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["get", Key] ->
-                    process_get(Sock, StartBucket, Key),
+                    process_get(Sock, StartBucket, Serializer, Key),
                     process_request(Sock, MaxLevel, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
@@ -193,23 +193,30 @@ process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
             ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
     end.
 
-is_expired(ExpirationTime) when ExpirationTime =:= ?NEVER_EXPIRE ->
-    false;
-is_expired(ExpirationTime) when ExpirationTime =:= ?MARKED_EXPIRED ->
-    true;
-is_expired(ExpirationTime) ->
-    ExpirationTime =< unixtime().
+enqueue_to_delete(Serializer, StartBucket, Key) ->
+    spawn_link(fun () -> mio_serializer:delete_op(Serializer, StartBucket, Key) end).
 
-process_get(Sock, StartNode, Key) ->
-    case mio_skip_graph:search_op(StartNode, Key) of
+process_get(Sock, StartBucket, Serializer, Key) ->
+    case mio_skip_graph:search_op(StartBucket, Key) of
         {ok, Value, ExpirationTime} ->
-            case is_expired(ExpirationTime) of
-                true ->
-                    ok = gen_tcp:send(Sock, "END\r\n");
-                false ->
+            case ExpirationTime of
+                ?NEVER_EXPIRE ->
                     ok = gen_tcp:send(Sock, io_lib:format(
                                               "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
-                                              [Key, size(Value), Value]))
+                                              [Key, size(Value), Value]));
+                ?MARKED_EXPIRED ->
+                    ok = gen_tcp:send(Sock, "END\r\n");
+                _ ->
+                    case ExpirationTime =< unixtime() of
+                        true ->
+                            enqueue_to_delete(Serializer, StartBucket, Key),
+                            mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
+                            ok = gen_tcp:send(Sock, "END\r\n");
+                        false ->
+                            ok = gen_tcp:send(Sock, io_lib:format(
+                                                      "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
+                                                      [Key, size(Value), Value]))
+                    end
             end;
         {error, not_found} ->
             ok = gen_tcp:send(Sock, "END\r\n")
@@ -295,4 +302,3 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, 
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             Introducer
     end.
-
