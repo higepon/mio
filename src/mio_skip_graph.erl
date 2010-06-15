@@ -158,7 +158,12 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    mio_bucket:get_op(Bucket, SearchKey).
+    case mio_bucket:get_op(Bucket, SearchKey) of
+        {ok, Value, ExpirationTime} ->
+            {ok, Value};
+        Other ->
+            Other
+    end.
 
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).

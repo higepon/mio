@@ -657,7 +657,7 @@ delete_op_call(From, State, Self, Key) ->
     gen_server:reply(From, Ret).
 
 insert_op_call(From, State, Self, Key, Value, ExpirationTime)  ->
-    InsertState = just_insert_op(Self, Key, Value),
+    InsertState = just_insert_op(Self, Key, {Value, ExpirationTime}),
     NewlyAllocatedBucket =
     case {State#node.type, InsertState} of
         {c_o_l, overflow} ->
@@ -1053,7 +1053,11 @@ my_key(State) ->
     State#node.max_key.
 
 get_op(Bucket, Key) ->
-    gen_server:call(Bucket, {get_op, Key}).
+    case gen_server:call(Bucket, {get_op, Key}) of
+        {ok, {Value, ExpirationTime}} ->
+            {ok, Value, ExpirationTime};
+        Other -> Other
+    end.
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.

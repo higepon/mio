@@ -255,7 +255,7 @@ search_c_o_c_1(MakeC_O_C_Fun) ->
     %% insert
     ?assertMatch({ok, _}, mio_bucket:insert_op(Left, "key0", value0)),
 
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
+    {ok, value0} = get_op(Left, "key0"),
     ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
     ?assertEqual({ok, value0}, mio_skip_graph:search_op(Left, "key0")),
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(Left, "key1")),
@@ -306,7 +306,7 @@ search_c_o_c_2(MakeC_O_C_Fun) ->
     ?assertEqual(c_o_r, mio_bucket:get_type_op(NewBucket)),
 
     %% search
-    ?assertEqual({ok, value7}, mio_bucket:get_op(NewBucket, "key7")),
+    ?assertEqual({ok, value7}, get_op(NewBucket, "key7")),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(NewBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(NewBucket, "key2")),
@@ -406,12 +406,12 @@ search_c_o_c_4(MakeC_O_C_Fun) ->
     ?assertEqual(c_o_r, mio_bucket:get_type_op(NewBucket)),
 
     %% search
-    ?assertEqual({ok, value30}, mio_bucket:get_op(Middle, "key30")),
-    ?assertEqual({ok, value31}, mio_bucket:get_op(Middle, "key31")),
-    ?assertEqual({ok, value32}, mio_bucket:get_op(Right, "key32")),
-    ?assertEqual({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertEqual({ok, value5}, mio_bucket:get_op(Right, "key5")),
-    ?assertEqual({ok, value6}, mio_bucket:get_op(NewBucket, "key6")),
+    ?assertEqual({ok, value30}, get_op(Middle, "key30")),
+    ?assertEqual({ok, value31}, get_op(Middle, "key31")),
+    ?assertEqual({ok, value32}, get_op(Right, "key32")),
+    ?assertEqual({ok, value4}, get_op(Right, "key4")),
+    ?assertEqual({ok, value5}, get_op(Right, "key5")),
+    ?assertEqual({ok, value6}, get_op(NewBucket, "key6")),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(NewBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(NewBucket, "key2")),
@@ -485,18 +485,18 @@ search_c_o_c_5(MakeC_O_C_Fun) ->
     ?assertEqual(c_o_r, mio_bucket:get_type_op(NewBucket)),
 
     %% search
-    ?assertEqual({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertEqual({ok, value2}, mio_bucket:get_op(Left, "key2")),
-    ?assertEqual({ok, value22}, mio_bucket:get_op(Left, "key22")),
+    ?assertEqual({ok, value1}, get_op(Left, "key1")),
+    ?assertEqual({ok, value2}, get_op(Left, "key2")),
+    ?assertEqual({ok, value22}, get_op(Left, "key22")),
 
-    ?assertEqual({ok, value3}, mio_bucket:get_op(Middle, "key3")),
-    ?assertEqual({ok, value30}, mio_bucket:get_op(Middle, "key30")),
+    ?assertEqual({ok, value3}, get_op(Middle, "key3")),
+    ?assertEqual({ok, value30}, get_op(Middle, "key30")),
 
-    ?assertEqual({ok, value31}, mio_bucket:get_op(Right, "key31")),
-    ?assertEqual({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertEqual({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertEqual({ok, value31}, get_op(Right, "key31")),
+    ?assertEqual({ok, value4}, get_op(Right, "key4")),
+    ?assertEqual({ok, value5}, get_op(Right, "key5")),
 
-    ?assertEqual({ok, value6}, mio_bucket:get_op(NewBucket, "key6")),
+    ?assertEqual({ok, value6}, get_op(NewBucket, "key6")),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(NewBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(NewBucket, "key2")),
@@ -571,18 +571,18 @@ search_c_o_c_6(MakeC_O_C_Fun) ->
     ?assertEqual(c_o_r, mio_bucket:get_type_op(NewBucket)),
 
     %% search
-    ?assertEqual({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertEqual({ok, value2}, mio_bucket:get_op(Left, "key2")),
-    ?assertEqual({ok, value3}, mio_bucket:get_op(Left, "key3")),
+    ?assertEqual({ok, value1}, get_op(Left, "key1")),
+    ?assertEqual({ok, value2}, get_op(Left, "key2")),
+    ?assertEqual({ok, value3}, get_op(Left, "key3")),
 
-    ?assertEqual({ok, value30}, mio_bucket:get_op(Middle, "key30")),
-    ?assertEqual({ok, value31}, mio_bucket:get_op(Middle, "key31")),
+    ?assertEqual({ok, value30}, get_op(Middle, "key30")),
+    ?assertEqual({ok, value31}, get_op(Middle, "key31")),
 
-    ?assertEqual({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertEqual({ok, value5}, mio_bucket:get_op(Right, "key5")),
-    ?assertEqual({ok, value55}, mio_bucket:get_op(Right, "key55")),
+    ?assertEqual({ok, value4}, get_op(Right, "key4")),
+    ?assertEqual({ok, value5}, get_op(Right, "key5")),
+    ?assertEqual({ok, value55}, get_op(Right, "key55")),
 
-    ?assertEqual({ok, value6}, mio_bucket:get_op(NewBucket, "key6")),
+    ?assertEqual({ok, value6}, get_op(NewBucket, "key6")),
 
     ?assertEqual({ok, value1}, mio_skip_graph:search_op(NewBucket, "key1")),
     ?assertEqual({ok, value2}, mio_skip_graph:search_op(NewBucket, "key2")),
@@ -1220,3 +1220,11 @@ make_bucket(Type) ->
     MaxLevel = 3,
     Allocator = [],
     mio_sup:make_bucket(Allocator, Capacity, Type, MaxLevel).
+
+get_op(Bucket, Key) ->
+    case mio_bucket:get_op(Bucket, Key) of
+        {ok, Value, _ExpirationTime} ->
+            {ok, Value};
+        Other ->
+            Other
+    end.

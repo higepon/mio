@@ -90,11 +90,11 @@ insert_c_o_1() ->
 
     %% insert to most left of C1
     {ok, _} = mio_bucket:insert_op(Bucket, "key0", value0),
-    {ok, value0} = mio_bucket:get_op(Bucket, "key0"),
-    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
-    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
+    {ok, value0} = get_op(Bucket, "key0"),
+    {ok, value1} = get_op(Bucket, "key1"),
+    {ok, value2} = get_op(Bucket, "key2"),
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {error, not_found} = mio_bucket:get_op(Bucket, "key3"),
+    {error, not_found} = get_op(Bucket, "key3"),
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
@@ -102,7 +102,7 @@ insert_c_o_1() ->
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)),
 
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
+    {ok, value3} = get_op(Right, "key3"),
     {Bucket, Right}.
 
 %% C1-O2 -> C1'-O2'
@@ -113,16 +113,16 @@ insert_c_o_2() ->
 
     %% insert to most left of C1
     {ok, _} = mio_bucket:insert_op(Bucket, "key4", value4),
-    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
-    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
-    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
+    {ok, value1} = get_op(Bucket, "key1"),
+    {ok, value2} = get_op(Bucket, "key2"),
+    {ok, value3} = get_op(Bucket, "key3"),
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {error, not_found} = mio_bucket:get_op(Bucket, "key4"),
+    {error, not_found} = get_op(Bucket, "key4"),
     check_range(Bucket, MinKey, MaxKey),
 
     Right = mio_bucket:get_right_op(Bucket),
     c_o_r = mio_bucket:get_type_op(Right),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value4} = get_op(Right, "key4"),
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
@@ -134,11 +134,11 @@ insert_c_o_3() ->
     {ok, _} = mio_bucket:insert_op(Right, "key4", value4),
 
     c_o_l = mio_bucket:get_type_op(Bucket),
-    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
-    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
-    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
+    {ok, value1} = get_op(Bucket, "key1"),
+    {ok, value2} = get_op(Bucket, "key2"),
+    {ok, value3} = get_op(Bucket, "key3"),
     c_o_r = mio_bucket:get_type_op(Right),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value4} = get_op(Right, "key4"),
     left = get_left_type(Bucket),
     right = get_right_type(mio_bucket:get_right_op(Bucket)).
 
@@ -163,9 +163,9 @@ insert_c_o_4() ->
     Right = mio_bucket:get_right_op(NewRight),
     NewRight = mio_bucket:get_left_op(Right),
 
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
-    {ok, value5} = mio_bucket:get_op(Right, "key5"),
-    {ok, value6} = mio_bucket:get_op(Right, "key6"),
+    {ok, value4} = get_op(Right, "key4"),
+    {ok, value5} = get_op(Right, "key5"),
+    {ok, value6} = get_op(Right, "key6"),
 
     %%  C1(C1_min, C1_stored_max)
     %%  O*(C1_stored_max, O2_min)
@@ -204,12 +204,12 @@ insert_c_o_5() ->
     NewRight = mio_bucket:get_left_op(Right),
     c_o_c_m = mio_bucket:get_type_op(NewRight),
 
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
-    {ok, value5} = mio_bucket:get_op(Right, "key5"),
-    {ok, value0} = mio_bucket:get_op(Bucket, "key0"),
-    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
-    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
+    {ok, value5} = get_op(Right, "key5"),
+    {ok, value0} = get_op(Bucket, "key0"),
+    {ok, value1} = get_op(Bucket, "key1"),
+    {ok, value2} = get_op(Bucket, "key2"),
 
     %%  C1(C1_min, C1_stored_max)
     %%  O*(C1_stored_max, O2_min)
@@ -247,12 +247,12 @@ insert_c_o_6() ->
     Right = mio_bucket:get_right_op(NewRight),
     NewRight = mio_bucket:get_left_op(Right),
 
-    {ok, value31} = mio_bucket:get_op(Right, "key31"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
-    {ok, value5} = mio_bucket:get_op(Right, "key5"),
-    {ok, value1} = mio_bucket:get_op(Bucket, "key1"),
-    {ok, value2} = mio_bucket:get_op(Bucket, "key2"),
-    {ok, value3} = mio_bucket:get_op(Bucket, "key3"),
+    {ok, value31} = get_op(Right, "key31"),
+    {ok, value4} = get_op(Right, "key4"),
+    {ok, value5} = get_op(Right, "key5"),
+    {ok, value1} = get_op(Bucket, "key1"),
+    {ok, value2} = get_op(Bucket, "key2"),
+    {ok, value3} = get_op(Bucket, "key3"),
 
     left = get_left_type(Bucket),
     right = get_right_type(Right),
@@ -271,11 +271,11 @@ insert_c_o_c_1() ->
     {ok, _} = mio_bucket:insert_op(Left, "key10", value10),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value10} = mio_bucket:get_op(Left, "key10"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value10} = get_op(Left, "key10"),
 
-    {ok, value2} = mio_bucket:get_op(Middle, "key2"),
+    {ok, value2} = get_op(Middle, "key2"),
 
     true = mio_bucket:is_full_op(Right),
     c_o_c_l = mio_bucket:get_type_op(Left),
@@ -297,11 +297,11 @@ insert_c_o_c_2() ->
     {ok, _} = mio_bucket:insert_op(Left, "key3", value3),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
 
-    {ok, value3} = mio_bucket:get_op(Middle, "key3"),
+    {ok, value3} = get_op(Middle, "key3"),
 
     true = mio_bucket:is_full_op(Right),
     c_o_c_l = mio_bucket:get_type_op(Left),
@@ -329,9 +329,9 @@ insert_c_o_c_3() ->
     %% Check C1
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
     ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
 
@@ -345,9 +345,9 @@ insert_c_o_c_3() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
-    {ok, value5} = mio_bucket:get_op(Right, "key5"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
+    {ok, value5} = get_op(Right, "key5"),
     Middle = mio_bucket:get_left_op(Right),
     ?assertEqual({{"key3", true}, {"key5", true}}, mio_bucket:get_range_op(Right)),
 
@@ -355,7 +355,7 @@ insert_c_o_c_3() ->
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value7} = mio_bucket:get_op(MostRight, "key7"),
+    {ok, value7} = get_op(MostRight, "key7"),
     Right = mio_bucket:get_left_op(MostRight),
     ?assertEqual({{"key5", false}, {?MAX_KEY, false}},mio_bucket:get_range_op(MostRight)),
 
@@ -376,9 +376,9 @@ insert_c_o_c_4() ->
     %% Check C1
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
     ?assertEqual({{?MIN_KEY, false}, {"key2", true}}, mio_bucket:get_range_op(Left)),
 
@@ -392,9 +392,9 @@ insert_c_o_c_4() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, "key22"),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value22} = get_op(Right, "key22"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
     ?assertEqual({{"key22", true}, {"key4", true}}, mio_bucket:get_range_op(Right)),
 
@@ -402,7 +402,7 @@ insert_c_o_c_4() ->
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
+    {ok, value5} = get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
     ?assertEqual({{"key4", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(MostRight)),
 
@@ -430,16 +430,16 @@ insert_c_o_c_5() ->
     {{RMin, _}, {RMax, _}} = mio_bucket:get_range_op(Right),
 
     true = mio_bucket:is_full_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
-    {ok, value5} = mio_bucket:get_op(Right, "key5"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
+    {ok, value5} = get_op(Right, "key5"),
 
-    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
+    {ok, value22} = get_op(Middle, "key22"),
 
     true = mio_bucket:is_full_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     c_o_c_l = mio_bucket:get_type_op(Left),
     c_o_c_m = mio_bucket:get_type_op(Middle),
     c_o_c_r = mio_bucket:get_type_op(Right),
@@ -462,17 +462,17 @@ insert_c_o_c_6() ->
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value00} = mio_bucket:get_op(Left, "key00"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value00} = get_op(Left, "key00"),
+    {ok, value1} = get_op(Left, "key1"),
     Middle = mio_bucket:get_right_op(Left),
     ?assertEqual({{?MIN_KEY, false}, {"key1", true}}, mio_bucket:get_range_op(Left)),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value2} = mio_bucket:get_op(Middle, "key2"),
-    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
+    {ok, value2} = get_op(Middle, "key2"),
+    {ok, value21} = get_op(Middle, "key21"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
     ?assertEqual({{"key1", false}, {"key21", true}}, mio_bucket:get_range_op(Middle)),
@@ -480,16 +480,16 @@ insert_c_o_c_6() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, "key22"),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value22} = get_op(Right, "key22"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
     ?assertEqual({{"key21", false}, {"key4", true}}, mio_bucket:get_range_op(Right)),
     %% Check O4
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
+    {ok, value5} = get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
     ?assertEqual({{"key4", false}, {?MAX_KEY, false}}, mio_bucket:get_range_op(MostRight)),
 
@@ -512,17 +512,17 @@ insert_c_o_c_7() ->
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
     {{?MIN_KEY, false}, {"key2", true}} = mio_bucket:get_range_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value20} = mio_bucket:get_op(Middle, "key20"),
-    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
+    {ok, value20} = get_op(Middle, "key20"),
+    {ok, value21} = get_op(Middle, "key21"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
     {{"key2", false}, {"key21", true}} = mio_bucket:get_range_op(Middle),
@@ -530,9 +530,9 @@ insert_c_o_c_7() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value22} = mio_bucket:get_op(Right, "key22"),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value22} = get_op(Right, "key22"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
     {{"key21", false}, {"key4", true}} = mio_bucket:get_range_op(Right),
 
@@ -540,7 +540,7 @@ insert_c_o_c_7() ->
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
+    {ok, value5} = get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
     {{"key4", false}, {?MAX_KEY, false}} = mio_bucket:get_range_op(MostRight),
 
@@ -565,17 +565,17 @@ insert_c_o_c_8() ->
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
     {{?MIN_KEY, false}, {"key2", true}} = mio_bucket:get_range_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
-    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
+    {ok, value21} = get_op(Middle, "key21"),
+    {ok, value22} = get_op(Middle, "key22"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
     {{"key2", false}, {"key22", true}} = mio_bucket:get_range_op(Middle),
@@ -583,9 +583,9 @@ insert_c_o_c_8() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value23} = mio_bucket:get_op(Right, "key23"),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value23} = get_op(Right, "key23"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value4} = get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
     {{"key22", false}, {"key4", true}} = mio_bucket:get_range_op(Right),
 
@@ -593,7 +593,7 @@ insert_c_o_c_8() ->
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
+    {ok, value5} = get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
     {{"key4", false}, {?MAX_KEY, false}} = mio_bucket:get_range_op(MostRight),
 
@@ -620,17 +620,17 @@ insert_c_o_c_9() ->
     %% Check C1'
     true = mio_bucket:is_full_op(Left),
     c_o_l = mio_bucket:get_type_op(Left),
-    {ok, value0} = mio_bucket:get_op(Left, "key0"),
-    {ok, value1} = mio_bucket:get_op(Left, "key1"),
-    {ok, value2} = mio_bucket:get_op(Left, "key2"),
+    {ok, value0} = get_op(Left, "key0"),
+    {ok, value1} = get_op(Left, "key1"),
+    {ok, value2} = get_op(Left, "key2"),
     Middle = mio_bucket:get_right_op(Left),
     {{?MIN_KEY, false}, {"key2", true}} = mio_bucket:get_range_op(Left),
 
     %% Check O2
     false = mio_bucket:is_full_op(Middle),
     c_o_r = mio_bucket:get_type_op(Middle),
-    {ok, value21} = mio_bucket:get_op(Middle, "key21"),
-    {ok, value22} = mio_bucket:get_op(Middle, "key22"),
+    {ok, value21} = get_op(Middle, "key21"),
+    {ok, value22} = get_op(Middle, "key22"),
     Right = mio_bucket:get_right_op(Middle),
     Left = mio_bucket:get_left_op(Middle),
     {{"key2", false}, {"key3", false}} = mio_bucket:get_range_op(Middle),
@@ -638,9 +638,9 @@ insert_c_o_c_9() ->
     %% Check C3'
     true = mio_bucket:is_full_op(Right),
     c_o_l = mio_bucket:get_type_op(Right),
-    {ok, value3} = mio_bucket:get_op(Right, "key3"),
-    {ok, value31} = mio_bucket:get_op(Right, "key31"),
-    {ok, value4} = mio_bucket:get_op(Right, "key4"),
+    {ok, value3} = get_op(Right, "key3"),
+    {ok, value31} = get_op(Right, "key31"),
+    {ok, value4} = get_op(Right, "key4"),
     Middle = mio_bucket:get_left_op(Right),
     {{"key3", true}, {"key4", true}} = mio_bucket:get_range_op(Right),
 
@@ -648,7 +648,7 @@ insert_c_o_c_9() ->
     MostRight = mio_bucket:get_right_op(Right),
     false = mio_bucket:is_full_op(MostRight),
     c_o_r = mio_bucket:get_type_op(MostRight),
-    {ok, value5} = mio_bucket:get_op(MostRight, "key5"),
+    {ok, value5} = get_op(MostRight, "key5"),
     Right = mio_bucket:get_left_op(MostRight),
     {{"key4", false}, {?MAX_KEY, false}} = mio_bucket:get_range_op(MostRight),
 
@@ -667,7 +667,7 @@ delete_o_empty() ->
     %% []
     ?assertMatch({error, not_found}, mio_bucket:delete_op(Bucket, "key1")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({error, not_found}, get_op(Bucket, "key1")),
 
     %% type
     ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
@@ -684,12 +684,12 @@ delete_o() ->
     {ok, Bucket} = make_bucket(alone),
     {ok, _} = mio_bucket:insert_op(Bucket, "key1", value1),
 
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({ok, value1}, get_op(Bucket, "key1")),
 
     %% []
     ?assertMatch({ok, []}, mio_bucket:delete_op(Bucket, "key1")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
+    ?assertMatch({error, not_found}, get_op(Bucket, "key1")),
 
     %% type
     ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
@@ -706,12 +706,12 @@ delete_c_o_1() ->
     %% [0 2 3] []
     ?assertMatch({ok, []}, mio_bucket:delete_op(Bucket, "key1")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
-    ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")),
+    ?assertMatch({ok, value0}, get_op(Bucket, "key0")),
+    ?assertMatch({error, not_found}, get_op(Bucket, "key1")),
+    ?assertMatch({ok, value2}, get_op(Bucket, "key2")),
+    ?assertMatch({ok, value3}, get_op(Bucket, "key3")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, get_op(Right, "key3")),
     ?assertMatch(true, mio_bucket:is_empty_op(Right)),
 
     %% type
@@ -731,11 +731,11 @@ delete_c_o_2() ->
     %% [0 1 2] []
     ?assertMatch({ok, []}, mio_bucket:delete_op(Right, "key3")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Bucket, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Bucket, "key1")),
-    ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
+    ?assertMatch({ok, value0}, get_op(Bucket, "key0")),
+    ?assertMatch({ok, value1}, get_op(Bucket, "key1")),
+    ?assertMatch({ok, value2}, get_op(Bucket, "key2")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, get_op(Right, "key3")),
     ?assertMatch(true, mio_bucket:is_empty_op(Right)),
 
     %% type
@@ -751,21 +751,21 @@ delete_c_o_2() ->
 delete_c_o_c_1() ->
     %% [0, 1, 10] [2] [3, 4, 5]
     {Left, Middle, Right} = insert_c_o_c_1(),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
+    ?assertMatch({ok, value10}, get_op(Left, "key10")),
 
     %% [0, 1, 2] [] [3, 4, 5]
     ?assertMatch({ok, []}, mio_bucket:delete_op(Left, "key10")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertMatch({ok, value2}, mio_bucket:get_op(Left, "key2")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Left, "key10")),
+    ?assertMatch({ok, value0}, get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, get_op(Left, "key1")),
+    ?assertMatch({ok, value2}, get_op(Left, "key2")),
+    ?assertMatch({error, not_found}, get_op(Left, "key10")),
 
     ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertMatch({ok, value3}, get_op(Right, "key3")),
+    ?assertMatch({ok, value4}, get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, get_op(Right, "key5")),
 
     %% type
     ?assertMatch(c_o_c_l, mio_bucket:get_type_op(Left)),
@@ -786,16 +786,16 @@ delete_c_o_c_2() ->
     %% [0, 1, 10] [] [3, 4, 5]
     ?assertMatch({ok, []}, mio_bucket:delete_op(Middle, "key2")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Middle, "key2")),
+    ?assertMatch({ok, value0}, get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, get_op(Left, "key1")),
+    ?assertMatch({ok, value10}, get_op(Left, "key10")),
+    ?assertMatch({error, not_found}, get_op(Middle, "key2")),
 
     ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertMatch({ok, value3}, get_op(Right, "key3")),
+    ?assertMatch({ok, value4}, get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, get_op(Right, "key5")),
 
     %% type
     ?assertMatch(c_o_c_l, mio_bucket:get_type_op(Left)),
@@ -816,15 +816,15 @@ delete_c_o_c_3() ->
     %% [0, 1, 10] [] [2, 3, 5]
     ?assertMatch({ok, []}, mio_bucket:delete_op(Right, "key4")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Middle, "key2")),
+    ?assertMatch({ok, value0}, get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, get_op(Left, "key1")),
+    ?assertMatch({ok, value10}, get_op(Left, "key10")),
+    ?assertMatch({error, not_found}, get_op(Middle, "key2")),
 
-    ?assertMatch({ok, value2}, mio_bucket:get_op(Right, "key2")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertMatch({ok, value2}, get_op(Right, "key2")),
+    ?assertMatch({ok, value3}, get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, get_op(Right, "key5")),
 
     %% type
     ?assertMatch(c_o_c_l, mio_bucket:get_type_op(Left)),
@@ -854,15 +854,15 @@ delete_c_O_c_1() ->
     %% the Middle bucket is removed from Skip Graph
     ?assertMatch({ok, [Middle]}, mio_bucket:delete_op(Left, "key10")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Left, "key3")),
+    ?assertMatch({ok, value0}, get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, get_op(Left, "key1")),
+    ?assertMatch({ok, value3}, get_op(Left, "key3")),
 
     ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(Right, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertMatch({error, not_found}, get_op(Right, "key3")),
+    ?assertMatch({ok, value4}, get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, get_op(Right, "key5")),
 
     %% type
     ?assertMatch(c_o_l, mio_bucket:get_type_op(Left)),
@@ -886,15 +886,15 @@ delete_c_O_c_2() ->
     %% the Middle bucket is removed from Skip Graph
     ?assertMatch({ok, [Middle]}, mio_bucket:delete_op(Right, "key4")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(Left, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(Left, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(Left, "key10")),
+    ?assertMatch({ok, value0}, get_op(Left, "key0")),
+    ?assertMatch({ok, value1}, get_op(Left, "key1")),
+    ?assertMatch({ok, value10}, get_op(Left, "key10")),
 
     ?assertMatch(true, mio_bucket:is_empty_op(Middle)),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Right, "key3")),
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Right, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(Right, "key5")),
+    ?assertMatch({ok, value3}, get_op(Right, "key3")),
+    ?assertMatch({error, not_found}, get_op(Right, "key4")),
+    ?assertMatch({ok, value5}, get_op(Right, "key5")),
 
     %% type
     ?assertMatch(c_o_l, mio_bucket:get_type_op(Left)),
@@ -930,9 +930,9 @@ delete_c_O_1() ->
     %% [2 3]
     ?assertMatch({ok, [Right]}, mio_bucket:delete_op(Bucket, "key1")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(Bucket, "key1")),
-    ?assertMatch({ok, value2}, mio_bucket:get_op(Bucket, "key2")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(Bucket, "key3")),
+    ?assertMatch({error, not_found}, get_op(Bucket, "key1")),
+    ?assertMatch({ok, value2}, get_op(Bucket, "key2")),
+    ?assertMatch({ok, value3}, get_op(Bucket, "key3")),
 
     %% type
     ?assertMatch(alone, mio_bucket:get_type_op(Bucket)),
@@ -954,15 +954,15 @@ make_c_o__c_O() ->
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({ok, value2}, mio_bucket:get_op(O2, "key2")),
+    ?assertMatch({ok, value2}, get_op(O2, "key2")),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value3}, get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
     {C1, O2, C3, O4}.
 
@@ -983,21 +983,21 @@ make_c_O__c_o_c() ->
     ?assertMatch(c_o_c_m, mio_bucket:get_type_op(NewBucket)),
     ?assertMatch(c_o_c_r, mio_bucket:get_type_op(O4)),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
     ?assertEqual(true, mio_bucket:is_empty_op(O2)),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value3}, get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
-    ?assertMatch({ok, value55}, mio_bucket:get_op(NewBucket, "key55")),
+    ?assertMatch({ok, value55}, get_op(NewBucket, "key55")),
 
-    ?assertMatch({ok, value6}, mio_bucket:get_op(O4, "key6")),
-    ?assertMatch({ok, value7}, mio_bucket:get_op(O4, "key7")),
-    ?assertMatch({ok, value8}, mio_bucket:get_op(O4, "key8")),
+    ?assertMatch({ok, value6}, get_op(O4, "key6")),
+    ?assertMatch({ok, value7}, get_op(O4, "key7")),
+    ?assertMatch({ok, value8}, get_op(O4, "key8")),
 
     {C1, O2, C3, NewBucket, O4}.
 
@@ -1029,20 +1029,20 @@ make_c_o_c__c_O() ->
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({ok, value19}, mio_bucket:get_op(NewBucket, "key19")),
+    ?assertMatch({ok, value19}, get_op(NewBucket, "key19")),
 
-    ?assertMatch({ok, value2}, mio_bucket:get_op(O2, "key2")),
-    ?assertMatch({ok, value21}, mio_bucket:get_op(O2, "key21")),
-    ?assertMatch({ok, value22}, mio_bucket:get_op(O2, "key22")),
+    ?assertMatch({ok, value2}, get_op(O2, "key2")),
+    ?assertMatch({ok, value21}, get_op(O2, "key21")),
+    ?assertMatch({ok, value22}, get_op(O2, "key22")),
 
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value3}, get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
     {C1, NewBucket, O2, C3, O4}.
 
@@ -1068,17 +1068,17 @@ make_c_O__c_o() ->
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C3)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O4)),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({error, not_found}, mio_bucket:get_op(O2, "key2")),
+    ?assertMatch({error, not_found}, get_op(O2, "key2")),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value3}, get_op(C3, "key3")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
-    ?assertMatch({ok, value6}, mio_bucket:get_op(O4, "key6")),
+    ?assertMatch({ok, value6}, get_op(O4, "key6")),
 
     {C1, O2, C3, O4}.
 
@@ -1105,13 +1105,13 @@ delete_c_O_2() ->
     %%   [0, 1, 10] [] | [2, 4, 5] []
     ?assertMatch({ok, []}, mio_bucket:delete_op(C3, "key3")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({ok, value2}, mio_bucket:get_op(C3, "key2")),
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value2}, get_op(C3, "key2")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -1131,13 +1131,13 @@ delete_c_O_3() ->
     %%   [0, 10, 3] [] | [4, 5, 6] []
     ?assertMatch({ok, []}, mio_bucket:delete_op(C1, "key1")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, get_op(C1, "key3")),
 
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
-    ?assertMatch({ok, value6}, mio_bucket:get_op(C3, "key6")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
+    ?assertMatch({ok, value6}, get_op(C3, "key6")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -1159,19 +1159,19 @@ delete_c_O_4() ->
     %% [0, 1, 10] [] [19, 2, 21] | [22, 3, 5] []
     ?assertMatch({ok, []}, mio_bucket:delete_op(C4, "key4")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
     ?assertEqual(true, mio_bucket:is_empty_op(O2)),
 
-    ?assertMatch({ok, value19}, mio_bucket:get_op(C3, "key19")),
-    ?assertMatch({ok, value2}, mio_bucket:get_op(C3, "key2")),
-    ?assertMatch({ok, value21}, mio_bucket:get_op(C3, "key21")),
+    ?assertMatch({ok, value19}, get_op(C3, "key19")),
+    ?assertMatch({ok, value2}, get_op(C3, "key2")),
+    ?assertMatch({ok, value21}, get_op(C3, "key21")),
 
-    ?assertMatch({ok, value22}, mio_bucket:get_op(C4, "key22")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C4, "key3")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C4, "key5")),
+    ?assertMatch({ok, value22}, get_op(C4, "key22")),
+    ?assertMatch({ok, value3}, get_op(C4, "key3")),
+    ?assertMatch({ok, value5}, get_op(C4, "key5")),
 
     ?assertEqual(true, mio_bucket:is_empty_op(O5)),
 
@@ -1195,21 +1195,21 @@ delete_c_O_5() ->
     %% [0, 10, 3] [] | [4, 5, 55] [] [6 7 8]
     ?assertMatch({ok, []}, mio_bucket:delete_op(C1, "key1")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, get_op(C1, "key3")),
 
     ?assertEqual(true, mio_bucket:is_empty_op(O2)),
 
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
-    ?assertMatch({ok, value55}, mio_bucket:get_op(C3, "key55")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
+    ?assertMatch({ok, value55}, get_op(C3, "key55")),
 
     ?assertEqual(true, mio_bucket:is_empty_op(O4)),
 
-    ?assertMatch({ok, value6}, mio_bucket:get_op(C5, "key6")),
-    ?assertMatch({ok, value7}, mio_bucket:get_op(C5, "key7")),
-    ?assertMatch({ok, value8}, mio_bucket:get_op(C5, "key8")),
+    ?assertMatch({ok, value6}, get_op(C5, "key6")),
+    ?assertMatch({ok, value7}, get_op(C5, "key7")),
+    ?assertMatch({ok, value8}, get_op(C5, "key8")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(O2)),
@@ -1236,12 +1236,12 @@ delete_c_O_6() ->
     %% [0, 1, 10] [3, 5]
     ?assertMatch({ok, [O2, O4]}, mio_bucket:delete_op(C3, "key4")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C3, "key3")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value3}, get_op(C3, "key3")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(C3)),
@@ -1266,12 +1266,12 @@ delete_c_O_7() ->
     %% [0, 10, 3] [4, 5]
     ?assertMatch({ok, [O2, O4]}, mio_bucket:delete_op(C1, "key1")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, get_op(C1, "key3")),
 
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
     ?assertMatch(c_o_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_r, mio_bucket:get_type_op(C3)),
@@ -1298,16 +1298,16 @@ delete_c_O_8() ->
     %% [0, 1, 10] [2, 21] [22, 3, 5]
     ?assertMatch({ok, [O2, O5]}, mio_bucket:delete_op(C4, "key4")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value1}, mio_bucket:get_op(C1, "key1")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value1}, get_op(C1, "key1")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
 
-    ?assertMatch({ok, value2}, mio_bucket:get_op(C3, "key2")),
-    ?assertMatch({ok, value21}, mio_bucket:get_op(C3, "key21")),
+    ?assertMatch({ok, value2}, get_op(C3, "key2")),
+    ?assertMatch({ok, value21}, get_op(C3, "key21")),
 
-    ?assertMatch({ok, value22}, mio_bucket:get_op(C4, "key22")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C4, "key3")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C4, "key5")),
+    ?assertMatch({ok, value22}, get_op(C4, "key22")),
+    ?assertMatch({ok, value3}, get_op(C4, "key3")),
+    ?assertMatch({ok, value5}, get_op(C4, "key5")),
 
 
     ?assertMatch(c_o_c_l, mio_bucket:get_type_op(C1)),
@@ -1337,16 +1337,16 @@ delete_c_O_9() ->
     %% [0, 10, 3] [4, 5] [6, 7 8]
     ?assertMatch({ok, [O2, O4]}, mio_bucket:delete_op(C1, "key1")),
 
-    ?assertMatch({ok, value0}, mio_bucket:get_op(C1, "key0")),
-    ?assertMatch({ok, value10}, mio_bucket:get_op(C1, "key10")),
-    ?assertMatch({ok, value3}, mio_bucket:get_op(C1, "key3")),
+    ?assertMatch({ok, value0}, get_op(C1, "key0")),
+    ?assertMatch({ok, value10}, get_op(C1, "key10")),
+    ?assertMatch({ok, value3}, get_op(C1, "key3")),
 
-    ?assertMatch({ok, value4}, mio_bucket:get_op(C3, "key4")),
-    ?assertMatch({ok, value5}, mio_bucket:get_op(C3, "key5")),
+    ?assertMatch({ok, value4}, get_op(C3, "key4")),
+    ?assertMatch({ok, value5}, get_op(C3, "key5")),
 
-    ?assertMatch({ok, value6}, mio_bucket:get_op(C5, "key6")),
-    ?assertMatch({ok, value7}, mio_bucket:get_op(C5, "key7")),
-    ?assertMatch({ok, value8}, mio_bucket:get_op(C5, "key8")),
+    ?assertMatch({ok, value6}, get_op(C5, "key6")),
+    ?assertMatch({ok, value7}, get_op(C5, "key7")),
+    ?assertMatch({ok, value8}, get_op(C5, "key8")),
 
     ?assertMatch(c_o_c_l, mio_bucket:get_type_op(C1)),
     ?assertMatch(c_o_c_m, mio_bucket:get_type_op(C3)),
@@ -1397,3 +1397,11 @@ make_bucket(Type) ->
     MaxLevel = 3,
     Allocator = [],
     mio_sup:make_bucket(Allocator, Capacity, Type, MaxLevel).
+
+get_op(Bucket, Key) ->
+    case mio_bucket:get_op(Bucket, Key) of
+        {ok, Value, _ExpirationTime} ->
+            {ok, Value};
+        Other ->
+            Other
+    end.
