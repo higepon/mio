@@ -46,12 +46,13 @@
          get_range_values_op/4,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
-         insert_op/3, just_insert_op/3,
+         insert_op/3, insert_op/4,
+         just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
          take_largest_op/1, take_smallest_op/1,
          get_largest_op/1, get_smallest_op/1,
-         insert_op_call/5,
+         insert_op_call/6,
          delete_op_call/4,
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
@@ -253,8 +254,11 @@ set_min_key_op(Bucket, MinKey, EncompassMin) ->
 delete_op(Bucket, Key) ->
     gen_server:call(Bucket, {delete_op, Key}).
 
+insert_op(Bucket, Key, Value, ExpirationTime) ->
+    gen_server:call(Bucket, {insert_op, Key, Value, ExpirationTime}).
+
 insert_op(Bucket, Key, Value) ->
-    gen_server:call(Bucket, {insert_op, Key, Value}).
+    gen_server:call(Bucket, {insert_op, Key, Value, ?NEVER_EXPIRE}).
 
 just_insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {just_insert_op, Key, Value}).
@@ -652,7 +656,7 @@ delete_op_call(From, State, Self, Key) ->
           end,
     gen_server:reply(From, Ret).
 
-insert_op_call(From, State, Self, Key, Value)  ->
+insert_op_call(From, State, Self, Key, Value, ExpirationTime)  ->
     InsertState = just_insert_op(Self, Key, Value),
     NewlyAllocatedBucket =
     case {State#node.type, InsertState} of
@@ -940,9 +944,9 @@ handle_call({just_insert_op, Key, Value}, _From, State) ->
             {reply, ok, State#node{store=NewStore}}
     end;
 
-handle_call({insert_op, Key, Value}, From, State) ->
+handle_call({insert_op, Key, Value, ExpirationTime}, From, State) ->
     Self = self(),
-    spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value]),
+    spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value, ExpirationTime]),
     {noreply, State};
 
 handle_call({skip_graph_insert_op, Key, Value, ExpirationTime}, From, State) ->

@@ -98,7 +98,7 @@ insert_op(Introducer, Key, Value, ExpirationTime) ->
 insert_op_call(From, Self, Key, Value, ExpirationTime) ->
     StartLevel = [],
     Bucket = search_bucket_op(Self, Key, StartLevel),
-    Ret = mio_bucket:insert_op(Bucket, Key, Value),
+    Ret = mio_bucket:insert_op(Bucket, Key, Value, ExpirationTime),
     gen_server:reply(From, Ret).
 
 %%--------------------------------------------------------------------
