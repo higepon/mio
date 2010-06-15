@@ -53,6 +53,9 @@
          link_on_level_ge1/2
         ]).
 
+-define(NEVER_EXPIRE, 0).
+-define(MARKED_EXPIRED, -1).
+
 %% Exported for handle_call
 -export([search_op_call/5,
          insert_op_call/4,
