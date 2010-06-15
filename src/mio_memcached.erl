@@ -193,35 +193,27 @@ process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
             ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
     end.
 
-%% %% Expiry format definition
-%% %% Expire:
-%% %%   0 -> never expire
-%% %%   -1 -> expired and enqueued to delete queue
-%% %%   greater than zero -> expiration date in Unix time format
-%% %% Returns {Expired?, NeedEnqueue}
-%% check_expired(0) ->
-%%     exit({todo, ?LINE}),
-%%     {false, false};
-%% check_expired(-1) ->
-%%     exit({todo, ?LINE}),
-%%     {true, false};
-%% check_expired(ExpireDate) ->
-%%     exit({todo, ?LINE}),
-%%     Expired = ExpireDate =< unixtime(),
-%%     {Expired, Expired}.
+is_expired(ExpirationTime) when ExpirationTime =:= ?NEVER_EXPIRE ->
+    false;
+is_expired(ExpirationTime) when ExpirationTime =:= ?MARKED_EXPIRED ->
+    true;
+is_expired(ExpirationTime) ->
+    ExpirationTime =< unixtime().
 
-
-%% todo expire
 process_get(Sock, StartNode, Key) ->
     case mio_skip_graph:search_op(StartNode, Key) of
-        {ok, Value} ->
-            ok = gen_tcp:send(Sock, io_lib:format(
-                                      "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
-                                      [Key, size(Value), Value]));
+        {ok, Value, ExpirationTime} ->
+            case is_expired(ExpirationTime) of
+                true ->
+                    ok = gen_tcp:send(Sock, "END\r\n");
+                false ->
+                    ok = gen_tcp:send(Sock, io_lib:format(
+                                              "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
+                                              [Key, size(Value), Value]))
+            end;
         {error, not_found} ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end.
-%% %%    erlang:garbage_collect(Node),
 
 %% %%     %% enqueue to the delete queue
 %% %%     if NeedEnqueue ->
