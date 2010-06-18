@@ -173,5 +173,6 @@ range_search_expiration() ->
 stats() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
-    {ok, _} = memcached:stats(Conn),
+    {ok, [{"uptime", Uptime}]} = memcached:stats(Conn),
+    ?assert(Uptime >= 0 andalso Uptime < 3),
     ok = memcached:disconnect(Conn).
