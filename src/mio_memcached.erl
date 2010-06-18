@@ -36,7 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/6]).
--export([memcached/5, process_request/4]).
+-export([memcached/5, process_request/3]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
@@ -98,7 +98,7 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->
-                    mio_accept(Listen, MaxLevel, Serializer, LocalSetting);
+                    mio_accept(Listen, Serializer, LocalSetting);
                 {error, eaddrinuse} ->
                     ?FATALF("Port ~p is in use", [Port]);
                 {error, Reason} ->
@@ -108,17 +108,17 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
          throw:Reason -> ?FATALF("~p", [Reason])
     end.
 
-mio_accept(Listen, MaxLevel, Serializer, LocalSetting) ->
+mio_accept(Listen, Serializer, LocalSetting) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_request, [Sock, MaxLevel, Serializer, LocalSetting]),
-            mio_accept(Listen, MaxLevel, Serializer, LocalSetting);
+            spawn_link(?MODULE, process_request, [Sock, Serializer, LocalSetting]),
+            mio_accept(Listen, Serializer, LocalSetting);
         Other ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
 
-process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
+process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
@@ -127,35 +127,35 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
             case Token of
                 ["get_start_bucket"] ->
                     ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     process_get(Sock, StartBucket, Serializer, Key),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     process_range_search_asc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
                     process_range_search_desc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
                     inet:setopts(Sock,[{packet, line}]),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
                 ["delete", Key] ->
                     process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    process_request(Sock, Serializer, LocalSetting);
 %%                 ["delete", Key, _Time] ->
 %%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, Serializer);
 %%                 ["delete", Key, _Time, _NoReply] ->
 %%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+%%                     process_request(Sock, StartBucketEts, Serializer);
 %%                 ["quit"] ->
 %%                     ok = gen_tcp:close(Sock);
-%%                 ["stats"] ->
-%%                     process_stats(Sock, StartBucket, MaxLevel),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+                ["stats"] ->
+                    process_stats(Sock),
+                    process_request(Sock, Serializer, LocalSetting);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
@@ -167,9 +167,8 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
     end.
 
 
-%% process_stats(Sock, Node, MaxLevel) ->
-%%     mio_skip_graph:dump_op(Node),
-%%     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
+process_stats(Sock) ->
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [uptime, hoge])).
 
 
 process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
