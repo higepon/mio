@@ -38,7 +38,8 @@ mio_test_() ->
       [?_test(expiration())],
       [?_test(range_search())],
       [?_test(range_search_alphabet())],
-      [?_test(range_search_expiration())]
+      [?_test(range_search_expiration())],
+      [?_test(stats())]
      ]
     }.
 
@@ -167,4 +168,10 @@ range_search_expiration() ->
     timer:sleep(1000),
     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "asc"]),
     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
+    ok = memcached:disconnect(Conn).
+
+stats() ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "1001", "Hello"),
+    {ok, _} = memcached:stats(Conn),
     ok = memcached:disconnect(Conn).
