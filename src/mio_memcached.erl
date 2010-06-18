@@ -161,7 +161,7 @@ process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
             end;
         {error, closed} ->
-            ok;
+            ok = gen_tcp:close(Sock);
         Error ->
             ?ERRORF("memcached socket error: ~p\n", [Error])
     end.
