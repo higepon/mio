@@ -176,7 +176,7 @@ make_stats([{StatKey, StatValue} | More]) ->
 
 process_stats(Sock, LocalSetting) ->
     Stats = [{uptime, mio_stats:uptime(LocalSetting)},
-             {total_items, 1}
+             {total_items, mio_stats:total_items(LocalSetting)}
              ],
     ok = gen_tcp:send(Sock, make_stats(Stats)).
 

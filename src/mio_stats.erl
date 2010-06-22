@@ -35,7 +35,7 @@
 %%% Created : 22 June 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_stats).
--export([init_uptime/1, uptime/1]).
+-export([init_uptime/1, uptime/1, total_items/1]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
@@ -47,3 +47,6 @@ uptime(LocalSetting) ->
     {ok, StartSec} = mio_local_store:get(LocalSetting, stats_uptime),
     {_, NowSec, _} = now(),
     NowSec - StartSec.
+
+total_items(LocalSetting) ->
+    1.
