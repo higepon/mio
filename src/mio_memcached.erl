@@ -96,9 +96,7 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
     try init_start_node(Sup, MaxLevel, Capacity, BootNode) of
         {Serializer, LocalSetting} ->
 
-            mio_stats:init_uptime(LocalSetting),
-            mio_stats:init_total_items(LocalSetting),
-            mio_stats:init_cmd_get(LocalSetting),
+            mio_stats:init(LocalSetting),
 
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of

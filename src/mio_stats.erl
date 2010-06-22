@@ -35,11 +35,17 @@
 %%% Created : 22 June 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
 -module(mio_stats).
--export([init_uptime/1, uptime/1,
-         init_total_items/1, total_items/1, inc_total_items/1,
-         init_cmd_get/1, cmd_get/1, inc_cmd_get/1]).
+-export([init/1,
+         uptime/1,
+         total_items/1, inc_total_items/1,
+         cmd_get/1, inc_cmd_get/1]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
+
+init(LocalSetting) ->
+    init_uptime(LocalSetting),
+    init_total_items(LocalSetting),
+    init_cmd_get(LocalSetting).
 
 init_uptime(LocalSetting) ->
     {_, NowSec, _} = now(),
@@ -50,22 +56,27 @@ uptime(LocalSetting) ->
     {_, NowSec, _} = now(),
     NowSec - StartSec.
 
+get(LocalSetting, Key) ->
+    {ok, Item} = mio_local_store:get(LocalSetting, Key),
+    Item.
+
+inc(LocalSetting, Key) ->
+    ok = mio_local_store:set(LocalSetting, Key, get(LocalSetting, Key) + 1).
+
 init_total_items(LocalSetting) ->
     ok = mio_local_store:set(LocalSetting, stats_total_items, 0).
 
 total_items(LocalSetting) ->
-    {ok, Items} = mio_local_store:get(LocalSetting, stats_total_items),
-    Items.
+    get(LocalSetting, stats_total_items).
 
 inc_total_items(LocalSetting) ->
-    ok = mio_local_store:set(LocalSetting, stats_total_items, total_items(LocalSetting) + 1).
+    inc(LocalSetting, stats_total_items).
 
 init_cmd_get(LocalSetting) ->
     ok = mio_local_store:set(LocalSetting, stats_cmd_get, 0).
 
 cmd_get(LocalSetting) ->
-    {ok, Items} = mio_local_store:get(LocalSetting, stats_cmd_get),
-    Items.
+    get(LocalSetting, stats_cmd_get).
 
 inc_cmd_get(LocalSetting) ->
-    ok = mio_local_store:set(LocalSetting, stats_cmd_get, cmd_get(LocalSetting) + 1).
+    inc(LocalSetting, stats_cmd_get).
