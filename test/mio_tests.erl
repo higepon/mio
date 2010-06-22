@@ -170,9 +170,14 @@ range_search_expiration() ->
     {ok, [{"1001","Hello"}]} = memcached:get_multi(Conn, ["mio:range-search", "1000", "3000", "10", "desc"]),
     ok = memcached:disconnect(Conn).
 
+string2integer(S) ->
+    {ok,[N],[]} =  io_lib:fread("~d", S),
+    N.
+
 stats() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
-    {ok, [{"uptime", Uptime}]} = memcached:stats(Conn),
+    {ok, [{"uptime", UptimeStr}]} = memcached:stats(Conn),
+    Uptime = string2integer(UptimeStr),
     ?assert(Uptime >= 0 andalso Uptime < 3),
     ok = memcached:disconnect(Conn).
