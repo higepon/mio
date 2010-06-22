@@ -39,6 +39,10 @@
          uptime/1,
          bytes/0,
          total_items/1, inc_total_items/1,
+         cmd_get_multi/1, inc_cmd_get_multi/1,
+         cmd_get_multi_avg_time/1,
+         cmd_get_multi_total_time/1, inc_cmd_get_multi_total_time/2,
+         cmd_get_multi_worst_time/1, set_cmd_get_multi_worst_time/2,
          cmd_get/1, inc_cmd_get/1]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
@@ -46,7 +50,10 @@
 init(LocalSetting) ->
     init_uptime(LocalSetting),
     init_total_items(LocalSetting),
-    init_cmd_get(LocalSetting).
+    init_cmd_get(LocalSetting),
+    init_cmd_get_multi(LocalSetting),
+    init_cmd_get_multi_total_time(LocalSetting),
+    init_cmd_get_multi_worst_time(LocalSetting).
 
 bytes() ->
     erlang:memory(total).
@@ -84,3 +91,43 @@ cmd_get(LocalSetting) ->
 
 inc_cmd_get(LocalSetting) ->
     inc(LocalSetting, stats_cmd_get).
+
+init_cmd_get_multi(LocalSetting) ->
+    ok = mio_local_store:set(LocalSetting, stats_cmd_get_multi, 0).
+
+cmd_get_multi(LocalSetting) ->
+    get(LocalSetting, stats_cmd_get_multi).
+
+inc_cmd_get_multi(LocalSetting) ->
+    inc(LocalSetting, stats_cmd_get_multi).
+
+init_cmd_get_multi_total_time(LocalSetting) ->
+    ok = mio_local_store:set(LocalSetting, stats_cmd_get_multi_total_time, 0).
+
+cmd_get_multi_total_time(LocalSetting) ->
+    get(LocalSetting, stats_cmd_get_multi_total_time).
+
+inc_cmd_get_multi_total_time(LocalSetting, D) ->
+    ok = mio_local_store:set(LocalSetting, stats_cmd_get_multi_total_time, get(LocalSetting, stats_cmd_get_multi_total_time) + D).
+
+cmd_get_multi_avg_time(LocalSetting) ->
+    case mio_stats:cmd_get_multi(LocalSetting) of
+        0 ->
+            0;
+        N ->
+            mio_stats:cmd_get_multi_total_time(LocalSetting) / N
+    end.
+
+init_cmd_get_multi_worst_time(LocalSetting) ->
+    ok = mio_local_store:set(LocalSetting, stats_cmd_get_multi_worst_time, 0).
+
+cmd_get_multi_worst_time(LocalSetting) ->
+    get(LocalSetting, stats_cmd_get_multi_worst_time).
+
+set_cmd_get_multi_worst_time(LocalSetting, MSec) ->
+    case cmd_get_multi_worst_time(LocalSetting) < MSec of
+        true ->
+            ok = mio_local_store:set(LocalSetting, stats_cmd_get_multi_worst_time, MSec);
+        _ ->
+            ok
+    end.

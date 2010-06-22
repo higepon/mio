@@ -120,6 +120,9 @@ mio_accept(Listen, Serializer, LocalSetting) ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
+now_in_msec() ->
+    {MegaSec, Sec, MicroSec} = now(),
+    MegaSec * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
 process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
@@ -135,10 +138,20 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_get(Sock, StartBucket, Serializer, Key),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    process_range_search_asc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
+                    Start = now_in_msec(),
+                    process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, list_to_integer(Limit)),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get_multi(LocalSetting),
+                    mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    process_range_search_desc(Sock, StartBucket, Serializer, Key1, Key2, list_to_integer(Limit)),
+                    Start = now_in_msec(),
+                    process_range_search_desc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, list_to_integer(Limit)),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get_multi(LocalSetting),
+                    mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
@@ -178,7 +191,9 @@ process_stats(Sock, LocalSetting) ->
     Stats = [{uptime, mio_stats:uptime(LocalSetting)},
              {total_items, mio_stats:total_items(LocalSetting)},
              {cmd_get, mio_stats:cmd_get(LocalSetting)},
-             {bytes, mio_stats:bytes()}
+             {bytes, mio_stats:bytes()},
+             {cmd_get_multi_avg_time, mio_stats:cmd_get_multi_avg_time(LocalSetting)},
+             {cmd_get_multi_worst_time, mio_stats:cmd_get_multi_worst_time(LocalSetting)}
              ],
     ok = gen_tcp:send(Sock, make_stats(Stats)).
 
@@ -255,12 +270,14 @@ filter_expired(Serializer, StartBucket, Values) ->
                            end,
                            Values)).
 
-process_range_search_asc(Sock, StartBucket, Serializer, Key1, Key2, Limit) ->
+process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, Limit) ->
+    mio_stats:inc_cmd_get_multi(LocalSetting),
     Values = mio_skip_graph:range_search_asc_op(StartBucket, Key1, Key2, Limit),
     P = process_values(filter_expired(Serializer, StartBucket, Values)),
     ok = gen_tcp:send(Sock, P).
 
-process_range_search_desc(Sock, StartNode, Serializer, Key1, Key2, Limit) ->
+process_range_search_desc(Sock, StartNode, Serializer, LocalSetting, Key1, Key2, Limit) ->
+    mio_stats:inc_cmd_get_multi(LocalSetting),
     Values = mio_skip_graph:range_search_desc_op(StartNode, Key1, Key2, Limit),
     P = process_values(filter_expired(Serializer, StartNode, Values)),
     ok = gen_tcp:send(Sock, P).
