@@ -98,6 +98,7 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
 
             mio_stats:init_uptime(LocalSetting),
             mio_stats:init_total_items(LocalSetting),
+            mio_stats:init_cmd_get(LocalSetting),
 
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
@@ -177,7 +178,8 @@ make_stats([{StatKey, StatValue} | More]) ->
 
 process_stats(Sock, LocalSetting) ->
     Stats = [{uptime, mio_stats:uptime(LocalSetting)},
-             {total_items, mio_stats:total_items(LocalSetting)}
+             {total_items, mio_stats:total_items(LocalSetting)},
+             {cmd_get, mio_stats:cmd_get(LocalSetting)}
              ],
     ok = gen_tcp:send(Sock, make_stats(Stats)).
 
