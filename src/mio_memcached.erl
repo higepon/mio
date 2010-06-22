@@ -170,7 +170,9 @@ process_request(Sock, Serializer, LocalSetting) ->
     end.
 
 process_stats(Sock, LocalSetting) ->
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~p\r\nEND\r\n", [uptime, mio_stats:uptime(LocalSetting)])).
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~p\r\nSTAT ~s ~p\r\nEND\r\n", [uptime, mio_stats:uptime(LocalSetting),
+                                                                    total_items, 1
+                                                                   ])).
 
 process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
     case mio_serializer:delete_op(Serializer, StartBucket, Key) of
