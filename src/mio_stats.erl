@@ -37,6 +37,7 @@
 -module(mio_stats).
 -export([init/1,
          uptime/1,
+         bytes/0,
          total_items/1, inc_total_items/1,
          cmd_get/1, inc_cmd_get/1]).
 -include_lib("eunit/include/eunit.hrl").
@@ -46,6 +47,9 @@ init(LocalSetting) ->
     init_uptime(LocalSetting),
     init_total_items(LocalSetting),
     init_cmd_get(LocalSetting).
+
+bytes() ->
+    erlang:memory(total).
 
 init_uptime(LocalSetting) ->
     {_, NowSec, _} = now(),
