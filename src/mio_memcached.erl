@@ -169,10 +169,16 @@ process_request(Sock, Serializer, LocalSetting) ->
             ?ERRORF("memcached socket error: ~p\n", [Error])
     end.
 
+make_stats([]) ->
+    "END\r\n";
+make_stats([{StatKey, StatValue} | More]) ->
+    io_lib:format("STAT ~s ~p\r\n~s", [StatKey, StatValue, make_stats(More)]).
+
 process_stats(Sock, LocalSetting) ->
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~p\r\nSTAT ~s ~p\r\nEND\r\n", [uptime, mio_stats:uptime(LocalSetting),
-                                                                    total_items, 1
-                                                                   ])).
+    Stats = [{uptime, mio_stats:uptime(LocalSetting)},
+             {total_items, 1}
+             ],
+    ok = gen_tcp:send(Sock, make_stats(Stats)).
 
 process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
     case mio_serializer:delete_op(Serializer, StartBucket, Key) of
