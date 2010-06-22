@@ -97,6 +97,7 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
         {Serializer, LocalSetting} ->
 
             mio_stats:init_uptime(LocalSetting),
+            mio_stats:init_total_items(LocalSetting),
 
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
@@ -285,6 +286,9 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, 
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
             {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, normalize_expiration_time(ExpirationTime)),
+
+            mio_stats:inc_total_items(LocalSetting),
+
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             %% It's preferable that start buckt is local.
