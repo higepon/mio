@@ -96,9 +96,7 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
     try init_start_node(Sup, MaxLevel, Capacity, BootNode) of
         {Serializer, LocalSetting} ->
 
-            %% stats uptime
-            {_, Sec, _} = now(),
-            ok = mio_local_store:set(LocalSetting, start_time, Sec),
+            mio_stats:init_uptime(LocalSetting),
 
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
@@ -171,11 +169,8 @@ process_request(Sock, Serializer, LocalSetting) ->
             ?ERRORF("memcached socket error: ~p\n", [Error])
     end.
 
-
 process_stats(Sock, LocalSetting) ->
-    {ok, StartTimeSec} = mio_local_store:get(LocalSetting, start_time),
-    {_, Sec, _} = now(),
-    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~p\r\nEND\r\n", [uptime, Sec - StartTimeSec])).
+    ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~p\r\nEND\r\n", [uptime, mio_stats:uptime(LocalSetting)])).
 
 process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
     case mio_serializer:delete_op(Serializer, StartBucket, Key) of
