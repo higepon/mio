@@ -122,7 +122,7 @@ mio_accept(Listen, Serializer, LocalSetting) ->
 
 now_in_msec() ->
     {MegaSec, Sec, MicroSec} = now(),
-    MegaSec * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
+    MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
 process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
