@@ -1,0 +1,24 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+  <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="/rss/index"/>
+  <link href="/favicon.ico" type="image/x-icon" rel="icon"/>
+  <title>育児</title>
+    <link rel="stylesheet" type="text/css" href="/css/yui.css?v=1.0.5" />
+    <link rel="stylesheet" type="text/css" href="/css/twitter.css?v=1.0.5" />
+</head>
+<body>
+<div id="document">
+    <div class="contents">
+        <div class="left">
+        <div class="info_list_box">
+            <ul>
+              <li>
+                <div class="info_box">
+                  <div class="info_box_left">
+                    <div class="info_fav"><a href="#favorite" class="cssblk" onclick="fav(31209);">お気に入り</a></div>
+                  </div>
+                  <div class="info_box_right">
+                    <h3> <a class="info_title" href="http://togetter.com/li/31209">育児</a></h3>
+                    <ul>
