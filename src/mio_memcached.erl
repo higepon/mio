@@ -303,9 +303,14 @@ normalize_expiration_time(Time) ->
 process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, normalize_expiration_time(ExpirationTime)),
 
-            mio_stats:inc_total_items(LocalSetting),
+            case mio_skip_graph:search_op(Introducer, Key) of
+                {error, not_found} ->
+                    mio_stats:inc_total_items(LocalSetting);
+                _ -> ok
+            end,
+
+            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, normalize_expiration_time(ExpirationTime)),
 
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
