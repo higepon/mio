@@ -93,7 +93,7 @@ vcheck: all
 test: check
 
 install: all install_dirs
-	cp -rp ebin include $(TARGET_DIR)
+	cp -rp ebin $(TARGET_DIR)
 	for script in mio mioctl mio-env; do \
 		chmod 0755 scripts/$$scripts; \
 		cp -p scripts/$$script $(TARGET_DIR)/sbin; \
