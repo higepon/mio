@@ -182,8 +182,8 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     end.
 
 %% coverage says this is not necessary
-%% search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-%%     Self;
+search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
+    Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
     case neighbor_node(State, right, Level) of
         [] ->
