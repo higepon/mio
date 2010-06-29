@@ -135,7 +135,12 @@ process_request(Sock, Serializer, LocalSetting) ->
                     ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
+                    Start = now_in_msec(),
                     process_get(Sock, StartBucket, Serializer, Key),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get(LocalSetting),
+                    mio_stats:inc_cmd_get_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     Start = now_in_msec(),
@@ -193,7 +198,9 @@ process_stats(Sock, LocalSetting) ->
              {cmd_get, mio_stats:cmd_get(LocalSetting)},
              {bytes, mio_stats:bytes()},
              {cmd_get_multi_avg_time, mio_stats:cmd_get_multi_avg_time(LocalSetting)},
-             {cmd_get_multi_worst_time, mio_stats:cmd_get_multi_worst_time(LocalSetting)}
+             {cmd_get_multi_worst_time, mio_stats:cmd_get_multi_worst_time(LocalSetting)},
+             {cmd_get_avg_time, mio_stats:cmd_get_avg_time(LocalSetting)},
+             {cmd_get_worst_time, mio_stats:cmd_get_worst_time(LocalSetting)}
              ],
     ok = gen_tcp:send(Sock, make_stats(Stats)).
 

@@ -177,7 +177,7 @@ string2integer(S) ->
 stats() ->
     {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:set(Conn, "1001", "Hello"),
-    {ok, [{"uptime", UptimeStr}, {"total_items", "1"}, {"cmd_get", "0"}, {"bytes", _Bytes}, {"cmd_get_multi_avg_time", _N}, {"cmd_get_multi_worst_time", _}]} = memcached:stats(Conn),
+    {ok, [{"uptime", UptimeStr}, {"total_items", "1"}, {"cmd_get", "0"}, {"bytes", _Bytes}, {"cmd_get_multi_avg_time", _N}, {"cmd_get_multi_worst_time", _}, {"cmd_get_avg_time", _}, {"cmd_get_worst_time", _}]} = memcached:stats(Conn),
 
     Uptime = string2integer(UptimeStr),
     ?assert(Uptime >= 0 andalso Uptime < 3),
