@@ -168,3 +168,14 @@ range9_test() ->
     B3 = mio_store:set(key_d, value_d, B2),
 
     ?assertMatch([{key_d, value_d} , {key_c, value_c}, {key_b, value_b} ], mio_store:get_range(key_d, key_a, 10, B3)).
+
+foreach_test() ->
+    B = mio_store:new(5),
+    B1 = mio_store:set(key_a, value_a, B),
+    B2 = mio_store:set(key_b, value_b, B1),
+    B3 = mio_store:set(key_c, value_c, B2),
+    ?assertEqual([{key_a, value_a}, {key_b, value_b}, {key_c, value_c}],
+                 mio_store:foldl(fun({Key, Value}, Accum) ->
+                                         [{Key, Value} | Accum]
+                                 end,
+                                 B3)).
