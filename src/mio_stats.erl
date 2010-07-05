@@ -39,7 +39,7 @@
          uptime/1,
          bytes/0,
          sweeped_items/1, inc_sweeped_items/2,
-         total_items/1, inc_total_items/1,
+         total_items/1, inc_total_items/1, dec_total_items/1,
          cmd_get_multi/1, inc_cmd_get_multi/1,
          cmd_get_multi_avg_time/1,
          cmd_get_multi_total_time/1, inc_cmd_get_multi_total_time/2,
@@ -79,6 +79,9 @@ get(LocalSetting, Key) ->
 inc(LocalSetting, Key) ->
     ok = mio_local_store:set(LocalSetting, Key, get(LocalSetting, Key) + 1).
 
+dec(LocalSetting, Key) ->
+    ok = mio_local_store:set(LocalSetting, Key, get(LocalSetting, Key) - 1).
+
 init_total_items(LocalSetting) ->
     ok = mio_local_store:set(LocalSetting, stats_total_items, 0).
 
@@ -97,6 +100,9 @@ inc_sweeped_items(LocalSetting, N) ->
 
 inc_total_items(LocalSetting) ->
     inc(LocalSetting, stats_total_items).
+
+dec_total_items(LocalSetting) ->
+    dec(LocalSetting, stats_total_items).
 
 init_cmd_get(LocalSetting) ->
     ok = mio_local_store:set(LocalSetting, stats_cmd_get, 0).

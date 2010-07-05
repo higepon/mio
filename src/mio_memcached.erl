@@ -36,7 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/6]).
--export([memcached/5, process_request/3, sweeper/1]).
+-export([memcached/5, process_request/3, sweeper/3]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
@@ -124,10 +124,22 @@ now_in_msec() ->
     {MegaSec, Sec, MicroSec} = now(),
     MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
-sweeper(Bucket) ->
+sweeper(Serializer, LocalSetting, Bucket) ->
     Store = mio_bucket:get_store_op(Bucket),
-    mio_store:foldl(fun({Key, Value}, _Accum) ->
-                            ?debugFmt("~p ~p~n", [Key, Value])
+    mio_store:foldl(fun({Key, {Value, ExpirationTime}}, _Accum) ->
+                            case ExpirationTime of
+                                ?NEVER_EXPIRE -> ok;
+                                ?MARKED_EXPIRED -> ok;
+                                _ ->
+                                    case ExpirationTime =< unixtime() of
+                                        true ->
+                                            enqueue_to_delete(Serializer, LocalSetting, Bucket, Key),
+                                            mio_stats:inc_sweeped_items(LocalSetting, 1),
+                                            mio_serializer:insert_op(Serializer, Bucket, Key, Value, ?MARKED_EXPIRED);
+                                        _ ->
+                                            ok
+                                    end
+                            end
                     end, [], Store),
     ok.
 
@@ -143,7 +155,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     Start = now_in_msec(),
-                    process_get(Sock, StartBucket, Serializer, Key),
+                    process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
                     End = now_in_msec(),
                     mio_stats:inc_cmd_get(LocalSetting),
                     mio_stats:inc_cmd_get_total_time(LocalSetting, End - Start),
@@ -165,15 +177,14 @@ process_request(Sock, Serializer, LocalSetting) ->
                     mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
                     mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
-                ["set", "mio:sweep", _, _, Bytes] ->
-                    gen_tcp:recv(Sock, list_to_integer(Bytes)),
-                    ok = gen_tcp:send(Sock, "STORED\r\n"),
-                    ?debugFmt("~p", [spawn_link(?MODULE, sweeper, [StartBucket])]),
-                    process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
                     inet:setopts(Sock,[{packet, line}]),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", "mio:sweep"] ->
+                    ok = gen_tcp:send(Sock, "DELETED\r\n"),
+                    spawn_link(?MODULE, sweeper, [Serializer, LocalSetting, StartBucket]),
                     process_request(Sock, Serializer, LocalSetting);
                 ["delete", Key] ->
                     process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
@@ -238,10 +249,11 @@ process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
             ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
     end.
 
-enqueue_to_delete(Serializer, StartBucket, Key) ->
+enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key) ->
+    mio_stats:dec_total_items(LocalSetting),
     spawn_link(fun () -> mio_serializer:delete_op(Serializer, StartBucket, Key) end).
 
-process_get(Sock, StartBucket, Serializer, Key) ->
+process_get(Sock, StartBucket, Serializer, LocalSetting, Key) ->
     case mio_skip_graph:search_op(StartBucket, Key) of
         {ok, Value, ExpirationTime} ->
             case ExpirationTime of
@@ -254,7 +266,7 @@ process_get(Sock, StartBucket, Serializer, Key) ->
                 _ ->
                     case ExpirationTime =< unixtime() of
                         true ->
-                            enqueue_to_delete(Serializer, StartBucket, Key),
+                            enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key),
                             mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
                             ok = gen_tcp:send(Sock, "END\r\n");
                         false ->
@@ -267,7 +279,7 @@ process_get(Sock, StartBucket, Serializer, Key) ->
             ok = gen_tcp:send(Sock, "END\r\n")
     end.
 
-filter_expired(Serializer, StartBucket, Values) ->
+filter_expired(Serializer, LocalSetting, StartBucket, Values) ->
     lists:map(fun({Key, {Value, _ExpirationTime}}) ->
                  {Key, Value}
               end,
@@ -282,7 +294,7 @@ filter_expired(Serializer, StartBucket, Values) ->
                                                true ->
                                                    true;
                                                false ->
-                                                   enqueue_to_delete(Serializer, StartBucket, Key),
+                                                   enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key),
                                                    mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
                                                    false
                                            end
@@ -293,13 +305,13 @@ filter_expired(Serializer, StartBucket, Values) ->
 process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, Limit) ->
     mio_stats:inc_cmd_get_multi(LocalSetting),
     Values = mio_skip_graph:range_search_asc_op(StartBucket, Key1, Key2, Limit),
-    P = process_values(filter_expired(Serializer, StartBucket, Values)),
+    P = process_values(filter_expired(Serializer, LocalSetting, StartBucket, Values)),
     ok = gen_tcp:send(Sock, P).
 
 process_range_search_desc(Sock, StartNode, Serializer, LocalSetting, Key1, Key2, Limit) ->
     mio_stats:inc_cmd_get_multi(LocalSetting),
     Values = mio_skip_graph:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    P = process_values(filter_expired(Serializer, StartNode, Values)),
+    P = process_values(filter_expired(Serializer, LocalSetting, StartNode, Values)),
     ok = gen_tcp:send(Sock, P).
 
 
