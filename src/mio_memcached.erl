@@ -36,7 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/6]).
--export([memcached/5, process_request/3]).
+-export([memcached/5, process_request/3, sweeper/1]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
@@ -125,7 +125,7 @@ now_in_msec() ->
     MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
 sweeper(Bucket) ->
-    exit(normal).
+    ok.
 
 process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
@@ -163,7 +163,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", "mio:sweep", _, _, _] ->
                     ok = gen_tcp:send(Sock, "STORED\r\n"),
-                    %%spawn_link(fun sweeper/1, [StartBucket]),
+                    ?debugFmt("~p", [spawn_link(?MODULE, sweeper, [StartBucket])]),
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
