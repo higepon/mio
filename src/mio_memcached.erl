@@ -125,6 +125,10 @@ now_in_msec() ->
     MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
 sweeper(Bucket) ->
+    Store = mio_bucket:get_store_op(Bucket),
+    mio_store:foldl(fun({Key, Value}, _Accum) ->
+                            ?debugFmt("~p ~p~n", [Key, Value])
+                    end, [], Store),
     ok.
 
 process_request(Sock, Serializer, LocalSetting) ->
@@ -161,7 +165,8 @@ process_request(Sock, Serializer, LocalSetting) ->
                     mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
                     mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
-                ["set", "mio:sweep", _, _, _] ->
+                ["set", "mio:sweep", _, _, Bytes] ->
+                    gen_tcp:recv(Sock, list_to_integer(Bytes)),
                     ok = gen_tcp:send(Sock, "STORED\r\n"),
                     ?debugFmt("~p", [spawn_link(?MODULE, sweeper, [StartBucket])]),
                     process_request(Sock, Serializer, LocalSetting);

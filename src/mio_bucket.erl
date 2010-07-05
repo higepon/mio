@@ -56,6 +56,7 @@
          delete_op_call/4,
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
+         get_store_op/1,
          %% Skip Graph layer
          get_op/2,
          get_op_call/2,
@@ -215,6 +216,9 @@
 %%====================================================================
 %% API
 %%====================================================================
+get_store_op(Bucket) ->
+    gen_server:call(Bucket, get_store_op).
+
 set_gen_mvector_op(Bucket, Fun) ->
     gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
 
@@ -866,6 +870,11 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+
+%% exposure of store is ugly.
+handle_call(get_store_op, _From, State) ->
+    {reply, State#node.store, State};
+
 handle_call({delete_op, Key}, From, State) ->
     Self = self(),
     spawn_link(?MODULE, delete_op_call, [From, State, Self, Key]),
