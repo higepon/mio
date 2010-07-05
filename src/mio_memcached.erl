@@ -124,6 +124,9 @@ now_in_msec() ->
     {MegaSec, Sec, MicroSec} = now(),
     MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
+sweeper(Bucket) ->
+    exit(normal).
+
 process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
     case gen_tcp:recv(Sock, 0) of
@@ -160,6 +163,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", "mio:sweep", _, _, _] ->
                     ok = gen_tcp:send(Sock, "STORED\r\n"),
+                    %%spawn_link(fun sweeper/1, [StartBucket]),
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
