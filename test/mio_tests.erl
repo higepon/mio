@@ -39,7 +39,8 @@ mio_test_() ->
       [?_test(range_search())],
       [?_test(range_search_alphabet())],
       [?_test(range_search_expiration())],
-      [?_test(stats())]
+      [?_test(stats())],
+      [?_test(sweeper())]
      ]
     }.
 
@@ -182,3 +183,23 @@ stats() ->
     Uptime = string2integer(UptimeStr),
     ?assert(Uptime >= 0 andalso Uptime < 3),
     ok = memcached:disconnect(Conn).
+
+sweeper() ->
+    {ok, Conn} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ok = memcached:set(Conn, "key1", "should be sweeped", 0, 1),
+    ok = memcached:set(Conn, "key2", "don't sweep"),
+    ok = memcached:disconnect(Conn),
+    timer:sleep(1000),
+    {ok, Conn2} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    ?assertEqual({error, not_found}, memcached:get(Conn2, "key1")),
+    ?assertEqual({ok, "don't sweep"}, memcached:get(Conn2, "key2")),
+    ?assertMatch({ok, [{"uptime", _},
+                       {"total_items", "1"},
+                       {"cmd_get", _},
+                       {"bytes", _Bytes},
+                       {"cmd_get_multi_avg_time", _N},
+                       {"cmd_get_multi_worst_time", _},
+                       {"cmd_get_avg_time", _},
+                       {"cmd_get_worst_time", _},
+                       {"sweeped_items", _}]}, memcached:stats(Conn2)),
+    ok.
