@@ -203,7 +203,8 @@ process_stats(Sock, LocalSetting) ->
              {cmd_get_multi_avg_time, mio_stats:cmd_get_multi_avg_time(LocalSetting)},
              {cmd_get_multi_worst_time, mio_stats:cmd_get_multi_worst_time(LocalSetting)},
              {cmd_get_avg_time, mio_stats:cmd_get_avg_time(LocalSetting)},
-             {cmd_get_worst_time, mio_stats:cmd_get_worst_time(LocalSetting)}
+             {cmd_get_worst_time, mio_stats:cmd_get_worst_time(LocalSetting)},
+             {sweeped_items, mio_stats:sweeped_items(LocalSetting)}
              ],
     ok = gen_tcp:send(Sock, make_stats(Stats)).
 

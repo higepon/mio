@@ -38,6 +38,7 @@
 -export([init/1,
          uptime/1,
          bytes/0,
+         sweeped_items/1, inc_sweeped_items/2,
          total_items/1, inc_total_items/1,
          cmd_get_multi/1, inc_cmd_get_multi/1,
          cmd_get_multi_avg_time/1,
@@ -56,7 +57,8 @@ init(LocalSetting) ->
     init_cmd_get_worst_time(LocalSetting),
     init_cmd_get_multi(LocalSetting),
     init_cmd_get_multi_total_time(LocalSetting),
-    init_cmd_get_multi_worst_time(LocalSetting).
+    init_cmd_get_multi_worst_time(LocalSetting),
+    init_sweeped_items(LocalSetting).
 
 bytes() ->
     erlang:memory(total).
@@ -80,8 +82,18 @@ inc(LocalSetting, Key) ->
 init_total_items(LocalSetting) ->
     ok = mio_local_store:set(LocalSetting, stats_total_items, 0).
 
+init_sweeped_items(LocalSetting) ->
+    ok = mio_local_store:set(LocalSetting, stats_sweeped_items, 0).
+
 total_items(LocalSetting) ->
     get(LocalSetting, stats_total_items).
+
+sweeped_items(LocalSetting) ->
+    get(LocalSetting, stats_sweeped_items).
+
+inc_sweeped_items(LocalSetting, N) ->
+    Prev = sweeped_items(LocalSetting),
+    ok = mio_local_store:set(LocalSetting, stats_sweeped_items, N + Prev).
 
 inc_total_items(LocalSetting) ->
     inc(LocalSetting, stats_total_items).
