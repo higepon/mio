@@ -158,6 +158,9 @@ process_request(Sock, Serializer, LocalSetting) ->
                     mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
                     mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
                     process_request(Sock, Serializer, LocalSetting);
+                ["set", "mio:sweep", _, _, _] ->
+                    ok = gen_tcp:send(Sock, "STORED\r\n"),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
                     process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
