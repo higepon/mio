@@ -174,8 +174,9 @@ foreach_test() ->
     B1 = mio_store:set(key_a, value_a, B),
     B2 = mio_store:set(key_b, value_b, B1),
     B3 = mio_store:set(key_c, value_c, B2),
-    ?assertEqual([{key_a, value_a}, {key_b, value_b}, {key_c, value_c}],
+    ?assertEqual([{key_c, value_c}, {key_b, value_b}, {key_a, value_a}],
                  mio_store:foldl(fun({Key, Value}, Accum) ->
                                          [{Key, Value} | Accum]
                                  end,
+                                 [],
                                  B3)).

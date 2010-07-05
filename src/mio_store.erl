@@ -41,7 +41,7 @@
 
 %% API
 -export([new/1, set/3, get/2, get_range/4, remove/2, is_full/1, take_smallest/1, take_largest/1,
-         capacity/1, is_empty/1, largest/1, smallest/1, keys/1]).
+         capacity/1, is_empty/1, largest/1, smallest/1, keys/1, foldl/3]).
 
 %%====================================================================
 %% API
@@ -54,6 +54,13 @@
 new(Capacity) ->
     Ets = ets:new(store, [public, ordered_set]),
     #store{capacity=Capacity, ets=Ets}.
+
+%%--------------------------------------------------------------------
+%% Function: foldl/2
+%% Description: foldl
+%%--------------------------------------------------------------------
+foldl(Fun, Accum0, Store) ->
+    ets:foldl(Fun, Accum0, Store#store.ets).
 
 %%--------------------------------------------------------------------
 %% Function: keys/1
