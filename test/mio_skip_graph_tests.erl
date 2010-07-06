@@ -48,7 +48,8 @@ sg_test_() ->
       [?_test(insert_o_2())],
       [?_test(insert_o_3())],
       [?_test(insert_many())],
-      [?_test(remove_bucet())]
+      [?_test(remove_bucet())],
+      [?_test(get_local_buckets())]
       ]
      }.
 
@@ -1172,6 +1173,10 @@ remove_bucet() ->
     ?assertEqual([], mio_bucket:get_right_op(C, 0)),
     ?assertEqual([], mio_bucket:get_right_op(C, 1)),
     ok.
+
+get_local_buckets() ->
+    {Left, Middle, Right} = make_c_O_c(fun make_c_o_different_mv/0),
+    ?assertMatch({Left, Middle, Right}, mio_skip_graph:get_local_buckets(Middle)).
 
 %% Helper
 
