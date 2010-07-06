@@ -192,6 +192,7 @@ sweeper() ->
     timer:sleep(1000),
     {ok, Conn2} = memcached:connect(?MEMCACHED_HOST, ?MEMCACHED_PORT),
     ok = memcached:delete(Conn2, "mio:sweep"),
+    timer:sleep(100),
     ?assertMatch({ok, [{"uptime", _},
                        {"total_items", "1"},
                        {"cmd_get", _},
