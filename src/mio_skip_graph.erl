@@ -47,10 +47,10 @@
          buddy_op/4,
          dump_op/1,
          link_right_op/3, link_left_op/3,
-
          link_two_nodes/3,
          link_three_nodes/4,
-         link_on_level_ge1/2
+         link_on_level_ge1/2,
+         get_local_buckets/1
         ]).
 
 %% Exported for handle_call
@@ -61,6 +61,32 @@
          delete_op_call/4,
          get_key/1
         ]).
+
+get_local_buckets_left([]) ->
+    [];
+get_local_buckets_left(Bucket) ->
+    case mio_util:is_local_process(Bucket) of
+        true ->
+            [Bucket | get_local_buckets_left(mio_bucket:get_left_op(Bucket))];
+        false ->
+            get_local_buckets_left(mio_bucket:get_left_op(Bucket))
+    end.
+
+get_local_buckets_right([]) ->
+    [];
+get_local_buckets_right(Bucket) ->
+    case mio_util:is_local_process(Bucket) of
+        true ->
+            [Bucket | get_local_buckets_right(mio_bucket:get_right_op(Bucket))];
+        false ->
+            get_local_buckets_right(mio_bucket:get_right_op(Bucket))
+    end.
+
+get_local_buckets(Bucket) ->
+    Left = lists:reverse(get_local_buckets_left(Bucket)),
+    Right = get_local_buckets_right(mio_bucket:get_right_op(Bucket)),
+    Left ++ Right.
+
 %%--------------------------------------------------------------------
 %%  accessors
 %%--------------------------------------------------------------------

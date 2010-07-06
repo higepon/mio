@@ -1176,7 +1176,7 @@ remove_bucet() ->
 
 get_local_buckets() ->
     {Left, Middle, Right} = make_c_O_c(fun make_c_o_different_mv/0),
-    ?assertMatch({Left, Middle, Right}, mio_skip_graph:get_local_buckets(Middle)).
+    ?assertMatch([Left, Middle, Right], mio_skip_graph:get_local_buckets(Middle)).
 
 %% Helper
 
