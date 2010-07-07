@@ -145,10 +145,12 @@ sweep_one_bucket(Serializer, LocalSetting, Bucket) ->
 
 sweeper(Serializer, LocalSetting, Bucket) ->
     LocalBuckets = mio_skip_graph:get_local_buckets(Bucket),
+    ?INFOF("sweeper start buckets=~p", [LocalBuckets]),
     lists:foreach(fun(B) ->
                     sweep_one_bucket(Serializer, LocalSetting, B)
                   end,
-                  LocalBuckets).
+                  LocalBuckets),
+    ?INFO("sweeper end").
 
 process_request(Sock, Serializer, LocalSetting) ->
     {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
