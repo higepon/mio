@@ -1,0 +1,2 @@
+#!/bin/bash
+erl -eval "{ok, C} = memcached:connect(\"$1\", 11211), io:format(\"~p~n\", [memcached:stats(C)]), memcached:disconnect(C)." -s init stop -noshell
