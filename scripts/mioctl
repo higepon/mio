@@ -25,7 +25,7 @@
 ### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_NODE_NAME=mio1
+DEFAULT_NODE_NAME=mio1@localhost.local
 DEFAULT_COOKIE_NAME=mio
 . `dirname $0`/mio-env
 MIO_EBIN_ROOT="${MIO_HOME}/ebin"
@@ -47,7 +47,6 @@ done
 shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
 mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
-mio_name="${mio_name}@"`hostname -s`".local"
 
 erl -pa ${MIO_EBIN_ROOT} \
     -name mioctrl$$@`hostname -s`.local \

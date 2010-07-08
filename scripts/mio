@@ -25,7 +25,7 @@
 ### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_NODE_NAME=mio1
+#DEFAULT_NODE_NAME=mio1
 DEFAULT_COOKIE_NAME=mio
 DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
@@ -62,15 +62,14 @@ do
         ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name@FQDN] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name@FQDN] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
 done
 shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
-mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
-mio_name="${mio_name}@"`hostname -s`".local"
+mio_name=${opt_name:-"mio1@localhost.local"}
 mio_log_dir=${opt_log_dir:-"$DEFAULT_LOG_DIR"}
 mio_port=${opt_port:-"$DEFAULT_LISTEN_PORT"}
 mio_introducer=${opt_introducer:-"false"}
@@ -88,7 +87,7 @@ mio_detached=${opt_detached:+"-detached"}
 #   -setcookie $mio_cookie  : Sets the magic cookie of the node to Cookie
 #   -config conf/dev_log    : Sets the config file used to configure applications.
 #    -kernel                : Options to kernel application, which are passed to inet module
-
+echo "starting at $mio_name"
 IS_OSX=`echo "$OSTYPE" | grep darwin`
 # config file path
 if [ "$IS_OSX" != "" ]; then
