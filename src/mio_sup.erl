@@ -151,10 +151,10 @@ init([]) ->
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 10),
     {ok, BootNode} = mio_app:get_env(boot_node, false),
-    {ok, Capacity} = mio_app:get_env(capacity, 20000),
+    {ok, BucketSize} = mio_app:get_env(bucket_size, 20000),
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),
-    init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]).
+    init([Port, MaxLevel, BucketSize, BootNode, LogDir, Verbose]).
 
 
 getRandomId() ->

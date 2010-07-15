@@ -30,6 +30,7 @@ DEFAULT_COOKIE_NAME=mio
 DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
 DEFAULT_LOG_DIR=`pwd`
+DEFAULT_BUCKET_SIZE=10000
 
 . `dirname $0`/mio-env
 MIO_EBIN_ROOT="${MIO_HOME}/ebin"
@@ -42,8 +43,9 @@ opt_introducer=
 opt_verbose=false
 opt_maxlevel=
 opt_detached=
+opt_bucketsize=
 
-while getopts 'dn:p:i:vc:m:l:' OPTION
+while getopts 'dn:p:i:vc:m:l:b:' OPTION
 do
   case $OPTION in
   m)    opt_maxlevel="$OPTARG"
@@ -54,6 +56,8 @@ do
         ;;
   p)    opt_port="$OPTARG"
         ;;
+  p)    opt_bucketsize="$OPTARG"
+        ;;
   l)    opt_log_dir="$OPTARG"
         ;;
   v)    opt_verbose=true
@@ -62,7 +66,7 @@ do
         ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name@FQDN] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name@FQDN] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name@FQDN] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name@FQDN] [-b bucketsize] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
@@ -72,6 +76,7 @@ mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
 mio_name=${opt_name:-"mio1@localhost.local"}
 mio_log_dir=${opt_log_dir:-"$DEFAULT_LOG_DIR"}
 mio_port=${opt_port:-"$DEFAULT_LISTEN_PORT"}
+mio_bucketsize=${opt_bucketsize:-"$DEFAULT_BUCKET_SIZE"}
 mio_introducer=${opt_introducer:-"false"}
 mio_maxlevel=${opt_maxlevel:-"$DEFAULT_MAX_LEVEL"}
 mio_verbose=$opt_verbose
@@ -106,6 +111,7 @@ erl +K true \
          boot_node $mio_introducer \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
+         bucket_size $mio_bucketsize\
          verbose $mio_verbose
 else
 erl +K true \
@@ -125,5 +131,6 @@ erl +K true \
          boot_node $mio_introducer \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
+         bucket_size $mio_bucketsize \
          verbose $mio_verbose
 fi

@@ -13,7 +13,7 @@
 -define(MEMCACHED_HOST, "127.0.0.1").
 
 setup_mio() ->
-    application:set_env(mio, capacity, 3),
+    application:set_env(mio, bucket_size, 3),
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT).
 
