@@ -56,7 +56,7 @@ do
         ;;
   p)    opt_port="$OPTARG"
         ;;
-  p)    opt_bucketsize="$OPTARG"
+  b)    opt_bucketsize="$OPTARG"
         ;;
   l)    opt_log_dir="$OPTARG"
         ;;
