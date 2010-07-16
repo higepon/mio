@@ -204,8 +204,8 @@ process_request(Sock, Serializer, LocalSetting) ->
 %%                 ["delete", Key, _Time, _NoReply] ->
 %%                     process_delete(Sock, StartBucket, Key),
 %%                     process_request(Sock, StartBucketEts, Serializer);
-%%                 ["quit"] ->
-%%                     ok = gen_tcp:close(Sock);
+                ["quit"] ->
+                    ok = gen_tcp:close(Sock);
                 ["stats"] ->
                     process_stats(Sock, LocalSetting),
                     process_request(Sock, Serializer, LocalSetting);
