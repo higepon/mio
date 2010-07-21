@@ -516,6 +516,15 @@ delete_from_c_O_l(Self, RightBucket) ->
         %%   Both left and right not exist: O1
         {[], []}->
             delete_from_c_O_l_no_neighbor(Self, RightBucket);
+        {[], Right} ->
+            %% C-O exists on right
+            case get_type_op(Right) of
+                c_o_l ->
+                    delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right);
+                %% C-O-C exists on right
+                c_o_c_l ->
+                    delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right)
+            end;
         {Left, Right} ->
             case get_type_op(Left) of
                 c_o_r ->
