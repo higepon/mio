@@ -20,14 +20,15 @@ At present, it is in alpha quality.
 ## Running mio
 
     # Run first node named mio1 with verbose mode on host exmpale.com (default port 11211)
-    % mio -v -n mio1
+    % mio -v -n mio1@FQDN_of_your_host
 
-    # Run second node named mio2 on host hoge.com.
+
+    # Run second node named mio2 on host example.com.
     # With -i option, indidate the introducer node.
-    % mio -v -n mio2 -i mio1@example.com
+    % mio -v -n mio2@example.com -i mio1@FQDN_of_your_host
 
-    # Run third node named mio3 on host hoge.com (port 11411).
-    % mio -v -n mio3 -i mio1@example.com -p 11411
+    # Run third node named mio3 on host example.com (port 11411).
+    % mio -v -n mio3@example.com -i mio1@FQDN_of_your_host -p 11411
 
 ## Access to mio
 Use memcached client to access mio.
@@ -48,6 +49,10 @@ Use memcached client to access mio.
     my $href = $m->get_multi("mio:range-search", "he", "hi", "50");
     warn $href->{"hello"};
     warn $href->{"hi"};
+
+## Algorithm
+Mio using "Skip Graph" algorithm.
+See "Load Balancing and Locality in Range-Queries Data Structures" by James Aspnes.
 
 
 ## Author
