@@ -201,6 +201,17 @@ push_search_path_stat(State, Self, SearchKey, Level) ->
             mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, SearchKey, Level} | Stats])
     end.
 
+display_search_path_stat(State, _SearchKey) when State#node.search_stat =:= [] ->
+    [];
+display_search_path_stat(State, SearchKey) ->
+    case mio_local_store:get(State#node.search_stat, SearchKey) of
+        {error, not_found} ->
+            ?INFO("no search path stat");
+        {ok, Stats} ->
+            ?INFOF("search path stat ~p", [Stats])
+    end.
+
+
 search_op_call(From, State, Self, SearchKey, Level) ->
     %% ?INFOF("search [~p] key=~p [~p : ~p]~n", [case Level of
     %%                                               [] -> start;
@@ -236,6 +247,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
                     %% ?INFOF("**** Move to right bucket ~p ****~n", [Right]),
+                    display_search_path_stat(State, SearchKey),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
                     %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
@@ -255,6 +267,7 @@ search_to_left(From, State, Self, SearchKey, Level) ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
+                    display_search_path_stat(State, SearchKey),
                     %% ?INFOF("**** Move to left  bucket ~p ****~n", [Left]),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
