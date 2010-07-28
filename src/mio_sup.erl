@@ -39,7 +39,7 @@
 -behaviour(supervisor).
 %% API
 -export([start_first_mio/6, start_second_mio/6]).
--export([init/1, start_serializer/1, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/1]).
+-export([init/1, start_serializer/1, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/2]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -64,9 +64,9 @@ start_bootstrap(Sup, BootBucket, Allocator, Serializer) ->
                                            {mio_bootstrap, start_link, [BootBucket, Allocator, Serializer]},
                                            temporary, brutal_kill, worker, [mio_bootstrap]}).
 
-start_allocator(Sup) ->
+start_allocator(Sup, SearchStat) ->
     {ok, _} = supervisor:start_child(Sup, {mio_allocator,
-                                           {mio_allocator, start_link, []},
+                                           {mio_allocator, start_link, [SearchStat]},
                                            temporary, brutal_kill, worker, [mio_allocator]}).
 
 

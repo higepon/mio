@@ -39,13 +39,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_node/2, allocate_bucket/4]).
+-export([start_link/1, add_node/2, allocate_bucket/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {supervisors}).
+-record(state, {supervisors, search_stat}).
 
 %%====================================================================
 %% API
@@ -54,8 +54,8 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(SearchStat) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [SearchStat], []).
 
 add_node(Allocator, Node) ->
     gen_server:call(Allocator, {add_node, Node}).
@@ -74,8 +74,8 @@ allocate_bucket(Allocator, Capacity, Type, MaxLevel) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{supervisors=[]}}.
+init([SearchStat]) ->
+    {ok, #state{supervisors=[], search_stat=SearchStat}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |

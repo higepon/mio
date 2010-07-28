@@ -192,10 +192,14 @@ search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
 search_op_call(From, State, Self, SearchKey, Level) ->
+    %% ?INFOF("search [~p] key=~p [~p : ~p]~n", [case Level of
+    %%                                               [] -> start;
+    %%                                               _ -> Level end, SearchKey, Self, node()]),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
+            %% ?INFOF("search [end  ] key=~p on ~p~n", [SearchKey, node()]),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
@@ -211,15 +215,19 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
+    %% ?INFOF("search [.....] key=~p on ~p ~p~n", [SearchKey, Level, node()]),
     case neighbor_node(State, right, Level) of
         [] ->
+            %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
             search_to_right(From, State, Self, SearchKey, Level - 1);
         Right ->
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
+                    %% ?INFOF("**** Move to right bucket ~p ****~n", [Right]),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
+                    %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
                     search_to_right(From, State, Self, SearchKey, Level - 1)
             end
     end.
@@ -230,13 +238,16 @@ search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
 search_to_left(From, State, Self, SearchKey, Level) ->
     case neighbor_node(State, left, Level) of
         [] ->
+            %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
             search_to_left(From, State, Self, SearchKey, Level - 1);
         Left ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
+                    %% ?INFOF("**** Move to left  bucket ~p ****~n", [Left]),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
+                    %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
                     search_to_left(From, State, Self, SearchKey, Level - 1)
             end
     end.

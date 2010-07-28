@@ -13,7 +13,7 @@ for_better_coverage_test() ->
     ?assertEqual(ok, mio_util:for_better_coverage(mio_serializer, Serializer)),
     process_flag(trap_exit, true),
 
-    {ok, Allocator} = mio_allocator:start_link(),
+    {ok, Allocator} = mio_allocator:start_link([]),
     ?assertEqual(ok, mio_util:for_better_coverage(mio_bootstrap, Allocator)),
 
     exit(Serializer, normal),
