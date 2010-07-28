@@ -1,6 +1,6 @@
 
 -record(node, {store, type, min_key, encompass_min, max_key, encompass_max, left, right, membership_vector, gen_mvector,
-                expire_time, inserted, deleted, allocator
+                expire_time, inserted, deleted, allocator, search_stat
                }).
 
 

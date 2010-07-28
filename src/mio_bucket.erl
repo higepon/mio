@@ -305,6 +305,8 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Allocator, Capacity, Type, MembershipVector]) ->
+    init([Allocator, Capacity, Type, MembershipVector, []]);
+init([Allocator, Capacity, Type, MembershipVector, SearchStat]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     Insereted = case Type of
@@ -328,7 +330,8 @@ init([Allocator, Capacity, Type, MembershipVector]) ->
                 inserted=Insereted,
                 deleted=false,
                 gen_mvector=fun mio_mvector:generate/1,
-                allocator=Allocator
+                allocator=Allocator,
+                search_stat=SearchStat
                }}.
 
 

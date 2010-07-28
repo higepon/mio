@@ -191,10 +191,21 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
+push_search_path_stat(State, _Self, _SearchKey, _Level) when State#node.search_stat =:= [] ->
+    [];
+push_search_path_stat(State, Self, SearchKey, Level) ->
+    case mio_local_store:get(State#node.search_stat, SearchKey) of
+        {error, not_found} ->
+            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, SearchKey, Level}]);
+        {ok, Stats} ->
+            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, SearchKey, Level} | Stats])
+    end.
+
 search_op_call(From, State, Self, SearchKey, Level) ->
     %% ?INFOF("search [~p] key=~p [~p : ~p]~n", [case Level of
     %%                                               [] -> start;
     %%                                               _ -> Level end, SearchKey, Self, node()]),
+    push_search_path_stat(State, Self, SearchKey, Level),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
