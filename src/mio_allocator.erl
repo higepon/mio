@@ -90,9 +90,9 @@ handle_call({add_node, Node}, _From, State) ->
     {reply, ok, State#state{supervisors=[Node | State#state.supervisors]}};
 
 %% allocate bucket on one node.
-handle_call({allocate_bucket, Capacity, Type, MaxLevel}, _From, State) ->
+handle_call({allocate_bucket, Capacity, Type, MembershipVector}, _From, State) ->
     [Supervisor | More] = State#state.supervisors,
-    Bucket = mio_sup:make_bucket(Supervisor, self(), Capacity, Type, MaxLevel),
+    Bucket = mio_sup:make_bucket_with_stat(Supervisor, self(), Capacity, Type, MembershipVector, State#state.search_stat),
     %% simple round-robin
     {reply, Bucket, State#state{supervisors=lists:append(More, [Supervisor])}}.
 
