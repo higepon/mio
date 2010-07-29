@@ -50,7 +50,8 @@
          link_two_nodes/3,
          link_three_nodes/4,
          link_on_level_ge1/2,
-         get_local_buckets/1
+         get_local_buckets/1,
+         display_search_path_stat/2
         ]).
 
 %% Exported for handle_call
@@ -184,6 +185,8 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
+    gen_server:call(Bucket, {display_search_path_stat_op, SearchKey}),
+
     mio_bucket:get_op(Bucket, SearchKey).
 
 search_bucket_op(StartBucket, SearchKey) ->
@@ -247,7 +250,6 @@ search_to_right(From, State, Self, SearchKey, Level) ->
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
                     %% ?INFOF("**** Move to right bucket ~p ****~n", [Right]),
-                    display_search_path_stat(State, SearchKey),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
                     %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
@@ -268,7 +270,6 @@ search_to_left(From, State, Self, SearchKey, Level) ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    display_search_path_stat(State, SearchKey),
                     %% ?INFOF("**** Move to left  bucket ~p ****~n", [Left]),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
