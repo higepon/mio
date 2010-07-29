@@ -64,9 +64,9 @@ start_bootstrap(Sup, BootBucket, Allocator, Serializer) ->
                                            {mio_bootstrap, start_link, [BootBucket, Allocator, Serializer]},
                                            temporary, brutal_kill, worker, [mio_bootstrap]}).
 
-start_allocator(Sup, SearchStat) ->
+start_allocator(Sup, PathStat) ->
     {ok, _} = supervisor:start_child(Sup, {mio_allocator,
-                                           {mio_allocator, start_link, [SearchStat]},
+                                           {mio_allocator, start_link, [PathStat]},
                                            temporary, brutal_kill, worker, [mio_allocator]}).
 
 
@@ -81,9 +81,9 @@ make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
                                                   {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
 
-make_bucket_with_stat(Supervisor, Allocator, Capacity, Type, MembershipVector, SearchStat) ->
+make_bucket_with_stat(Supervisor, Allocator, Capacity, Type, MembershipVector, PathStat) ->
     {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
-                                                  {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector, SearchStat]]},
+                                                  {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector, PathStat]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
 
 

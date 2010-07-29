@@ -306,7 +306,7 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init([Allocator, Capacity, Type, MembershipVector]) ->
     init([Allocator, Capacity, Type, MembershipVector, []]);
-init([Allocator, Capacity, Type, MembershipVector, SearchStat]) ->
+init([Allocator, Capacity, Type, MembershipVector, PathStat]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
     Insereted = case Type of
@@ -331,7 +331,7 @@ init([Allocator, Capacity, Type, MembershipVector, SearchStat]) ->
                 deleted=false,
                 gen_mvector=fun mio_mvector:generate/1,
                 allocator=Allocator,
-                search_stat=SearchStat
+                path_stat=PathStat
                }}.
 
 
@@ -1003,8 +1003,8 @@ handle_call({skip_graph_buddy_op, MembershipVector, Direction, Level}, From, Sta
 handle_call({link_right_op, Level, RightNode}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode)};
 
-handle_call({display_search_path_stat_op, SearchKey}, _From, State) ->
-    mio_skip_graph:display_search_path_stat(State, SearchKey),
+handle_call({show_path_stat_op, SearchKey}, _From, State) ->
+    mio_skip_graph:show_path_stat(State, SearchKey),
     {reply, ok, State};
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)}.

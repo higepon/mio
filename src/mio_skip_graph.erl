@@ -51,7 +51,7 @@
          link_three_nodes/4,
          link_on_level_ge1/2,
          get_local_buckets/1,
-         display_search_path_stat/2
+         show_path_stat/2
         ]).
 
 %% Exported for handle_call
@@ -185,7 +185,7 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    gen_server:call(Bucket, {display_search_path_stat_op, SearchKey}),
+    gen_server:call(Bucket, {show_path_stat_op, SearchKey}),
     mio_bucket:get_op(Bucket, SearchKey).
 
 search_bucket_op(StartBucket, SearchKey) ->
@@ -193,28 +193,28 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
-push_search_path_stat(State, _SearchKey, _Datum) when State#node.search_stat =:= [] ->
+push_path_stat(State, _SearchKey, _Datum) when State#node.path_stat =:= [] ->
     [];
-push_search_path_stat(State, SearchKey, Datum) ->
-    case mio_local_store:get(State#node.search_stat, SearchKey) of
+push_path_stat(State, SearchKey, Datum) ->
+    case mio_local_store:get(State#node.path_stat, SearchKey) of
         {error, not_found} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [Datum]);
+            mio_local_store:set(State#node.path_stat, SearchKey, [Datum]);
         {ok, Stats} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [Datum | Stats])
+            mio_local_store:set(State#node.path_stat, SearchKey, [Datum | Stats])
     end.
 
-push_search_path_stat(State, Self, SearchKey, Level) ->
-    push_search_path_stat(State, SearchKey, {node(), Self, Level}).
+push_path_stat(State, Self, SearchKey, Level) ->
+    push_path_stat(State, SearchKey, {node(), Self, Level}).
 
-display_search_path_stat(State, _SearchKey) when State#node.search_stat =:= [] ->
+show_path_stat(State, _SearchKey) when State#node.path_stat =:= [] ->
     [];
-display_search_path_stat(State, SearchKey) ->
-    case mio_local_store:get(State#node.search_stat, SearchKey) of
+show_path_stat(State, SearchKey) ->
+    case mio_local_store:get(State#node.path_stat, SearchKey) of
         {error, not_found} ->
             ?INFO("no search path stat");
         {ok, Stats} ->
             ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)]),
-            mio_local_store:set(State#node.search_stat, SearchKey, [])
+            mio_local_store:set(State#node.path_stat, SearchKey, [])
     end.
 
 
@@ -232,10 +232,10 @@ search_op_call(From, State, Self, SearchKey, Level) ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
-                    push_search_path_stat(State, SearchKey, right),
+                    push_path_stat(State, SearchKey, "    ===> right "),
                     gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
                 _ ->
-                    push_search_path_stat(State, SearchKey, left),
+                    push_path_stat(State, SearchKey, "    <=== left "),
                     gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
             end
     end.
@@ -245,7 +245,7 @@ search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
     %% ?INFOF("search [.....] key=~p on ~p ~p~n", [SearchKey, Level, node()]),
-    push_search_path_stat(State, Self, SearchKey, {Level, ?LINE}),
+    push_path_stat(State, Self, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
             %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
@@ -266,7 +266,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    push_search_path_stat(State, Self, SearchKey, {Level, ?LINE}),
+    push_path_stat(State, Self, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
             %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),

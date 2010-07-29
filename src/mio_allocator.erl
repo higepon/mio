@@ -45,7 +45,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {supervisors, search_stat}).
+-record(state, {supervisors, path_stat}).
 
 %%====================================================================
 %% API
@@ -54,8 +54,8 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(SearchStat) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [SearchStat], []).
+start_link(PathStat) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [PathStat], []).
 
 add_node(Allocator, Node) ->
     gen_server:call(Allocator, {add_node, Node}).
@@ -74,8 +74,8 @@ allocate_bucket(Allocator, Capacity, Type, MaxLevel) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([SearchStat]) ->
-    {ok, #state{supervisors=[], search_stat=SearchStat}}.
+init([PathStat]) ->
+    {ok, #state{supervisors=[], path_stat=PathStat}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -92,7 +92,7 @@ handle_call({add_node, Node}, _From, State) ->
 %% allocate bucket on one node.
 handle_call({allocate_bucket, Capacity, Type, MembershipVector}, _From, State) ->
     [Supervisor | More] = State#state.supervisors,
-    Bucket = mio_sup:make_bucket_with_stat(Supervisor, self(), Capacity, Type, MembershipVector, State#state.search_stat),
+    Bucket = mio_sup:make_bucket_with_stat(Supervisor, self(), Capacity, Type, MembershipVector, State#state.path_stat),
     %% simple round-robin
     {reply, Bucket, State#state{supervisors=lists:append(More, [Supervisor])}}.
 

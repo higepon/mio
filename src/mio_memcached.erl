@@ -47,8 +47,8 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         %% Bootstrap
         false ->
             {ok, Serializer} = mio_sup:start_serializer(Sup),
-            {ok, SearchStat} = mio_local_store:new(),
-            {ok, Allocator} = mio_sup:start_allocator(Sup, SearchStat),
+            {ok, PathStat} = mio_local_store:new(),
+            {ok, Allocator} = mio_sup:start_allocator(Sup, PathStat),
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
             ok = mio_local_store:set(LocalSetting, start_buckets, [Bucket]),
