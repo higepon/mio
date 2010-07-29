@@ -1004,7 +1004,8 @@ handle_call({link_right_op, Level, RightNode}, _From, State) ->
     {reply, ok, set_right(State, Level, RightNode)};
 
 handle_call({display_search_path_stat_op, SearchKey}, _From, State) ->
-    {reply, mio_skip_graph:display_search_path_stat(State, SearchKey), State};
+    mio_skip_graph:display_search_path_stat(State, SearchKey),
+    {reply, ok, State};
 handle_call({link_left_op, Level, LeftNode}, _From, State) ->
     {reply, ok, set_left(State, Level, LeftNode)}.
 

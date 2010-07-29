@@ -186,7 +186,6 @@ search_op(StartBucket, SearchKey) ->
 search_op(StartBucket, SearchKey, StartLevel) ->
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
     gen_server:call(Bucket, {display_search_path_stat_op, SearchKey}),
-
     mio_bucket:get_op(Bucket, SearchKey).
 
 search_bucket_op(StartBucket, SearchKey) ->
@@ -194,15 +193,18 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
-push_search_path_stat(State, _Self, _SearchKey, _Level) when State#node.search_stat =:= [] ->
+push_search_path_stat(State, _SearchKey, _Datum) when State#node.search_stat =:= [] ->
     [];
-push_search_path_stat(State, Self, SearchKey, Level) ->
+push_search_path_stat(State, SearchKey, Datum) ->
     case mio_local_store:get(State#node.search_stat, SearchKey) of
         {error, not_found} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, Level}]);
+            mio_local_store:set(State#node.search_stat, SearchKey, [Datum]);
         {ok, Stats} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, Level} | Stats])
+            mio_local_store:set(State#node.search_stat, SearchKey, [Datum | Stats])
     end.
+
+push_search_path_stat(State, Self, SearchKey, Level) ->
+    push_search_path_stat(State, SearchKey, {node(), Self, Level}).
 
 display_search_path_stat(State, _SearchKey) when State#node.search_stat =:= [] ->
     [];
@@ -211,7 +213,8 @@ display_search_path_stat(State, SearchKey) ->
         {error, not_found} ->
             ?INFO("no search path stat");
         {ok, Stats} ->
-            ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)])
+            ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)]),
+            mio_local_store:set(State#node.search_stat, SearchKey, [])
     end.
 
 
@@ -229,8 +232,10 @@ search_op_call(From, State, Self, SearchKey, Level) ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
+                    push_search_path_stat(State, SearchKey, right),
                     gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
                 _ ->
+                    push_search_path_stat(State, SearchKey, left),
                     gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
             end
     end.
