@@ -196,9 +196,9 @@ push_search_path_stat(State, _Self, _SearchKey, _Level) when State#node.search_s
 push_search_path_stat(State, Self, SearchKey, Level) ->
     case mio_local_store:get(State#node.search_stat, SearchKey) of
         {error, not_found} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, SearchKey, Level}]);
+            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, Level}]);
         {ok, Stats} ->
-            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, SearchKey, Level} | Stats])
+            mio_local_store:set(State#node.search_stat, SearchKey, [{node(), Self, Level} | Stats])
     end.
 
 display_search_path_stat(State, _SearchKey) when State#node.search_stat =:= [] ->
@@ -208,7 +208,7 @@ display_search_path_stat(State, SearchKey) ->
         {error, not_found} ->
             ?INFO("no search path stat");
         {ok, Stats} ->
-            ?INFOF("search path stat ~p", [Stats])
+            ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)])
     end.
 
 
@@ -216,7 +216,6 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     %% ?INFOF("search [~p] key=~p [~p : ~p]~n", [case Level of
     %%                                               [] -> start;
     %%                                               _ -> Level end, SearchKey, Self, node()]),
-    push_search_path_stat(State, Self, SearchKey, Level),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
@@ -238,6 +237,7 @@ search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
     %% ?INFOF("search [.....] key=~p on ~p ~p~n", [SearchKey, Level, node()]),
+    push_search_path_stat(State, Self, SearchKey, {Level, ?LINE}),
     case neighbor_node(State, right, Level) of
         [] ->
             %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
@@ -259,6 +259,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
+    push_search_path_stat(State, Self, SearchKey, {Level, ?LINE}),
     case neighbor_node(State, left, Level) of
         [] ->
             %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
