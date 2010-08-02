@@ -46,7 +46,7 @@
 start() ->
     case init:get_argument(command) of
         {ok, [["stop"|_]|_]} ->
-            io:format("stopping"),
+            io:format("stopping "),
             command_stop(),
             halt();
         _ ->
