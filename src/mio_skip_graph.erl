@@ -52,6 +52,7 @@
          link_on_level_ge1/2,
          get_local_buckets/1,
          make_path_stat/0,
+         attach_to_path_stat/1,
          show_path_stat/1
         ]).
 
@@ -225,6 +226,21 @@ make_path_stat() ->
             ?INFOF("Error ~p", [Reason4])
     end,
     mnesia:clear_table(path_stat).
+
+attach_to_path_stat(PathStatNode) ->
+    case mnesia:start() of
+        ok -> ok;
+        {error, Reason2} ->
+            ?INFOF("Error ~p", [Reason2])
+    end,
+    ?INFOF("result=~p", [mnesia:change_config(extra_db_nodes, [PathStatNode])]),
+    case mnesia:wait_for_tables([path_stat], 5000) of
+        ok -> ok;
+        {timeout, BadTabList} ->
+            ?INFOF("wait_for_tables error ~p", [BadTabList]);
+        {error, Reason4}  ->
+            ?INFOF("Error ~p", [Reason4])
+    end.
 
 
 push_path_stat(SearchKey, Datum) ->
