@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_tests).
 -include("../src/mio.hrl").
+-include("../src/mio_path_stats.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MEMCACHED_PORT, 11211).
@@ -16,14 +17,14 @@ setup_mio() ->
     application:set_env(mio, bucket_size, 3),
     ok = application:start(mio),
     ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
-    mio_path_stats:disable(),
-    mio_path_stats:enable(),
-    mio_path_stats:enable().
+    ?MIO_PATH_STATS_DISABLE(),
+    ?MIO_PATH_STATS_ENABLE(),
+    ?MIO_PATH_STATS_ENABLE().
 
 teardown_mio(_) ->
     %% call twice for coverage
-    mio_path_stats:disable(),
-    mio_path_stats:disable(),
+    ?MIO_PATH_STATS_DISABLE(),
+    ?MIO_PATH_STATS_DISABLE(),
     ok = application:stop(mio).
 
 coverage_test() ->

@@ -36,6 +36,7 @@
 %%%-------------------------------------------------------------------
 -module(mio_skip_graph).
 -include("mio.hrl").
+-include("mio_path_stats.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
@@ -183,11 +184,11 @@ delete_loop(Self, Level) ->
 search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
-    mio_path_stats:push(SearchKey, start),
+    ?MIO_PATH_STATS_PUSH(SearchKey, start),
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
     Ret = mio_bucket:get_op(Bucket, SearchKey),
-    mio_path_stats:push(SearchKey, {result, Ret}),
-    mio_path_stats:show(SearchKey),
+    ?MIO_PATH_STATS_PUSH(SearchKey, {result, Ret}),
+    ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
 
 search_bucket_op(StartBucket, SearchKey) ->
@@ -199,16 +200,16 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            mio_path_stats:push(SearchKey, bucket_found),
+            ?MIO_PATH_STATS_PUSH(SearchKey, bucket_found),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
-                    mio_path_stats:push(SearchKey, "    ===> right "),
+                    ?MIO_PATH_STATS_PUSH(SearchKey, "    ===> right "),
                     gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
                 _ ->
-                    mio_path_stats:push(SearchKey, "    <=== left "),
+                    ?MIO_PATH_STATS_PUSH(SearchKey, "    <=== left "),
                     gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
             end
     end.
@@ -217,7 +218,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    mio_path_stats:push(Self, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH(Self, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -235,7 +236,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    mio_path_stats:push(Self, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH(Self, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);

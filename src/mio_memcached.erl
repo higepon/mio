@@ -39,6 +39,7 @@
 -export([memcached/5, process_request/3, sweeper/3]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
+-include("mio_path_stats.hrl").
 
 init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
     {ok, LocalSetting} = mio_local_store:new(),
@@ -47,7 +48,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         %% Bootstrap
         false ->
             {ok, Serializer} = mio_sup:start_serializer(Sup),
-            mio_path_stats:init(),
+            ?MIO_PATH_STATS_INIT(),
             {ok, Allocator} = mio_sup:start_allocator(Sup),
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
@@ -61,7 +62,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         _ ->
             {ok, BootBucket, Allocator, Serializer} = mio_bootstrap:get_boot_info(BootNode),
             Supervisor = whereis(mio_sup),
-            mio_path_stats:init_attach(BootNode),
+            ?MIO_PATH_STATS_INIT_ATTACH(BootNode),
             ok = mio_allocator:add_node(Allocator, Supervisor),
             ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]),
             {Serializer, LocalSetting}
@@ -166,11 +167,11 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:path_stats_enable"] ->
                     ok = gen_tcp:send(Sock, "END\r\n"),
-                    mio_path_stats:enable(),
+                    ?MIO_PATH_STATS_ENABLE(),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:path_stats_disable"] ->
                     ok = gen_tcp:send(Sock, "END\r\n"),
-                    mio_path_stats:enable(),
+                    ?MIO_PATH_STATS_DISABLE(),
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     Start = now_in_msec(),
