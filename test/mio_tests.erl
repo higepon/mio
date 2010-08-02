@@ -15,9 +15,15 @@
 setup_mio() ->
     application:set_env(mio, bucket_size, 3),
     ok = application:start(mio),
-    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT).
+    ok = mio_app:wait_startup(?MEMCACHED_HOST, ?MEMCACHED_PORT),
+    mio_path_stats:disable(),
+    mio_path_stats:enable(),
+    mio_path_stats:enable().
 
 teardown_mio(_) ->
+    %% call twice for coverage
+    mio_path_stats:disable(),
+    mio_path_stats:disable(),
     ok = application:stop(mio).
 
 coverage_test() ->
