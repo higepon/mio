@@ -47,7 +47,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         %% Bootstrap
         false ->
             {ok, Serializer} = mio_sup:start_serializer(Sup),
-            mio_skip_graph:make_path_stat(),
+            mio_path_stats:init(),
             {ok, Allocator} = mio_sup:start_allocator(Sup),
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
@@ -61,17 +61,7 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         _ ->
             {ok, BootBucket, Allocator, Serializer} = mio_bootstrap:get_boot_info(BootNode),
             Supervisor = whereis(mio_sup),
-            mio_skip_graph:attach_to_path_stat(BootNode),
-%%             ?INFOF("start=~p", [mnesia:start()]),
-%%             ?INFOF("result=~p", [mnesia:change_config(extra_db_nodes, [BootNode])]),
-%%     case mnesia:wait_for_tables([path_stat], 5000) of
-%%         ok -> ok;
-%%         {timeout, BadTabList} ->
-%%             ?INFOF("wait_for_tables error ~p", [BadTabList]);
-%%         {error, Reason4}  ->
-%%             ?INFOF("Error ~p", [Reason4])
-%%     end,
-%% %            ?INFOF("COP=~p", [mnesia:add_table_copy(path_stat, node(), ram_copies)]),
+            mio_path_stats:init_attach(BootNode),
             ok = mio_allocator:add_node(Allocator, Supervisor),
             ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]),
             {Serializer, LocalSetting}
