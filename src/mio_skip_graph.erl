@@ -183,23 +183,23 @@ delete_loop(Self, Level) ->
 search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
+    mio_path_stats:push(SearchKey, start),
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
+    Ret = mio_bucket:get_op(Bucket, SearchKey),
+    mio_path_stats:push(SearchKey, {result, Ret}),
     mio_path_stats:show(SearchKey),
-    mio_bucket:get_op(Bucket, SearchKey).
+    Ret.
 
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
-
-
-
 search_op_call(From, State, Self, SearchKey, Level) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            mio_path_stats:push(SearchKey, found),
+            mio_path_stats:push(SearchKey, bucket_found),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
@@ -225,7 +225,6 @@ search_to_right(From, State, Self, SearchKey, Level) ->
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
-                    mio_path_stats:push(SearchKey, found),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
                     search_to_right(From, State, Self, SearchKey, Level - 1)
@@ -244,7 +243,6 @@ search_to_left(From, State, Self, SearchKey, Level) ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    mio_path_stats:push(SearchKey, found),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
                     search_to_left(From, State, Self, SearchKey, Level - 1)
