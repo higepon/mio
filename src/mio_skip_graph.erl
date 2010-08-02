@@ -51,6 +51,7 @@
          link_three_nodes/4,
          link_on_level_ge1/2,
          get_local_buckets/1,
+         make_path_stat/0,
          show_path_stat/2
         ]).
 
@@ -193,14 +194,49 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
+-record(path_stat, {key, stat}).
+
+make_path_stat() ->
+    case mnesia:create_schema([node()]) of
+        ok -> ok;
+        {error, {_, {already_exists, _}}} ->
+            ok;
+        {error, Reason} ->
+            ?INFOF("Error ~p", [Reason])
+    end,
+    case mnesia:start() of
+        ok -> ok;
+        {error, Reason2} ->
+            ?INFOF("Error ~p", [Reason2])
+    end,
+    mnesia:delete_table(path_stat),
+    case mnesia:create_table(path_stat, [{attributes, record_info(fields, path_stat)}, {ram_copies, [node()]}]) of
+        {atomic, ok} -> ok;
+        {aborted, {already_exists,path_stat}} ->
+            ok;
+        {aborted, Reason3} ->
+            ?INFOF("Error ~p", [Reason3])
+    end,
+    case mnesia:wait_for_tables([path_stat], 5000) of
+        ok -> ok;
+        {timeout, BadTabList} ->
+            ?INFOF("wait_for_tables error ~p", [BadTabList]);
+        {error, Reason4}  ->
+            ?INFOF("Error ~p", [Reason4])
+    end,
+    mnesia:clear_table(path_stat).
+
+
 push_path_stat(State, _SearchKey, _Datum) when State#node.path_stat =:= [] ->
     [];
-push_path_stat(State, SearchKey, Datum) ->
-    case mio_local_store:get(State#node.path_stat, SearchKey) of
-        {error, not_found} ->
-            mio_local_store:set(State#node.path_stat, SearchKey, [Datum]);
-        {ok, Stats} ->
-            mio_local_store:set(State#node.path_stat, SearchKey, [Datum | Stats])
+push_path_stat(_State, SearchKey, Datum) ->
+    case mnesia:dirty_read({path_stat, SearchKey}) of
+        [] ->
+            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum]});
+        [{path_stat, SearchKey, Stats}] ->
+            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum | Stats]});
+        Any ->
+            ?INFOF("Any=~p", [Any])
     end.
 
 push_path_stat(State, Self, SearchKey, Level) ->
@@ -208,25 +244,24 @@ push_path_stat(State, Self, SearchKey, Level) ->
 
 show_path_stat(State, _SearchKey) when State#node.path_stat =:= [] ->
     [];
-show_path_stat(State, SearchKey) ->
-    case mio_local_store:get(State#node.path_stat, SearchKey) of
-        {error, not_found} ->
+show_path_stat(_State, SearchKey) ->
+    case mnesia:dirty_read({path_stat, SearchKey}) of
+        [] ->
             ?INFO("no search path stat");
-        {ok, Stats} ->
+        [{path_stat, SearchKey, Stats}] ->
             ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)]),
-            mio_local_store:set(State#node.path_stat, SearchKey, [])
+            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[]});
+        Any2 ->
+            ?INFOF("Any2=~p", [Any2])
     end.
 
 
 search_op_call(From, State, Self, SearchKey, Level) ->
-    %% ?INFOF("search [~p] key=~p [~p : ~p]~n", [case Level of
-    %%                                               [] -> start;
-    %%                                               _ -> Level end, SearchKey, Self, node()]),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            %% ?INFOF("search [end  ] key=~p on ~p~n", [SearchKey, node()]),
+            push_path_stat(State, SearchKey, found),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
@@ -244,20 +279,17 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    %% ?INFOF("search [.....] key=~p on ~p ~p~n", [SearchKey, Level, node()]),
     push_path_stat(State, Self, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
-            %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
             search_to_right(From, State, Self, SearchKey, Level - 1);
         Right ->
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
-                    %% ?INFOF("**** Move to right bucket ~p ****~n", [Right]),
+                    push_path_stat(State, SearchKey, found),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
-                    %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
                     search_to_right(From, State, Self, SearchKey, Level - 1)
             end
     end.
@@ -269,16 +301,14 @@ search_to_left(From, State, Self, SearchKey, Level) ->
     push_path_stat(State, Self, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
-            %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
             search_to_left(From, State, Self, SearchKey, Level - 1);
         Left ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    %% ?INFOF("**** Move to left  bucket ~p ****~n", [Left]),
+                    push_path_stat(State, SearchKey, found),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
-                    %% ?INFOF("**** Down ~p to ~p ****~n", [Level, Level - 1]),
                     search_to_left(From, State, Self, SearchKey, Level - 1)
             end
     end.
