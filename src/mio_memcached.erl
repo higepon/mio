@@ -164,6 +164,14 @@ process_request(Sock, Serializer, LocalSetting) ->
                 ["get_start_bucket"] ->
                     ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
                     process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:path_stats_enable"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    mio_path_stats:enable(),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:path_stats_disable"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    mio_path_stats:enable(),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     Start = now_in_msec(),
                     process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
