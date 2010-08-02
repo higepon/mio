@@ -39,7 +39,7 @@
 -behaviour(supervisor).
 %% API
 -export([start_first_mio/6, start_second_mio/6]).
--export([init/1, start_serializer/1, make_bucket_with_stat/6, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/2]).
+-export([init/1, start_serializer/1, make_bucket/4, make_bucket/5, start_bootstrap/4, start_allocator/1]).
 -include("mio.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -64,9 +64,9 @@ start_bootstrap(Sup, BootBucket, Allocator, Serializer) ->
                                            {mio_bootstrap, start_link, [BootBucket, Allocator, Serializer]},
                                            temporary, brutal_kill, worker, [mio_bootstrap]}).
 
-start_allocator(Sup, PathStat) ->
+start_allocator(Sup) ->
     {ok, _} = supervisor:start_child(Sup, {mio_allocator,
-                                           {mio_allocator, start_link, [PathStat]},
+                                           {mio_allocator, start_link, []},
                                            temporary, brutal_kill, worker, [mio_allocator]}).
 
 
@@ -80,12 +80,6 @@ make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
     {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
                                                   {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
-
-make_bucket_with_stat(Supervisor, Allocator, Capacity, Type, MembershipVector, PathStat) ->
-    {ok, _} = supervisor:start_child(Supervisor, {getRandomId(),
-                                                  {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector, PathStat]]},
-                                                  temporary, brutal_kill, worker, [mio_bucket]}).
-
 
 start_serializer(Sup) ->
     {ok, _} = supervisor:start_child(Sup,

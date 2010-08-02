@@ -52,7 +52,7 @@
          link_on_level_ge1/2,
          get_local_buckets/1,
          make_path_stat/0,
-         show_path_stat/2
+         show_path_stat/1
         ]).
 
 %% Exported for handle_call
@@ -186,7 +186,7 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    gen_server:call(Bucket, {show_path_stat_op, SearchKey}),
+    mio_skip_graph:show_path_stat(SearchKey),
     mio_bucket:get_op(Bucket, SearchKey).
 
 search_bucket_op(StartBucket, SearchKey) ->
@@ -227,9 +227,7 @@ make_path_stat() ->
     mnesia:clear_table(path_stat).
 
 
-push_path_stat(State, _SearchKey, _Datum) when State#node.path_stat =:= [] ->
-    [];
-push_path_stat(_State, SearchKey, Datum) ->
+push_path_stat(SearchKey, Datum) ->
     case mnesia:dirty_read({path_stat, SearchKey}) of
         [] ->
             mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum]});
@@ -239,12 +237,10 @@ push_path_stat(_State, SearchKey, Datum) ->
             ?INFOF("Any=~p", [Any])
     end.
 
-push_path_stat(State, Self, SearchKey, Level) ->
-    push_path_stat(State, SearchKey, {node(), Self, Level}).
+push_path_stat(Self, SearchKey, Level) ->
+    push_path_stat(SearchKey, {node(), Self, Level}).
 
-show_path_stat(State, _SearchKey) when State#node.path_stat =:= [] ->
-    [];
-show_path_stat(_State, SearchKey) ->
+show_path_stat(SearchKey) ->
     case mnesia:dirty_read({path_stat, SearchKey}) of
         [] ->
             ?INFO("no search path stat");
@@ -261,16 +257,16 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            push_path_stat(State, SearchKey, found),
+            push_path_stat(SearchKey, found),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
-                    push_path_stat(State, SearchKey, "    ===> right "),
+                    push_path_stat(SearchKey, "    ===> right "),
                     gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
                 _ ->
-                    push_path_stat(State, SearchKey, "    <=== left "),
+                    push_path_stat(SearchKey, "    <=== left "),
                     gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
             end
     end.
@@ -279,7 +275,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    push_path_stat(State, Self, SearchKey, Level),
+    push_path_stat(Self, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -287,7 +283,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
-                    push_path_stat(State, SearchKey, found),
+                    push_path_stat(SearchKey, found),
                     search_bucket_op(Right, SearchKey, Level);
                 _ ->
                     search_to_right(From, State, Self, SearchKey, Level - 1)
@@ -298,7 +294,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    push_path_stat(State, Self, SearchKey, Level),
+    push_path_stat(Self, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
@@ -306,7 +302,7 @@ search_to_left(From, State, Self, SearchKey, Level) ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    push_path_stat(State, SearchKey, found),
+                    push_path_stat(SearchKey, found),
                     search_bucket_op(Left, SearchKey, Level);
                 _ ->
                     search_to_left(From, State, Self, SearchKey, Level - 1)
