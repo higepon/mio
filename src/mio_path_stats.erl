@@ -28,7 +28,7 @@
 %%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -module(mio_path_stats).
--export([init/0, init_attach/1, show/1, push/2, push/3]).
+-export([init/0, init_attach/1, show/1, push/2, push/3, enable/0, disable/0]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
@@ -84,25 +84,64 @@ init_attach(PathStatNode) ->
     end.
 
 push(SearchKey, Datum) ->
-    case mnesia:dirty_read({path_stat, SearchKey}) of
+    case is_enabled() of
+        true ->
+            case mnesia:dirty_read({path_stat, SearchKey}) of
+                [] ->
+                    mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum]});
+                [{path_stat, SearchKey, Stats}] ->
+                    mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum | Stats]});
+                Any ->
+                    ?FATALF("Any=~p", [Any])
+            end;
+        _ -> ok
+    end.
+
+push(Self, SearchKey, Level) ->
+    case is_enabled() of
+        true ->
+            push(SearchKey, {node(), Self, Level});
+        _ -> ok
+    end.
+
+show(SearchKey) ->
+    case is_enabled() of
+        true ->
+            case mnesia:dirty_read({path_stat, SearchKey}) of
+                [] ->
+                    ?INFO("no search path stat");
+                [{path_stat, SearchKey, Stats}] ->
+                    ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)]),
+                    mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[]});
+                Any2 ->
+                    ?FATALF("Any2=~p", [Any2])
+            end;
+        _ -> ok
+    end.
+
+is_enabled() ->
+    case mnesia:dirty_read({path_stat, path_stat_enabled}) of
+        [{path_stat, _, true}] -> true;
+        _ -> false
+    end.
+
+enable() ->
+    case mnesia:dirty_read({path_stat, path_stat_enabled}) of
         [] ->
-            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum]});
-        [{path_stat, SearchKey, Stats}] ->
-            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[Datum | Stats]});
+            mnesia:dirty_write(path_stat, #path_stat{key=path_stat_enabled, stat=true});
+        [{path_stat, _, false}] ->
+            mnesia:dirty_write(path_stat, #path_stat{key=path_stat_enabled, stat=true});
         Any ->
             ?FATALF("Any=~p", [Any])
     end.
 
-push(Self, SearchKey, Level) ->
-    push(SearchKey, {node(), Self, Level}).
 
-show(SearchKey) ->
-    case mnesia:dirty_read({path_stat, SearchKey}) of
+disable() ->
+    case mnesia:dirty_read({path_stat, path_stat_enabled}) of
         [] ->
-            ?INFO("no search path stat");
-        [{path_stat, SearchKey, Stats}] ->
-            ?INFOF("search ~p path stat ~p", [SearchKey, lists:reverse(Stats)]),
-            mnesia:dirty_write(path_stat, #path_stat{key=SearchKey, stat=[]});
-        Any2 ->
-            ?FATALF("Any2=~p", [Any2])
+            ok;
+        [{path_stat, _, true}] ->
+            mnesia:dirty_write(path_stat, #path_stat{key=path_stat_enabled, stat=false});
+        Any ->
+            ?FATALF("Any=~p", [Any])
     end.
