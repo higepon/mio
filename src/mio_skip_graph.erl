@@ -200,7 +200,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            ?MIO_PATH_STATS_PUSH(SearchKey, bucket_found),
+            ?MIO_PATH_STATS_PUSH(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
@@ -218,7 +218,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    ?MIO_PATH_STATS_PUSH(Self, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -236,7 +236,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    ?MIO_PATH_STATS_PUSH(Self, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
