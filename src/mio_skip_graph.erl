@@ -97,20 +97,32 @@ get_key_op(Bucket) ->
 %%--------------------------------------------------------------------
 %%  Dump operation for Debug.
 %%--------------------------------------------------------------------
+get_most_left(Bucket) ->
+    case mio_bucket:get_left_op(Bucket) of
+        [] ->
+             Bucket;
+        Left ->
+            get_most_left(Left)
+    end.
+
 dump_op(StartBucket) ->
+    MostLeft = get_most_left(StartBucket),
+    gen_server:call(MostLeft, skip_graph_dump_op).
+
+dump_op1(StartBucket) ->
     gen_server:call(StartBucket, skip_graph_dump_op).
 
 
 dump_op_call(State) ->
     Key = get_key(State),
-    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, mio_bucket:get_range(State)]),
-    lists:foreach(fun(K) ->
-                          ?INFOF("    ~p~n", [K])
-                  end, mio_store:keys(State#node.store)),
+    ?INFOF("===========================================~nBucket: ~p<~p>:~p ~p~n", [Key, State#node.type, mio_bucket:get_range(State), State#node.membership_vector]),
+    %% lists:foreach(fun(K) ->
+    %%                       ?INFOF("    ~p~n", [K])
+    %%               end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];
         RightBucket ->
-            dump_op(RightBucket)
+            dump_op1(RightBucket)
     end.
 
 %%--------------------------------------------------------------------
@@ -414,6 +426,7 @@ do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
 %%         right ->
 %%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
         left ->
+            ?INFOF("linke three ~p ~p", [Level, {Buddy, Self, BuddyNeighbor}]),
             link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
     end,
     %% Go up to next Level.

@@ -169,6 +169,10 @@ process_request(Sock, Serializer, LocalSetting) ->
                     ok = gen_tcp:send(Sock, "END\r\n"),
                     ?MIO_PATH_STATS_ENABLE(),
                     process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:dump"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    mio_skip_graph:dump_op(StartBucket),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:path_stats_disable"] ->
                     ok = gen_tcp:send(Sock, "END\r\n"),
                     ?MIO_PATH_STATS_DISABLE(),
