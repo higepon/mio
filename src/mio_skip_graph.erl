@@ -230,7 +230,7 @@ search_op_call(From, State, Self, SearchKey, Level) ->
 search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_right(From, State, Self, SearchKey, Level) ->
-    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_range(State)}, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1);
@@ -248,7 +248,7 @@ search_to_right(From, State, Self, SearchKey, Level) ->
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
     Self;
 search_to_left(From, State, Self, SearchKey, Level) ->
-    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_range(State)}, SearchKey, Level),
+    ?MIO_PATH_STATS_PUSH({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
@@ -310,6 +310,21 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
+is_valid_order(_Left, []) ->
+    true;
+is_valid_order([], _Right)->
+    true;
+is_valid_order(_Left, _Right) ->
+    true.
+    %% {_, {LMax, _}} = mio_bucket:get_range_op(Left),
+    %% {{RMin, _}, _} = mio_bucket:get_range_op(Right),
+    %% case {LMax, RMin} of
+    %%     {[], _} -> true;
+    %%     {_, []} -> true;
+    %%     _ ->
+    %%         LMax =< RMin
+    %% end.
+
 link_right_op([], _Level, _Right) ->
     ok;
 link_right_op(Node, Level, Right) ->
@@ -331,11 +346,9 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
-    %% N.B.
-    %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = node_on_level(State#node.inserted, Level),
+    ?INFOF("buddy_op to ~p ~p MV=~p ", [Direction, {Self, mio_bucket:get_range_op(Self)}, {MembershipVector, State#node.membership_vector}]),
     if
-        IsSameMV andalso IsInserted ->
+        IsSameMV ->
             MyKey = mio_bucket:my_key(State),
             ReverseDirection = reverse_direction(Direction),
             MyNeighbor = neighbor_node(State, ReverseDirection, Level),
@@ -361,9 +374,9 @@ buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
     case buddy_op(RightOnLower, MyMV, right, Level) of
         not_found ->
-            not_found
-%%         {ok, Buddy, BuddyKey, BuddyLeft} ->
-%%             {ok, right, Buddy, BuddyKey, BuddyLeft}
+            not_found;
+        {ok, Buddy, BuddyKey, BuddyLeft} ->
+            {ok, right, Buddy, BuddyKey, BuddyLeft}
     end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
@@ -407,6 +420,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     {_MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
+    ?INFOF("LeftOnLower=~p Self=~p RightOnLower=~p", [{LeftOnLower, mio_bucket:get_range_op(LeftOnLower)}, {Self, mio_bucket:get_range_op(Self)}, {RightOnLower, mio_bucket:get_range_op(RightOnLower)}]),
     case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
         not_found ->
             %% We have no buddy on this level.
@@ -415,18 +429,23 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, _BuddyKey, BuddyRight} ->
-            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left)
-%%         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-%%         {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
-%%             do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
+            case is_valid_order(Buddy, Self) andalso is_valid_order(Self, BuddyRight) of
+                true ->
+                    do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left);
+                _ ->
+                    throw({"skip graph is broken ~p ~p ~p ~p on Level ~p", [{is_valid_order(Buddy, Self), is_valid_order(Self, BuddyRight)}, mio_bucket:get_range_op(Buddy), mio_bucket:get_range_op(Self), mio_bucket:get_range_op(BuddyRight), Level]})
+            end;
+        %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
+        {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
+            do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
     end.
 
 do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
     case Direction of
-%%         right ->
-%%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
+        right ->
+            link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
         left ->
-            ?INFOF("linke three ~p ~p", [Level, {Buddy, Self, BuddyNeighbor}]),
+            ?INFOF("linke three ~p ~p", [Level, {{Buddy, mio_bucket:get_range_op(Buddy)}, {Self, mio_bucket:get_range_op(Self)}, {BuddyNeighbor, mio_bucket:get_range_op(BuddyNeighbor)}}]),
             link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
     end,
     %% Go up to next Level.
@@ -465,8 +484,8 @@ neighbor_node(State, Direction, Level) ->
 
 reverse_direction(Direction) ->
     case Direction of
-%%         right ->
-%%              left;
+        right ->
+             left;
         left ->
             right
     end.

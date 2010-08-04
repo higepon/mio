@@ -237,6 +237,8 @@ get_left_op(Bucket, Level) ->
 get_right_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_right_op, Level}).
 
+get_range_op([]) ->
+    [];
 get_range_op(Bucket) ->
     gen_server:call(Bucket, get_range_op).
 
@@ -307,14 +309,6 @@ start_link(Args) ->
 init([Allocator, Capacity, Type, MembershipVector]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
-    Insereted = case Type of
-                    alone ->
-                        %% set as inserted state
-                        lists:duplicate(Length + 1, true);
-                    _ ->
-                        lists:duplicate(Length + 1, false)
-                end,
-
     {ok, #node{store=mio_store:new(Capacity),
                 type=Type,
                 min_key=?MIN_KEY,
@@ -325,8 +319,6 @@ init([Allocator, Capacity, Type, MembershipVector]) ->
                 right=EmptyNeighbors,
                 membership_vector=MembershipVector,
                 expire_time=0,
-                inserted=Insereted,
-                deleted=false,
                 gen_mvector=fun mio_mvector:generate/1,
                 allocator=Allocator
                }}.
