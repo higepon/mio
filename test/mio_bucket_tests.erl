@@ -150,6 +150,7 @@ insert_c_o_4() ->
     Bucket = setup_full_bucket(),
     Right = mio_bucket:get_right_op(Bucket),
 
+
     %% right is nearly full
     {ok, _} = mio_bucket:insert_op(Right, "key4", value4),
     {ok, _} = mio_bucket:insert_op(Right, "key5", value5),
@@ -1439,7 +1440,9 @@ setup_full_bucket() ->
 
     %% set dummy type.
     {ok, Right } = make_bucket(right),
+    mio_bucket:set_range_op(Right, {?MAX_KEY, false}, {?MAX_KEY, false}),
     {ok, Left } = make_bucket(left),
+    mio_bucket:set_range_op(Left, {?MIN_KEY, false}, {?MIN_KEY, false}),
 
     ok = mio_skip_graph:link_left_op(Bucket, 0, Left),
     ok = mio_skip_graph:link_right_op(Left, 0, Bucket),
