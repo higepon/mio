@@ -237,8 +237,8 @@ get_left_op(Bucket, Level) ->
 get_right_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_right_op, Level}).
 
-get_range_op([]) ->
-    [];
+%% get_range_op([]) ->
+%%     [];
 get_range_op(Bucket) ->
     gen_server:call(Bucket, get_range_op).
 

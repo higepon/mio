@@ -1,0 +1,18 @@
+-define(PATH_STATS, 1).
+-ifdef(PATH_STATS).
+  -define(MIO_PATH_STATS_INIT(), mio_path_stats:init()).
+  -define(MIO_PATH_STATS_INIT_ATTACH(N), mio_path_stats:init_attach(N)).
+  -define(MIO_PATH_STATS_ENABLE(), mio_path_stats:enable()).
+  -define(MIO_PATH_STATS_DISABLE(), mio_path_stats:disable()).
+  -define(MIO_PATH_STATS_PUSH(A, B), mio_path_stats:push(A, B)).
+  -define(MIO_PATH_STATS_PUSH(A, B, C), mio_path_stats:push(A, B, C)).
+  -define(MIO_PATH_STATS_SHOW(A), mio_path_stats:show(A)).
+-else.
+  -define(MIO_PATH_STATS_INIT(), ok).
+  -define(MIO_PATH_STATS_INIT_ATTACH(N), ok).
+  -define(MIO_PATH_STATS_ENABLE(), ok).
+  -define(MIO_PATH_STATS_DISABLE(), ok).
+  -define(MIO_PATH_STATS_PUSH(A, B), ok).
+  -define(MIO_PATH_STATS_PUSH(A, B, C), ok).
+  -define(MIO_PATH_STATS_SHOW(A), ok).
+-endif.
