@@ -110,12 +110,18 @@ get(Key, Store) ->
     end.
 
 get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
-    case ets:lookup(Store#store.ets, KeyA) of
-        [] ->
-            lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
-        [{KeyA, Value}] ->
-            lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
+    case ets:select(Store#store.ets, [{{'$1','$2'},[{'and', {'>=','$1', KeyA}, {'=<','$1', KeyB}}],['$$']}], Limit) of
+        '$end_of_table' ->
+            [];
+        {KeyValues, _} ->
+            lists:map(fun([Key, Value]) -> {Key, Value} end, KeyValues)
     end;
+    %% case ets:lookup(Store#store.ets, KeyA) of
+    %%     [] ->
+    %%         lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
+    %%     [{KeyA, Value}] ->
+    %%         lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
+    %% end;
 get_range(KeyA, KeyB, Limit, Store) when KeyA > KeyB ->
     case ets:lookup(Store#store.ets, KeyA) of
         [] ->

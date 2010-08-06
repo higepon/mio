@@ -1,4 +1,4 @@
-%%-define(PATH_STATS, 0).
+-define(PATH_STATS, 0).
 -ifdef(PATH_STATS).
   -define(MIO_PATH_STATS_INIT(), mio_path_stats:init()).
   -define(MIO_PATH_STATS_INIT_ATTACH(N), mio_path_stats:init_attach(N)).
