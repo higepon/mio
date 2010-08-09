@@ -154,7 +154,12 @@ init([]) ->
     %%
     {ok, Port} = mio_app:get_env(port, 11211),
     {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
-    {ok, BootNode} = mio_app:get_env(boot_node, false),
+    %% mio1@127.0.0.1 is not valid atom literal, so we accept it as string and convert it to atom.
+    {ok, BootNode} = case mio_app:get_env(boot_node, false) of
+                         {ok, false} -> {ok, false};
+                         {ok, StringValue} ->
+                             {ok, list_to_atom(StringValue)}
+                     end,
     {ok, BucketSize} = mio_app:get_env(bucket_size, 1000000),
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),

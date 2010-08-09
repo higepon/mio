@@ -128,7 +128,7 @@ erl +K true \
     ${mio_detached} \
     -mio debug $mio_verbose \
          port $mio_port \
-         boot_node $mio_introducer \
+         boot_node "\"$mio_introducer"\" \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
          bucket_size $mio_bucketsize \
