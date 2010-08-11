@@ -197,8 +197,12 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_PUSH2(SearchKey, start),
+    dynomite_prof:start_prof(search_bucket_op),
     Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
+    dynomite_prof:stop_prof(search_bucket_op),
+    dynomite_prof:start_prof(search_bucket_op2),
     Ret = mio_bucket:get_op(Bucket, SearchKey),
+    dynomite_prof:stop_prof(search_bucket_op2),
     ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
@@ -208,21 +212,34 @@ search_bucket_op(StartBucket, SearchKey) ->
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 search_op_call(From, State, Self, SearchKey, Level) ->
+    dynomite_prof:start_prof(hige0),
+    dynomite_prof:start_prof(hige1),
+    dynomite_prof:start_prof(hige2),
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
+    dynomite_prof:stop_prof(hige2),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
             ?MIO_PATH_STATS_PUSH2(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
+            dynomite_prof:stop_prof(hige0),
             gen_server:reply(From, Self);
         _ ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
+                    dynomite_prof:start_prof(search_to_right),
+                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel),
+                    dynomite_prof:stop_prof(search_to_right),
+                    dynomite_prof:stop_prof(hige1),
+                    gen_server:reply(From, Ret);
                 _ ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
+          dynomite_prof:start_prof(search_to_left),
+                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel),
+          dynomite_prof:stop_prof(search_to_left),
+                    dynomite_prof:stop_prof(hige1),
+                    gen_server:reply(From, Ret)
             end
     end.
 
@@ -253,10 +270,15 @@ search_to_left(From, State, Self, SearchKey, Level) ->
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1);
         Left ->
+            dynomite_prof:start_prof(hige3),
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
+            dynomite_prof:stop_prof(hige3),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    search_bucket_op(Left, SearchKey, Level);
+                    dynomite_prof:start_prof(hige4),
+                    Ret = search_bucket_op(Left, SearchKey, Level),
+                    dynomite_prof:stop_prof(hige4),
+                    Ret;
                 _ ->
                     search_to_left(From, State, Self, SearchKey, Level - 1)
             end

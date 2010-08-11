@@ -890,7 +890,10 @@ handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#node.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
-    {reply, mio_store:get(Key, State#node.store), State};
+    dynomite_prof:start_prof(get_op),
+    Ret = mio_store:get(Key, State#node.store),
+    dynomite_prof:stop_prof(get_op),
+    {reply, Ret, State};
 
 handle_call(skip_graph_get_key_op, _From, State) ->
     {reply, mio_skip_graph:get_key(State), State};

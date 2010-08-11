@@ -49,7 +49,7 @@ mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
 mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
 
 erl -pa ${MIO_EBIN_ROOT} \
-    -name mioctrl$$@`hostname -s`.local \
+    -name mioctrl$$@127.0.0.1 \
     -noinput \
     -s mio_control start \
     -setcookie $mio_cookie \
