@@ -240,7 +240,8 @@ get_right_op(Bucket, Level) ->
 %% get_range_op([]) ->
 %%     [];
 get_range_op(Bucket) ->
-    gen_server:call(Bucket, get_range_op).
+    Ret = gen_server:call(Bucket, get_range_op),
+    Ret.
 
 get_type_op(Bucket) ->
     gen_server:call(Bucket, get_type_op).
@@ -890,9 +891,7 @@ handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#node.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
-    dynomite_prof:start_prof(get_op),
     Ret = mio_store:get(Key, State#node.store),
-    dynomite_prof:stop_prof(get_op),
     {reply, Ret, State};
 
 handle_call(skip_graph_get_key_op, _From, State) ->
@@ -981,6 +980,11 @@ handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
 handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     Self = self(),
     spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level]),
+    {noreply, State};
+
+handle_call({skip_graph_search_direct_op, SearchKey, Level}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, search_direct_op_call, [From, State, Self, SearchKey, Level]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->

@@ -179,9 +179,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     Start = now_in_msec(),
-                    dynomite_prof:start_prof(get),
                     process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
-                    dynomite_prof:stop_prof(get),
                     End = now_in_msec(),
                     mio_stats:inc_cmd_get(LocalSetting),
                     mio_stats:inc_cmd_get_total_time(LocalSetting, End - Start),
@@ -280,12 +278,10 @@ enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key) ->
     spawn_link(fun () -> mio_serializer:delete_op(Serializer, StartBucket, Key) end).
 
 process_get(Sock, StartBucket, Serializer, LocalSetting, Key) ->
-    dynomite_prof:start_prof(search_op),
     case mio_skip_graph:search_op(StartBucket, Key) of
         {ok, Value, ExpirationTime} ->
             case ExpirationTime of
                 ?NEVER_EXPIRE ->
-                    dynomite_prof:stop_prof(search_op),
                     ok = gen_tcp:send(Sock, io_lib:format(
                                               "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
                                               [Key, size(Value), Value]));
@@ -304,7 +300,6 @@ process_get(Sock, StartBucket, Serializer, LocalSetting, Key) ->
                     end
             end;
         {error, not_found} ->
-            dynomite_prof:stop_prof(search_op),
             ok = gen_tcp:send(Sock, "END\r\n")
     end.
 
