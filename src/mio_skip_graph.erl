@@ -303,6 +303,35 @@ search_direct_to_right(From, State, Self, SearchKey, Level) ->
     end.
 
 %% coverage says this is not necessary
+search_to_right(From, State, Self, SearchKey, Level) ->
+    search_to_right(From, State, Self, SearchKey, Level, false).
+search_to_right(_From, State, Self, SearchKey, Level, IsDirectReturn) when Level < 0 ->
+    if IsDirectReturn ->
+            search_on_bucket(SearchKey, State);
+       true ->
+            Self
+    end;
+search_to_right(From, State, Self, SearchKey, Level, IsDirectReturn) ->
+    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
+    case neighbor_node(State, right, Level) of
+        [] ->
+            search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectReturn);
+        Right ->
+            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
+            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
+                true ->
+                    if IsDirectReturn ->
+                            search_direct_op(Right, SearchKey, Level);
+                       true ->
+                            search_bucket_op(Right, SearchKey, Level)
+                    end;
+                _ ->
+                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectReturn)
+            end
+    end.
+
+
+%% coverage says this is not necessary
 search_direct_to_left(_From, State, _Self, SearchKey, Level) when Level < 0 ->
     search_on_bucket(SearchKey, State);
 search_direct_to_left(From, State, Self, SearchKey, Level) ->
@@ -323,23 +352,6 @@ search_direct_to_left(From, State, Self, SearchKey, Level) ->
 
 
 
-%% coverage says this is not necessary
-search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-    Self;
-search_to_right(From, State, Self, SearchKey, Level) ->
-    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
-    case neighbor_node(State, right, Level) of
-        [] ->
-            search_to_right(From, State, Self, SearchKey, Level - 1);
-        Right ->
-            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
-            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
-                true ->
-                    search_bucket_op(Right, SearchKey, Level);
-                _ ->
-                    search_to_right(From, State, Self, SearchKey, Level - 1)
-            end
-    end.
 
 %% coverage says this is not necessary
 search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
