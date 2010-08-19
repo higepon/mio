@@ -216,13 +216,13 @@ search_bucket_op(StartBucket, SearchKey, StartLevel) ->
 search_direct_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_direct_op, SearchKey, StartLevel}, infinity).
 
-search_op_call(From, State, Self, SearchKey, Level, IsDirectReturn) ->
+search_op_call(From, State, Self, SearchKey, Level, IsDirectSearch) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
             ?MIO_PATH_STATS_PUSH2(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
-            if IsDirectReturn ->
+            if IsDirectSearch ->
                     gen_server:reply(From, search_on_bucket(SearchKey, State));
                true ->
                     gen_server:reply(From, Self)
@@ -232,11 +232,11 @@ search_op_call(From, State, Self, SearchKey, Level, IsDirectReturn) ->
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel, IsDirectReturn),
+                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel, IsDirectSearch),
                     gen_server:reply(From, Ret);
                 _ ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel, IsDirectReturn),
+                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel, IsDirectSearch),
                     gen_server:reply(From, Ret)
             end
     end.
@@ -248,52 +248,52 @@ search_on_bucket(Key, State) ->
         Other -> Other
     end.
 
-search_to_right(_From, State, Self, SearchKey, Level, IsDirectReturn) when Level < 0 ->
-    if IsDirectReturn ->
+search_to_right(_From, State, Self, SearchKey, Level, IsDirectSearch) when Level < 0 ->
+    if IsDirectSearch ->
             search_on_bucket(SearchKey, State);
        true ->
             Self
     end;
-search_to_right(From, State, Self, SearchKey, Level, IsDirectReturn) ->
+search_to_right(From, State, Self, SearchKey, Level, IsDirectSearch) ->
     ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, right, Level) of
         [] ->
-            search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectReturn);
+            search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Right ->
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
-                    if IsDirectReturn ->
+                    if IsDirectSearch ->
                             search_direct_op(Right, SearchKey, Level);
                        true ->
                             search_bucket_op(Right, SearchKey, Level)
                     end;
                 _ ->
-                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectReturn)
+                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch)
             end
     end.
-search_to_left(_From, State, Self, SearchKey, Level, IsDirectReturn) when Level < 0 ->
-    if IsDirectReturn ->
+search_to_left(_From, State, Self, SearchKey, Level, IsDirectSearch) when Level < 0 ->
+    if IsDirectSearch ->
             search_on_bucket(SearchKey, State);
        true ->
             Self
     end;
-search_to_left(From, State, Self, SearchKey, Level, IsDirectReturn) ->
+search_to_left(From, State, Self, SearchKey, Level, IsDirectSearch) ->
     ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, left, Level) of
         [] ->
-            search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectReturn);
+            search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Left ->
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
-                    if IsDirectReturn ->
+                    if IsDirectSearch ->
                             search_direct_op(Left, SearchKey, Level);
                        true ->
                             search_bucket_op(Left, SearchKey, Level)
                     end;
                 _ ->
-                    search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectReturn)
+                    search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch)
             end
     end.
 
