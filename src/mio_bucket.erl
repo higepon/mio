@@ -979,12 +979,12 @@ handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
 
 handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, false]),
+    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, _IsDirectSearch = false]),
     {noreply, State};
 
 handle_call({skip_graph_search_direct_op, SearchKey, Level}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, true]),
+    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, _IsDirectSearch = true]),
     {noreply, State};
 
 handle_call(get_op, From, State) ->
