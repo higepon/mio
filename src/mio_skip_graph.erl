@@ -55,7 +55,7 @@
         ]).
 
 %% Exported for handle_call
--export([search_op_call/5,
+-export([search_op_call/6,
          search_direct_op_call/5,
          insert_op_call/5,
          buddy_op_call/6,
@@ -217,23 +217,27 @@ search_bucket_op(StartBucket, SearchKey, StartLevel) ->
 search_direct_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_direct_op, SearchKey, StartLevel}, infinity).
 
-search_op_call(From, State, Self, SearchKey, Level) ->
+search_op_call(From, State, Self, SearchKey, Level, IsDirectReturn) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
             ?MIO_PATH_STATS_PUSH2(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
-            gen_server:reply(From, Self);
+            if IsDirectReturn ->
+                    gen_server:reply(From, search_on_bucket(SearchKey, State));
+               true ->
+                    gen_server:reply(From, Self)
+            end;
         _ ->
             StartLevel = start_level(State, Level),
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel),
+                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel, IsDirectReturn),
                     gen_server:reply(From, Ret);
                 _ ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel),
+                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel, IsDirectReturn),
                     gen_server:reply(From, Ret)
             end
     end.
