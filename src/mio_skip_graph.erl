@@ -205,32 +205,15 @@ search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
 
-    %% Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    %% dynomite_prof:stop_prof(search_bucket_op),
-    %% case mio_util:is_local_process(Bucket) of
-    %%     true ->
-    %%         dynomite_prof:start_prof(local_get_op_on_search_bucket_op);
-    %%     false ->
-    %%         dynomite_prof:start_prof(remote_get_opon_search_bucket_op)
-    %% end,
-    %% Ret = mio_bucket:get_op(Bucket, SearchKey),
-    %% case mio_util:is_local_process(Bucket) of
-    %%     true ->
-    %%         dynomite_prof:stop_prof(local_get_op_on_search_bucket_op);
-    %%     false ->
-    %%         dynomite_prof:stop_prof(remote_get_opon_search_bucket_op)
-    %% end,
-    %% ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
-    %% ?MIO_PATH_STATS_SHOW(SearchKey),
-    %% Ret.
-
+%% search_bucket_op returns a bucket which may have the SearchKey.
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
 
-search_direct_op(StartBucket, SearchKey) ->
-    search_direct_op(StartBucket, SearchKey, []).
+%% search_direct_op finds a bucket which may have the SearchKey, and returns search result.
+%% This function exists for performance reason.
+%% On multiple nodes, we should reduce gen_server:call to remote node.
 search_direct_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_direct_op, SearchKey, StartLevel}, infinity).
 
