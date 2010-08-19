@@ -56,7 +56,6 @@
 
 %% Exported for handle_call
 -export([search_op_call/6,
-         search_direct_op_call/5,
          insert_op_call/5,
          buddy_op_call/6,
          dump_op_call/1,
@@ -249,35 +248,6 @@ search_on_bucket(Key, State) ->
         Other -> Other
     end.
 
-%% For performance reason, we don't use mio_bucket:get_op instead searching on bucket using State record.
-search_direct_op_call(From, State, Self, SearchKey, Level) ->
-    {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
-    case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
-        %% Key may be found in Self.
-        true ->
-            ?MIO_PATH_STATS_PUSH2(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
-            gen_server:reply(From, search_on_bucket(SearchKey, State));
-        _ ->
-            StartLevel = start_level(State, Level),
-            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
-                true ->
-                    ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    Ret = search_direct_to_right(From, State, Self, SearchKey, StartLevel),
-                    gen_server:reply(From, Ret);
-                _ ->
-                    ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    Ret = search_direct_to_left(From, State, Self, SearchKey, StartLevel),
-                    gen_server:reply(From, Ret)
-            end
-    end.
-
-%% coverage says this is not necessary
-search_direct_to_right(From, State, Self, SearchKey, Level) ->
-    search_to_right(From, State, Self, SearchKey, Level, true).
-
-%% coverage says this is not necessary
-search_to_right(From, State, Self, SearchKey, Level) ->
-    search_to_right(From, State, Self, SearchKey, Level, false).
 search_to_right(_From, State, Self, SearchKey, Level, IsDirectReturn) when Level < 0 ->
     if IsDirectReturn ->
             search_on_bucket(SearchKey, State);
@@ -302,13 +272,6 @@ search_to_right(From, State, Self, SearchKey, Level, IsDirectReturn) ->
                     search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectReturn)
             end
     end.
-
-
-search_direct_to_left(_From, State, _Self, SearchKey, Level) ->
-    search_to_left(_From, State, _Self, SearchKey, Level, true).
-
-search_to_left(_From, State, Self, SearchKey, Level) ->
-    search_to_left(_From, State, Self, SearchKey, Level, false).
 search_to_left(_From, State, Self, SearchKey, Level, IsDirectReturn) when Level < 0 ->
     if IsDirectReturn ->
             search_on_bucket(SearchKey, State);
