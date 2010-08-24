@@ -1,0 +1,62 @@
+#!/bin/sh
+### Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+### All rights reserved.
+###
+### Redistribution and use in source and binary forms, with or without
+### modification, are permitted provided that the following conditions
+### are met:
+###
+### 1. Redistributions of source code must retain the above copyright
+###    notice, this list of conditions and the following disclaimer.
+### 2. Redistributions in binary form must reproduce the above
+###    copyright notice, this list of conditions and the following
+###    disclaimer in the documentation and/or other materials provided
+###    with the distribution.
+###
+### THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+### OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+### WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+### ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+### DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+### DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+### GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+### INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+### WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+### Utility for mio developers.
+
+. `dirname $0`/mio-env
+MIO_EBIN_ROOT="${MIO_HOME}/ebin"
+opt_port=
+opt_key=
+opt_ntimes=
+
+while getopts 'p:n:k:' OPTION
+do
+  case $OPTION in
+  n)    opt_ntimes="$OPTARG"
+        ;;
+  k)    opt_key="$OPTARG"
+        ;;
+  p)    opt_port="$OPTARG"
+        ;;
+  esac
+done
+shift $(($OPTIND - 1))
+mio_port=${opt_port:-"11211"}
+mio_key=${opt_key:-"1"}
+mio_ntimes=${opt_ntimes:-"1"}
+erl +K true \
+    +P 10000000 \
+    +W w \
+    -noshell \
+    -noinput \
+    -kernel inet_default_listen_options [{nodelay,true},{sndbuf,16384},{recbuf,4096}] \
+    -kernel inet_default_connect_options [{nodelay,true}] \
+    -pa ${MIO_EBIN_ROOT} \
+    -s mio_get start \
+    -port "$mio_port"  \
+    -ntimes "$mio_ntimes" \
+    -key "$mio_key"

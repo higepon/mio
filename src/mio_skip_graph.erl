@@ -197,9 +197,9 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_PUSH2(SearchKey, start),
-    dynomite_prof:start_prof(search_bucket_op),
+    dynomite_prof:start_prof(search_direct_op),
     Ret = search_direct_op(StartBucket, SearchKey, StartLevel),
-    dynomite_prof:stop_prof(search_bucket_op),
+    dynomite_prof:stop_prof(search_direct_op),
     ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
@@ -258,7 +258,9 @@ search_to_right(From, State, Self, SearchKey, Level, IsDirectSearch) ->
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Right ->
+            dynomite_prof:start_prof(get_range_op),
             {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
+            dynomite_prof:stop_prof(get_range_op),
             case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
                 true ->
                     if IsDirectSearch ->
@@ -281,7 +283,9 @@ search_to_left(From, State, Self, SearchKey, Level, IsDirectSearch) ->
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Left ->
+            dynomite_prof:start_prof(get_range_op),
             {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
+            dynomite_prof:stop_prof(get_range_op),
             case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
                 true ->
                     if IsDirectSearch ->
