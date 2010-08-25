@@ -235,11 +235,11 @@ search_op_call(From, State, Self, SearchKey, Level, IsDirectSearch) ->
             case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
                 true ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    Ret = search_to_right(From, State, Self, SearchKey, StartLevel, IsDirectSearch),
+                    Ret = search_to_neighbor(right, From, State, Self, SearchKey, StartLevel, IsDirectSearch),
                     gen_server:reply(From, Ret);
                 _ ->
                     ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    Ret = search_to_left(From, State, Self, SearchKey, StartLevel, IsDirectSearch),
+                    Ret = search_to_neighbor(left, From, State, Self, SearchKey, StartLevel, IsDirectSearch),
                     gen_server:reply(From, Ret)
             end
     end.
@@ -251,6 +251,10 @@ search_on_bucket(State, Key) ->
         Other -> Other
     end.
 
+%% search_to_neighbor(Direction, _From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
+%%     search_on_bucket(State, SearchKey);
+%% search_to_neighbor(Direction, _From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
+%%     Self;
 search_to_neighbor(Direction, From, State, Self, SearchKey, Level, IsDirectSearch) ->
     ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
     case neighbor_node(State, Direction, Level) of
@@ -265,20 +269,6 @@ search_to_neighbor(Direction, From, State, Self, SearchKey, Level, IsDirectSearc
                     Result
             end
     end.
-
-%% search_to_right(_From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
-%%     search_on_bucket(State, SearchKey);
-%% search_to_right(_From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
-%%     Self;
-search_to_right(From, State, Self, SearchKey, Level, IsDirectSearch) ->
-    search_to_neighbor(right, From, State, Self, SearchKey, Level, IsDirectSearch).
-
-%% search_to_left(_From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
-%%     search_on_bucket(State, SearchKey);
-%% search_to_left(_From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
-%%     Self;
-search_to_left(From, State, Self, SearchKey, Level, IsDirectSearch) ->
-    search_to_neighbor(left, From, State, Self, SearchKey, Level, IsDirectSearch).
 
 %%--------------------------------------------------------------------
 %%  Range search operation
