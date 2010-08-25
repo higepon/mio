@@ -216,6 +216,9 @@ search_bucket_op(StartBucket, SearchKey, StartLevel) ->
 search_direct_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_direct_op, SearchKey, StartLevel}, infinity).
 
+try_search_op(Direction, StartBucket, SearchKey, StartLevel, IsDirectSearch) ->
+    gen_server:call(StartBucket, {skip_graph_try_search_op, Direction, SearchKey, StartLevel, IsDirectSearch}, infinity).
+
 search_op_call(From, State, Self, SearchKey, Level, IsDirectSearch) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
@@ -258,18 +261,12 @@ search_to_right(From, State, Self, SearchKey, Level, IsDirectSearch) ->
         [] ->
             search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Right ->
-            dynomite_prof:start_prof(get_range_op),
-            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
-            dynomite_prof:stop_prof(get_range_op),
-            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
-                true ->
-                    if IsDirectSearch ->
-                            search_direct_op(Right, SearchKey, Level);
-                       true ->
-                            search_bucket_op(Right, SearchKey, Level)
-                    end;
-                _ ->
-                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch)
+            case try_search_op(right, Right, SearchKey, Level, IsDirectSearch) of
+                false ->
+                    %% search key is not in range of right bucket.
+                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
+                Result ->
+                    Result
             end
     end.
 
@@ -283,18 +280,12 @@ search_to_left(From, State, Self, SearchKey, Level, IsDirectSearch) ->
         [] ->
             search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
         Left ->
-            dynomite_prof:start_prof(get_range_op),
-            {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
-            dynomite_prof:stop_prof(get_range_op),
-            case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
-                true ->
-                    if IsDirectSearch ->
-                            search_direct_op(Left, SearchKey, Level);
-                       true ->
-                            search_bucket_op(Left, SearchKey, Level)
-                    end;
-                _ ->
-                    search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch)
+            case try_search_op(left, Left, SearchKey, Level, IsDirectSearch) of
+                false ->
+                    %% search key is not in range of left bucket.
+                    search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
+                Result ->
+                    Result
             end
     end.
 

@@ -987,6 +987,31 @@ handle_call({skip_graph_search_direct_op, SearchKey, Level}, From, State) ->
     spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, _IsDirectSearch = true]),
     {noreply, State};
 
+handle_call({skip_graph_try_search_op, right, SearchKey, Level, IsDirectSearch}, From, State) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    case Max =< SearchKey orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        false ->
+            %% reply immediately
+            gen_server:reply(From, false);
+        _ ->
+            Self = self(),
+            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch])
+    end,
+    {noreply, State};
+
+handle_call({skip_graph_try_search_op, left, SearchKey, Level, IsDirectSearch}, From, State) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    case Max >= SearchKey orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        false ->
+            %% reply immediately
+            gen_server:reply(From, false);
+        _ ->
+            Self = self(),
+            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch])
+    end,
+    {noreply, State};
+
+
 handle_call(get_op, From, State) ->
     spawn_link(?MODULE, get_op_call, [From, State]),
     {noreply, State};
@@ -1078,3 +1103,8 @@ get_op(Bucket, Key) ->
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
+
+in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
+    ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
+      andalso
+    ((MaxEncompass andalso Key =< Max) orelse (not MaxEncompass andalso Key < Max)).
