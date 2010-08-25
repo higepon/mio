@@ -251,43 +251,34 @@ search_on_bucket(State, Key) ->
         Other -> Other
     end.
 
+search_to_neighbor(Direction, From, State, Self, SearchKey, Level, IsDirectSearch) ->
+    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
+    case neighbor_node(State, Direction, Level) of
+        [] ->
+            search_to_neighbor(Direction, From, State, Self, SearchKey, Level - 1, IsDirectSearch);
+        Right ->
+            case try_search_op(Direction, Right, SearchKey, Level, IsDirectSearch) of
+                false ->
+                    %% search key is not in range of neighbor bucket.
+                    search_to_neighbor(Direction, From, State, Self, SearchKey, Level - 1, IsDirectSearch);
+                Result ->
+                    Result
+            end
+    end.
+
 %% search_to_right(_From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
 %%     search_on_bucket(State, SearchKey);
 %% search_to_right(_From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
 %%     Self;
 search_to_right(From, State, Self, SearchKey, Level, IsDirectSearch) ->
-    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
-    case neighbor_node(State, right, Level) of
-        [] ->
-            search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-        Right ->
-            case try_search_op(right, Right, SearchKey, Level, IsDirectSearch) of
-                false ->
-                    %% search key is not in range of right bucket.
-                    search_to_right(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-                Result ->
-                    Result
-            end
-    end.
+    search_to_neighbor(right, From, State, Self, SearchKey, Level, IsDirectSearch).
 
 %% search_to_left(_From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
 %%     search_on_bucket(State, SearchKey);
 %% search_to_left(_From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
 %%     Self;
 search_to_left(From, State, Self, SearchKey, Level, IsDirectSearch) ->
-    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
-    case neighbor_node(State, left, Level) of
-        [] ->
-            search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-        Left ->
-            case try_search_op(left, Left, SearchKey, Level, IsDirectSearch) of
-                false ->
-                    %% search key is not in range of left bucket.
-                    search_to_left(From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-                Result ->
-                    Result
-            end
-    end.
+    search_to_neighbor(left, From, State, Self, SearchKey, Level, IsDirectSearch).
 
 %%--------------------------------------------------------------------
 %%  Range search operation
