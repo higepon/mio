@@ -196,10 +196,10 @@ delete_loop(Self, Level) ->
 search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
-    ?MIO_PATH_STATS_PUSH2(SearchKey, start),
-    dynomite_prof:start_prof(search_direct_op),
+    ?MIO_PATH_STATS_PUSH2(SearchKey, {start, case mio_util:is_local_process(StartBucket) of true -> local; _ -> remote end}),
+    dynomite_prof:start_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
     Ret = search_direct_op(StartBucket, SearchKey, StartLevel),
-    dynomite_prof:stop_prof(search_direct_op),
+    dynomite_prof:stop_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
     ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
