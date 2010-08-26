@@ -55,7 +55,7 @@
         ]).
 
 %% Exported for handle_call
--export([search_op_call/6,
+-export([search_to_call/7,
          insert_op_call/5,
          buddy_op_call/6,
          dump_op_call/1,
@@ -198,11 +198,14 @@ search_op(StartBucket, SearchKey) ->
 search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_PUSH2(SearchKey, {start, case mio_util:is_local_process(StartBucket) of true -> local; _ -> remote end}),
     dynomite_prof:start_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
-    Ret = search_direct_op(StartBucket, SearchKey, StartLevel),
+    Ret = start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = true), %%search_direct_op(StartBucket, SearchKey, StartLevel),
     dynomite_prof:stop_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
     ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
+
+start_search_op(StartBucket, SearchKey, StartLevel, IsDirectSearch) ->
+    gen_server:call(StartBucket, {skip_graph_start_search_op, SearchKey, StartLevel, IsDirectSearch}).
 
 %%
 %%  search_bucket_op returns a bucket which may have the SearchKey.
@@ -210,67 +213,39 @@ search_op(StartBucket, SearchKey, StartLevel) ->
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
-    gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = false}, infinity).
+    start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = false).%%gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = false}, infinity).
 
-%%
-%%  search_direct_op finds a bucket which may have the SearchKey, and returns search result.
-%%  This function exists for performance reason.
-%%  On multiple nodes, we should reduce gen_server:call to remote node.
-%%
-search_direct_op(StartBucket, SearchKey, StartLevel) ->
-    gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = true}, infinity).
+search_to(Neighbor, SearchKey, Level, Direction, IsDirectSearch) ->
+    gen_server:call(Neighbor, {skip_graph_search_to, SearchKey, Level, Direction, IsDirectSearch}).
 
-try_search_op(Direction, StartBucket, SearchKey, StartLevel, IsDirectSearch) ->
-    gen_server:call(StartBucket, {skip_graph_try_search_op, Direction, SearchKey, StartLevel, IsDirectSearch}, infinity).
-
-search_op_call(From, State, Self, SearchKey, Level, IsDirectSearch) ->
+search_to_call(From, State, Self, SearchKey, Level, Direction, IsDirectSearch) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
+    StartLevel = start_level(State, Level),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            ?MIO_PATH_STATS_PUSH2(SearchKey, {Self, mio_bucket:get_range(State), bucket_found}),
             if IsDirectSearch ->
-                    gen_server:reply(From, search_on_bucket(State, SearchKey));
+                    gen_server:reply(From, mio_bucket:search_on_bucket(State, SearchKey));
                true ->
                     gen_server:reply(From, Self)
             end;
         _ ->
-            StartLevel = start_level(State, Level),
-            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
-                true ->
-                    ?MIO_PATH_STATS_PUSH2(SearchKey, "    ===> right "),
-                    Ret = search_to_neighbor(right, From, State, Self, SearchKey, StartLevel, IsDirectSearch),
-                    gen_server:reply(From, Ret);
-                _ ->
-                    ?MIO_PATH_STATS_PUSH2(SearchKey, "    <=== left "),
-                    Ret = search_to_neighbor(left, From, State, Self, SearchKey, StartLevel, IsDirectSearch),
-                    gen_server:reply(From, Ret)
-            end
-    end.
-
-search_on_bucket(State, Key) ->
-    case mio_store:get(Key, State#node.store) of
-        {ok, {Value, ExpirationTime}} ->
-            {ok, Value, ExpirationTime};
-        Other -> Other
-    end.
-
-%% search_to_neighbor(Direction, _From, State, _Self, SearchKey, Level, _IsDirectSearch = true) when Level < 0 ->
-%%     search_on_bucket(State, SearchKey);
-%% search_to_neighbor(Direction, _From, _State, Self, _SearchKey, Level, _IsDirectSearch = false) when Level < 0 ->
-%%     Self;
-search_to_neighbor(Direction, From, State, Self, SearchKey, Level, IsDirectSearch) ->
-    ?MIO_PATH_STATS_PUSH3({Self, mio_bucket:get_left_op(Self, Level), mio_bucket:get_right_op(Self, Level), mio_bucket:get_range(State)}, SearchKey, Level),
-    case neighbor_node(State, Direction, Level) of
-        [] ->
-            search_to_neighbor(Direction, From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-        Right ->
-            case try_search_op(Direction, Right, SearchKey, Level, IsDirectSearch) of
-                false ->
-                    %% search key is not in range of neighbor bucket.
-                    search_to_neighbor(Direction, From, State, Self, SearchKey, Level - 1, IsDirectSearch);
-                Result ->
-                    Result
+            HavePossibleNeibhor = case Direction of right -> Max =< SearchKey; left -> Max >= SearchKey end,
+            if HavePossibleNeibhor->
+                    case neighbor_node(State, Direction, StartLevel) of
+                        [] ->
+                            search_to_call(From, State, Self, SearchKey, StartLevel - 1, Direction, IsDirectSearch);
+                        Neighbor ->
+                            case search_to(Neighbor, SearchKey, StartLevel, Direction, IsDirectSearch) of
+                                false ->
+                                    %% search key is not in range of neighbor bucket.
+                                    search_to_call(From, State, Self, SearchKey, StartLevel - 1, Direction, IsDirectSearch);
+                                Result ->
+                                    gen_server:reply(From, Result)
+                            end
+                    end;
+               true ->
+                    gen_server:reply(From, false)
             end
     end.
 

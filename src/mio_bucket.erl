@@ -41,6 +41,7 @@
 
 %% API
 -export([start_link/1,
+         search_on_bucket/2,
          delete_op/2,
          get_range/1, my_key/1,
          get_range_values_op/4,
@@ -982,6 +983,28 @@ handle_call({skip_graph_search_op, SearchKey, Level, IsDirectSearch}, From, Stat
     spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]),
     {noreply, State};
 
+handle_call({skip_graph_search_to, SearchKey, Level, Direction, IsDirectSearch}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, search_to_call, [From, State, Self, SearchKey, Level, Direction, IsDirectSearch]),
+    {noreply, State};
+
+handle_call({skip_graph_start_search_op, SearchKey, Level, IsDirectSearch}, From, State) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    Self = self(),
+    case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        true ->
+            if IsDirectSearch ->
+                    gen_server:reply(From, search_on_bucket(State, SearchKey));
+               true ->
+                    gen_server:reply(From, Self)
+            end;
+        _ ->
+            Direction = if (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) -> right; true -> left end,
+            spawn_link(mio_skip_graph, search_to_call, [From, State, Self, SearchKey, Level, Direction, IsDirectSearch])
+    end,
+    {noreply, State};
+
+
 handle_call({skip_graph_try_search_op, Direction, SearchKey, Level, IsDirectSearch}, From, State) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
     IsLastBucket = case Direction of right -> Max =< SearchKey; left -> Max >= SearchKey end,
@@ -1091,3 +1114,10 @@ in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
     ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
       andalso
     ((MaxEncompass andalso Key =< Max) orelse (not MaxEncompass andalso Key < Max)).
+
+search_on_bucket(State, Key) ->
+    case mio_store:get(Key, State#node.store) of
+        {ok, {Value, ExpirationTime}} ->
+            {ok, Value, ExpirationTime};
+        Other -> Other
+    end.
