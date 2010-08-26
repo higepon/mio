@@ -982,30 +982,18 @@ handle_call({skip_graph_search_op, SearchKey, Level, IsDirectSearch}, From, Stat
     spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]),
     {noreply, State};
 
-handle_call({skip_graph_try_search_op, right, SearchKey, Level, IsDirectSearch}, From, State) ->
+handle_call({skip_graph_try_search_op, Direction, SearchKey, Level, IsDirectSearch}, From, State) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
-    case Max =< SearchKey orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
-        false ->
-            %% reply immediately
-            gen_server:reply(From, false);
-        _ ->
+    IsLastBucket = case Direction of right -> Max =< SearchKey; left -> Max >= SearchKey end,
+    case IsLastBucket orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        true ->
             Self = self(),
-            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch])
+            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]);
+        _ ->
+            %% reply immediately
+            gen_server:reply(From, false)
     end,
     {noreply, State};
-
-handle_call({skip_graph_try_search_op, left, SearchKey, Level, IsDirectSearch}, From, State) ->
-    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
-    case Max >= SearchKey orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
-        false ->
-            %% reply immediately
-            gen_server:reply(From, false);
-        _ ->
-            Self = self(),
-            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch])
-    end,
-    {noreply, State};
-
 
 handle_call(get_op, From, State) ->
     spawn_link(?MODULE, get_op_call, [From, State]),

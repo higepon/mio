@@ -204,15 +204,18 @@ search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
 
-%% search_bucket_op returns a bucket which may have the SearchKey.
+%%
+%%  search_bucket_op returns a bucket which may have the SearchKey.
+%%
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = false}, infinity).
 
-%% search_direct_op finds a bucket which may have the SearchKey, and returns search result.
-%% This function exists for performance reason.
-%% On multiple nodes, we should reduce gen_server:call to remote node.
+%%
+%%  search_direct_op finds a bucket which may have the SearchKey, and returns search result.
+%%  This function exists for performance reason.
+%%  On multiple nodes, we should reduce gen_server:call to remote node.
 search_direct_op(StartBucket, SearchKey, StartLevel) ->
     gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = true}, infinity).
 
