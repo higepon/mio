@@ -112,7 +112,6 @@ dump_op(StartBucket) ->
 dump_op1(StartBucket) ->
     gen_server:call(StartBucket, skip_graph_dump_op).
 
-
 dump_op_call(State) ->
     Key = get_key(State),
     ?INFOF("===========================================~nBucket: ~p<~p>:~p ~p~n", [Key, State#node.type, mio_bucket:get_range(State), State#node.membership_vector]),
@@ -197,9 +196,9 @@ search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
     ?MIO_PATH_STATS_PUSH2(SearchKey, {start, case mio_util:is_local_process(StartBucket) of true -> local; _ -> remote end}),
-    dynomite_prof:start_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
+%%    dynomite_prof:start_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
     Ret = start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = true), %%search_direct_op(StartBucket, SearchKey, StartLevel),
-    dynomite_prof:stop_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
+%%    dynomite_prof:stop_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
     ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
     ?MIO_PATH_STATS_SHOW(SearchKey),
     Ret.
@@ -213,7 +212,7 @@ start_search_op(StartBucket, SearchKey, StartLevel, IsDirectSearch) ->
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
-    start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = false).%%gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel, _IsDirectSearch = false}, infinity).
+    start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = false).
 
 search_to(Neighbor, SearchKey, Level, Direction, IsDirectSearch) ->
     gen_server:call(Neighbor, {skip_graph_search_to, SearchKey, Level, Direction, IsDirectSearch}).

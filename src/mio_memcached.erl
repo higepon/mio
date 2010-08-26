@@ -179,9 +179,9 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
                     Start = now_in_msec(),
-                    dynomite_prof:start_prof(memcached_get),
+%%                    dynomite_prof:start_prof(memcached_get),
                     process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
-                    dynomite_prof:stop_prof(memcached_get),
+%%                    dynomite_prof:stop_prof(memcached_get),
                     End = now_in_msec(),
                     mio_stats:inc_cmd_get(LocalSetting),
                     mio_stats:inc_cmd_get_total_time(LocalSetting, End - Start),
@@ -303,9 +303,9 @@ process_get(Sock, StartBucket, Serializer, LocalSetting, Key) ->
                     end
             end;
         {error, not_found} ->
-            dynomite_prof:start_prof(send),
-            ok = gen_tcp:send(Sock, "END\r\n"),
-            dynomite_prof:stop_prof(send)
+%%            dynomite_prof:start_prof(send),
+            ok = gen_tcp:send(Sock, "END\r\n")
+%%            dynomite_prof:stop_prof(send)
     end.
 
 filter_expired(Serializer, LocalSetting, StartBucket, Values) ->
