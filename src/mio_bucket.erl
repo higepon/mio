@@ -977,14 +977,9 @@ handle_call(get_range_op, _From, State) ->
 handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
     {reply, mio_store:get_range(Key1, Key2, Limit, State#node.store), State};
 
-handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
+handle_call({skip_graph_search_op, SearchKey, Level, IsDirectSearch}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, _IsDirectSearch = false]),
-    {noreply, State};
-
-handle_call({skip_graph_search_direct_op, SearchKey, Level}, From, State) ->
-    Self = self(),
-    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, _IsDirectSearch = true]),
+    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]),
     {noreply, State};
 
 handle_call({skip_graph_try_search_op, right, SearchKey, Level, IsDirectSearch}, From, State) ->
