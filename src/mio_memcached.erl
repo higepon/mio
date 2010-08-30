@@ -190,6 +190,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
                     Start = now_in_msec(),
+                    ?debugFmt("request Key(~p ~p) ~p", [Key1, Key2, Limit]),
                     process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, list_to_integer(Limit)),
                     End = now_in_msec(),
                     mio_stats:inc_cmd_get_multi(LocalSetting),
