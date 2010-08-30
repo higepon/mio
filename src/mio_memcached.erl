@@ -180,6 +180,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                 ["get", Key] ->
                     Start = now_in_msec(),
 %%                    dynomite_prof:start_prof(memcached_get),
+?debugFmt("get key=~p", [Key]),
                     process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
 %%                    dynomite_prof:stop_prof(memcached_get),
                     End = now_in_msec(),
@@ -205,6 +206,7 @@ process_request(Sock, Serializer, LocalSetting) ->
                     process_request(Sock, Serializer, LocalSetting);
                 ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
+?debugFmt("key=~p", [Key]),
                     process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
                     inet:setopts(Sock,[{packet, line}]),
                     process_request(Sock, Serializer, LocalSetting);
@@ -370,9 +372,9 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, ExpirationTime, Bytes, 
                     mio_stats:inc_total_items(LocalSetting);
                 _ -> ok
             end,
-
+?debugFmt("key=~p", [Key]),
             {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value, normalize_expiration_time(ExpirationTime)),
-
+?debugFmt("key=~p", [Key]),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             %% It's preferable that start buckt is local.
