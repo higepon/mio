@@ -33,22 +33,31 @@ At present, it is in alpha quality.
 ## Access to mio
 Use memcached client to access mio.
    
-    # Perl example
+### Perl
+    # Example: Access to Mio.
     use strict;
     use warnings;
-    use Cache::Memcached::Fast;
     use Cache::Memcached;
+    use Data::Dumper;
 
-    my $m = Cache::Memcached->new( { servers => ['example.com:11211']} );
+    my $m = Cache::Memcached->new( { servers => ['127.0.0.1:11211']} );
     $m->set( "hello" => "world" );
-    $m->set( "hi" => "japan" );
+    $m->set( "intel" => "cpu" );
+    $m->set( "japan" => "Tokyo" );
 
-    warn $m->get("helllo");
-    warn $m->get("hi");
+    warn $m->get("hello");
+    warn $m->get("intel");
+    warn $m->get("japan");
 
-    my $href = $m->get_multi("mio:range-search", "he", "hi", "50");
-    warn $href->{"hello"};
-    warn $href->{"hi"};
+    my $href = $m->get_multi("mio:range-search", "he", "j", "10", "asc");
+
+    # Should print
+    # $VAR1 = {
+    #           'hello' => 'world',
+    #           'intel' => 'cpu'
+    #         };
+    warn Dumper $href;
+
 
 ## Algorithm
 Mio using "Skip Graph" algorithm.
