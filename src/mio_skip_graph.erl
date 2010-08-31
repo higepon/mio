@@ -128,18 +128,14 @@ dump_op_call(State) ->
 %%  Insertion operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, Key, Value) ->
-?debugFmt("key=~p", [Key]),
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ?NEVER_EXPIRE}).
 
 insert_op(Introducer, Key, Value, ExpirationTime) ->
-?debugFmt("key=~p", [Key]),
     gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ExpirationTime}).
 
 insert_op_call(From, Self, Key, Value, ExpirationTime) ->
-?debugFmt("key=~p", [Key]),
     StartLevel = [],
     Bucket = search_bucket_op(Self, Key, StartLevel),
-?debugFmt("key=~p", [Key]),
     Ret = mio_bucket:insert_op(Bucket, Key, Value, ExpirationTime),
     gen_server:reply(From, Ret).
 
