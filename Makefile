@@ -107,14 +107,15 @@ install_dirs:
 
 dist: distclean
 	mkdir -p $(DIST_TARGET)
-	cp -r Makefile ebin src include scripts README.md test $(DIST_TARGET)
+	cp -r Makefile ebin src example scripts README.md test $(DIST_TARGET)
 	chmod 0755 $(DIST_TARGET)/scripts/*
-	tar -zcf $(TARBALL_NAME).tar.gz $(DIST_TARGET)
+	(cd $(DIST_TMP_DIR) &&	  tar -zcf ../$(TARBALL_NAME).tar.gz $(TARBALL_NAME))
 	rm -rf $(DIST_TMP_DIR)
 
 distclean: clean
 	rm -f $(LOG_PREFIX)*
-	rm -f *.dump
+	rm -rf src/mio.log.*
+	rm -rf src/Mnesia.*
 	find . -regex '.*\(~\|#\|\.swp\|\.dump\)' -exec rm {} \;
 
 clean:
