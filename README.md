@@ -106,8 +106,9 @@ Use memcached client libraries to access mio.
 ## Algorithm
 Mio using "Skip Graph" algorithm.
 See following articles
-- [Mio - a distributed Skip Graph based orderd KVS](http://www.slideshare.net/higepon/mio-a-distributed-skip-graph-based-orderd-kvs)
-- [PDF: Load Balancing and Locality in Range-Queries Data Structures](http://www.cs.yale.edu/~aspnes/podc04-load-balancing.pdf) by James Aspnes.
+
+ * [Mio - a distributed Skip Graph based orderd KVS](http://www.slideshare.net/higepon/mio-a-distributed-skip-graph-based-orderd-kvs)
+ * [PDF: Load Balancing and Locality in Range-Queries Data Structures](http://www.cs.yale.edu/~aspnes/podc04-load-balancing.pdf) by James Aspnes.
 
 
 ## Author
