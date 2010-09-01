@@ -9,6 +9,7 @@ At present, it is in alpha quality.
 ## Building and Installing 
   1. Install a recent version of Erlang.
   2. git clone git://github.com/higepon/mio.git
+
   3. make
   4. make install with Environment variables for configuration.
      TARGET_DIR: Installation target directory.
@@ -19,19 +20,19 @@ At present, it is in alpha quality.
 
 ## Running mio
 
-    # Run first node named mio1 with verbose mode on host exmpale.com (default port 11211)
+    # Run first node named mio1 with verbose mode on host FQDN_of_your_host (default port 11211)
     % mio -v -n mio1@FQDN_of_your_host
 
 
-    # Run second node named mio2 on host example.com.
+    # Run second node named mio2 on host FQDN_of_your_host2.
     # With -i option, indidate the introducer node.
-    % mio -v -n mio2@example.com -i mio1@FQDN_of_your_host
+    % mio -v -n mio2@FQDN_of_your_host2 -i mio1@FQDN_of_your_host
 
-    # Run third node named mio3 on host example.com (port 11411).
-    % mio -v -n mio3@example.com -i mio1@FQDN_of_your_host -p 11411
+    # Run third node named mio3 on host FQDN_of_your_host (port 11411).
+    % mio -v -n mio3@FQDN_of_your_host -i mio1@FQDN_of_your_host -p 11411
 
 ## Access to mio
-Use memcached client to access mio.
+Use memcached client libraries to access mio.
    
 ### Perl
     # Example: Access to Mio.
@@ -104,7 +105,8 @@ Use memcached client to access mio.
 
 ## Algorithm
 Mio using "Skip Graph" algorithm.
-See "Load Balancing and Locality in Range-Queries Data Structures" by James Aspnes.
+See following article
+- "Load Balancing and Locality in Range-Queries Data Structures" by James Aspnes.
 
 
 ## Author
