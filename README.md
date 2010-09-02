@@ -31,6 +31,20 @@ At present, it is in alpha quality.
     # Run third node named mio3 on host FQDN_of_your_host (port 11411).
     % mio -v -n mio3@FQDN_of_your_host -i mio1@FQDN_of_your_host -p 11411
 
+
+## API
+You can access to Mio using (memcached protocol)[http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt].
+
+Currently the following commands are supported.
+ * get
+ * set
+ * delete
+ * quit
+ * stats
+ * range_search
+   * get_multi("mio:range-search", Key1, Key2, Limit, desc/asc)
+
+
 ## Access to mio
 Use memcached client libraries to access mio.
    
