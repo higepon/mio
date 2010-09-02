@@ -16,7 +16,7 @@ At present, it is in alpha quality.
      SBIN_DIR: sbin direcotry.
 
      e.g.
-       sudo TARGET_DIR=/user/local/mio SBIN_DIR=/usr/sbin/ make install 
+       sudo TARGET_DIR=/user/local/mio SBIN_DIR=/usr/sbin/ make install
 
 ## Running mio
 
