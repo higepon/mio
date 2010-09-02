@@ -33,9 +33,10 @@ At present, it is in alpha quality.
 
 
 ## API
-You can access to Mio using (memcached protocol)[http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt].
+You can access to Mio using [memcached protocol](http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt).
 
 Currently the following commands are supported.
+
  * get
  * set
  * delete
