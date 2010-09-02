@@ -127,7 +127,7 @@ clean:
 
 # don't name this target as "dialyzer", which will cause been kill by pkill.
 check-error: all
-	dialyzer -Wno_return -I $(INCLUDE_DIR) -c $(EBIN_DIR)
+	dialyzer -Wno_return -c $(EBIN_DIR)
 
 create_plt:
 	dialyzer --build_plt \
