@@ -8,7 +8,7 @@ At present, it is in alpha quality.
 
 ## Building and Installing 
   1. Install a recent version of Erlang.
-  2. git clone git://github.com/higepon/mio.git
+  2. Download latest mio from [github](github.com/higepon/mio/downloads) or git clone git://github.com/higepon/mio.git .
 
   3. make
   4. make install with Environment variables for configuration.
