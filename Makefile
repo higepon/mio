@@ -1,7 +1,7 @@
 TARGETS = $(BEAMS) $(TEST_BEAMS) $(APP)
 
 APP_NAME=mio
-VERSION=0.0.1-alpha
+VERSION=0.0.2-alpha
 
 SOURCE_DIR=src
 EXT_SOURCE_DIR=$(SOURCE_DIR)/ext
@@ -92,10 +92,10 @@ vcheck: all
 test: check
 
 install: all install_dirs
-	cp -rp ebin $(TARGET_DIR)
+	cp -rfp ebin $(TARGET_DIR)
 	for script in mio mioctl mio-env; do \
 		chmod 0755 scripts/$$scripts; \
-		cp scripts/$$script $(TARGET_DIR)/sbin; \
+		cp -f scripts/$$script $(TARGET_DIR)/sbin; \
 		[ -e $(SBIN_DIR)/$$script ] || ln -s $(TARGET_DIR)/sbin/$$script $(SBIN_DIR)/$$script; \
 	done
 
