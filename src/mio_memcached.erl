@@ -215,12 +215,12 @@ process_request(Sock, Serializer, LocalSetting) ->
                 ["delete", Key] ->
                     process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
                     process_request(Sock, Serializer, LocalSetting);
-%%                 ["delete", Key, _Time] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, Serializer);
-%%                 ["delete", Key, _Time, _NoReply] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, Serializer);
+                ["delete", Key, _Time] ->
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", Key, _Time, _NoReply] ->
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["quit"] ->
                     ok = gen_tcp:close(Sock);
                 ["stats"] ->
