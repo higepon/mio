@@ -95,7 +95,7 @@ install: all install_dirs
 	cp -rp ebin $(TARGET_DIR)
 	for script in mio mioctl mio-env; do \
 		chmod 0755 scripts/$$scripts; \
-		cp -p scripts/$$script $(TARGET_DIR)/sbin; \
+		cp scripts/$$script $(TARGET_DIR)/sbin; \
 		[ -e $(SBIN_DIR)/$$script ] || ln -s $(TARGET_DIR)/sbin/$$script $(SBIN_DIR)/$$script; \
 	done
 
