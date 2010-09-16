@@ -1,0 +1,3 @@
+#!/bin/bash
+erl -eval "{ok, C} = memcached:connect(\"$1\", 11211), memcached:delete(C, \"mio:sweep\"), memcached:disconnect(C)." -s init stop -noshell
+echo "sweeper started"

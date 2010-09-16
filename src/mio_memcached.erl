@@ -36,9 +36,10 @@
 %%%-------------------------------------------------------------------
 -module(mio_memcached).
 -export([start_link/6]).
--export([memcached/5, process_request/4]).
+-export([memcached/5, process_request/3, sweeper/3]).
 -include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
+-include("mio_path_stats.hrl").
 
 init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
     {ok, LocalSetting} = mio_local_store:new(),
@@ -47,10 +48,11 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         %% Bootstrap
         false ->
             {ok, Serializer} = mio_sup:start_serializer(Sup),
+            ?MIO_PATH_STATS_INIT(),
             {ok, Allocator} = mio_sup:start_allocator(Sup),
             ok = mio_allocator:add_node(Allocator, Sup),
             {ok, Bucket} = mio_sup:make_bucket(Sup, Allocator, Capacity, alone, MaxLevel),
-            ok = mio_local_store:set(LocalSetting, start_bucket, Bucket),
+            ok = mio_local_store:set(LocalSetting, start_buckets, [Bucket]),
             %% N.B.
             %%   For now, bootstrap server is SPOF.
             %%   This should be replaced with Mnesia(ram_copy).
@@ -60,8 +62,9 @@ init_start_node(Sup, MaxLevel, Capacity, BootNode) ->
         _ ->
             {ok, BootBucket, Allocator, Serializer} = mio_bootstrap:get_boot_info(BootNode),
             Supervisor = whereis(mio_sup),
+            ?MIO_PATH_STATS_INIT_ATTACH(BootNode),
             ok = mio_allocator:add_node(Allocator, Supervisor),
-            ok = mio_local_store:set(LocalSetting, start_bucket, BootBucket),
+            ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]),
             {Serializer, LocalSetting}
     end.
 
@@ -95,10 +98,13 @@ start_link(Sup, Port, MaxLevel, Capacity, BootNode, Verbose) ->
 memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
     try init_start_node(Sup, MaxLevel, Capacity, BootNode) of
         {Serializer, LocalSetting} ->
+
+            mio_stats:init(LocalSetting),
+
             %% backlog value is same as on memcached
             case gen_tcp:listen(Port, [binary, {packet, line}, {active, false}, {reuseaddr, true}, {backlog, 1024}]) of
                 {ok, Listen} ->
-                    mio_accept(Listen, MaxLevel, Serializer, LocalSetting);
+                    mio_accept(Listen, Serializer, LocalSetting);
                 {error, eaddrinuse} ->
                     ?FATALF("Port ~p is in use", [Port]);
                 {error, Reason} ->
@@ -108,168 +114,274 @@ memcached(Sup, Port, MaxLevel, Capacity, BootNode) ->
          throw:Reason -> ?FATALF("~p", [Reason])
     end.
 
-mio_accept(Listen, MaxLevel, Serializer, LocalSetting) ->
+mio_accept(Listen, Serializer, LocalSetting) ->
     case gen_tcp:accept(Listen) of
         {ok, Sock} ->
-            spawn_link(?MODULE, process_request, [Sock, MaxLevel, Serializer, LocalSetting]),
-            mio_accept(Listen, MaxLevel, Serializer, LocalSetting);
+            spawn_link(?MODULE, process_request, [Sock, Serializer, LocalSetting]),
+            mio_accept(Listen, Serializer, LocalSetting);
         Other ->
             ?FATALF("accept returned ~w",[Other])
     end.
 
+now_in_msec() ->
+    {MegaSec, Sec, MicroSec} = now(),
+    MegaSec * 1000 * 1000 * 1000 + Sec * 1000 + MicroSec / 1000.
 
-process_request(Sock, MaxLevel, Serializer, LocalSetting) ->
-    {ok, StartBucket} = mio_local_store:get(LocalSetting, start_bucket),
+sweep_one_bucket(Serializer, LocalSetting, Bucket) ->
+    Store = mio_bucket:get_store_op(Bucket),
+    mio_store:foldl(fun({Key, {Value, ExpirationTime}}, _Accum) ->
+                            case ExpirationTime of
+                                ?NEVER_EXPIRE -> ok;
+                                ?MARKED_EXPIRED -> ok;
+                                _ ->
+                                    case ExpirationTime =< unixtime() of
+                                        true ->
+                                            enqueue_to_delete(Serializer, LocalSetting, Bucket, Key),
+                                            mio_stats:inc_sweeped_items(LocalSetting, 1),
+                                            mio_serializer:insert_op(Serializer, Bucket, Key, Value, ?MARKED_EXPIRED);
+                                        _ ->
+                                            ok
+                                    end
+                            end
+                    end, [], Store),
+    ok.
+
+sweeper(Serializer, LocalSetting, Bucket) ->
+    LocalBuckets = mio_skip_graph:get_local_buckets(Bucket),
+    ?INFOF("sweeper start buckets=~p", [LocalBuckets]),
+    lists:foreach(fun(B) ->
+                    sweep_one_bucket(Serializer, LocalSetting, B)
+                  end,
+                  LocalBuckets),
+    ?INFO("sweeper end").
+
+process_request(Sock, Serializer, LocalSetting) ->
+    {ok, [StartBucket | _]} = mio_local_store:get(LocalSetting, start_buckets),
     case gen_tcp:recv(Sock, 0) of
         {ok, Line} ->
             Token = string:tokens(binary_to_list(Line), " \r\n"),
 %%            ?INFO(Token),
             case Token of
+                ["get_start_bucket"] ->
+                    ok = gen_tcp:send(Sock, term_to_binary(StartBucket)),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:path_stats_enable"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    ?MIO_PATH_STATS_ENABLE(),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:dump"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    mio_skip_graph:dump_op(StartBucket),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["get", "mio:path_stats_disable"] ->
+                    ok = gen_tcp:send(Sock, "END\r\n"),
+                    ?MIO_PATH_STATS_DISABLE(),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", Key] ->
-                    process_get(Sock, StartBucket, Key),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    Start = now_in_msec(),
+%%                    dynomite_prof:start_prof(memcached_get),
+                    process_get(Sock, StartBucket, Serializer, LocalSetting, Key),
+%%                    dynomite_prof:stop_prof(memcached_get),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get(LocalSetting),
+                    mio_stats:inc_cmd_get_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_worst_time(LocalSetting, End - Start),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "asc"] ->
-                    process_range_search_asc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
+                    Start = now_in_msec(),
+                    process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, list_to_integer(Limit)),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get_multi(LocalSetting),
+                    mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
+                    process_request(Sock, Serializer, LocalSetting);
                 ["get", "mio:range-search", Key1, Key2, Limit, "desc"] ->
-                    process_range_search_desc(Sock, StartBucket, Key1, Key2, list_to_integer(Limit)),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
-                ["set", Key, Flags, ExpireDate, Bytes] ->
+                    Start = now_in_msec(),
+                    process_range_search_desc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, list_to_integer(Limit)),
+                    End = now_in_msec(),
+                    mio_stats:inc_cmd_get_multi(LocalSetting),
+                    mio_stats:inc_cmd_get_multi_total_time(LocalSetting, End - Start),
+                    mio_stats:set_cmd_get_multi_worst_time(LocalSetting, End - Start),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["set", Key, Flags, ExpirationTime, Bytes] ->
                     inet:setopts(Sock,[{packet, raw}]),
-%%                    ?INFOF("Start set ~p", [self()]),
-                    process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpireDate), Bytes, MaxLevel, Serializer),
-%%                    ?INFOF("End set ~p", [self()]),
-                    %% process_set increses process memory size and never shrink.
-                    %% We have to collect them here.
-%%                    erlang:garbage_collect(InsertedNode),
-
+                    process_set(Sock, StartBucket, LocalSetting, Key, Flags, list_to_integer(ExpirationTime), Bytes, Serializer),
                     inet:setopts(Sock,[{packet, line}]),
-                    process_request(Sock, MaxLevel, Serializer, LocalSetting);
-%%                 ["delete", Key] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
-%%                 ["delete", Key, _Time] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
-%%                 ["delete", Key, _Time, _NoReply] ->
-%%                     process_delete(Sock, StartBucket, Key),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
-%%                 ["quit"] ->
-%%                     ok = gen_tcp:close(Sock);
-%%                 ["stats"] ->
-%%                     process_stats(Sock, StartBucket, MaxLevel),
-%%                     process_request(Sock, StartBucketEts, MaxLevel, Serializer);
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", "mio:sweep"] ->
+                    ok = gen_tcp:send(Sock, "DELETED\r\n"),
+                    spawn_link(?MODULE, sweeper, [Serializer, LocalSetting, StartBucket]),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", Key] ->
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", Key, _Time] ->
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["delete", Key, _Time, _NoReply] ->
+                    process_delete(Sock, StartBucket, LocalSetting, Serializer, Key),
+                    process_request(Sock, Serializer, LocalSetting);
+                ["quit"] ->
+                    ok = gen_tcp:close(Sock);
+                ["stats"] ->
+                    process_stats(Sock, LocalSetting),
+                    process_request(Sock, Serializer, LocalSetting);
                 X ->
                     ?ERRORF("Unknown memcached command error: ~p\n", [X]),
                     ok = gen_tcp:send(Sock, "ERROR\r\n")
             end;
         {error, closed} ->
-            ok;
+            ok = gen_tcp:close(Sock);
         Error ->
             ?ERRORF("memcached socket error: ~p\n", [Error])
     end.
 
+make_stats([]) ->
+    "END\r\n";
+make_stats([{StatKey, StatValue} | More]) ->
+    io_lib:format("STAT ~s ~p\r\n~s", [StatKey, StatValue, make_stats(More)]).
 
-%% process_stats(Sock, Node, MaxLevel) ->
-%%     mio_skip_graph:dump_op(Node),
-%%     ok = gen_tcp:send(Sock, io_lib:format("STAT ~s ~s\r\nEND\r\n", [hoge, hoge])).
+process_stats(Sock, LocalSetting) ->
+    Stats = [{uptime, mio_stats:uptime(LocalSetting)},
+             {total_items, mio_stats:total_items(LocalSetting)},
+             {cmd_get, mio_stats:cmd_get(LocalSetting)},
+             {bytes, mio_stats:bytes()},
+             {cmd_get_multi_avg_time, mio_stats:cmd_get_multi_avg_time(LocalSetting)},
+             {cmd_get_multi_worst_time, mio_stats:cmd_get_multi_worst_time(LocalSetting)},
+             {cmd_get_avg_time, mio_stats:cmd_get_avg_time(LocalSetting)},
+             {cmd_get_worst_time, mio_stats:cmd_get_worst_time(LocalSetting)},
+             {sweeped_items, mio_stats:sweeped_items(LocalSetting)}
+             ],
+    ok = gen_tcp:send(Sock, make_stats(Stats)).
 
-
-%% process_delete(Sock, StartNode, Key) ->
-%%     exit({todo, ?LINE}).
-
-%% %% Expiry format definition
-%% %% Expire:
-%% %%   0 -> never expire
-%% %%   -1 -> expired and enqueued to delete queue
-%% %%   greater than zero -> expiration date in Unix time format
-%% %% Returns {Expired?, NeedEnqueue}
-%% check_expired(0) ->
-%%     exit({todo, ?LINE}),
-%%     {false, false};
-%% check_expired(-1) ->
-%%     exit({todo, ?LINE}),
-%%     {true, false};
-%% check_expired(ExpireDate) ->
-%%     exit({todo, ?LINE}),
-%%     Expired = ExpireDate =< unixtime(),
-%%     {Expired, Expired}.
-
-
-%% todo expire
-process_get(Sock, StartNode, Key) ->
-    case mio_skip_graph:search_op(StartNode, Key) of
-        {ok, Value} ->
-            ok = gen_tcp:send(Sock, io_lib:format(
-                                      "VALUE ~s 0 ~w\r\n~s\r\nEND\r\n",
-                                      [Key, size(Value), Value]));
-        {error, not_found} ->
-            ok = gen_tcp:send(Sock, "END\r\n")
+process_delete(Sock, StartBucket, LocalSetting, Serializer, Key) ->
+    case mio_serializer:delete_op(Serializer, StartBucket, Key) of
+        {ok, DeletedBuckets} ->
+            ok = gen_tcp:send(Sock, "DELETED\r\n"),
+            case mio_local_store:get(LocalSetting, start_buckets) of
+                {ok, [_BootBucket]} ->
+                    ok;
+                {ok, [StartBucket, BootBucket]} ->
+                    %% If start_bucket is deleted, we have to replace the start bucket.
+                    %% N.B. We are sure BootBucket will never be deleted.
+                    case lists:member(StartBucket, DeletedBuckets) of
+                        true ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [BootBucket]);
+                        _ ->
+                            ok
+                    end
+            end;
+        _ ->
+            ok = gen_tcp:send(Sock, "NOT_FOUND\r\n")
     end.
-%% %%    erlang:garbage_collect(Node),
 
-%% %%     %% enqueue to the delete queue
-%% %%     if NeedEnqueue ->
-%% %%             enqueue_to_delete(WriteSerializer, Node);
-%% %%        true -> []
-%% %%     end.
+enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key) ->
+    mio_stats:dec_total_items(LocalSetting),
+    spawn_link(fun () -> mio_serializer:delete_op(Serializer, StartBucket, Key) end).
 
-%% process_values([{_, Key, Value, _} | More]) ->
-%%     io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
-%%                   [Key, size(Value), Value, process_values(More)]);
-%% process_values([]) ->
-%%     "END\r\n".
+process_get(Sock, StartBucket, Serializer, LocalSetting, Key) ->
+    case mio_skip_graph:search_op(StartBucket, Key) of
+        {ok, {Flags, Value}, ExpirationTime} ->
+            case ExpirationTime of
+                ?NEVER_EXPIRE ->
+                    ok = gen_tcp:send(Sock, io_lib:format(
+                                              "VALUE ~s ~s ~w\r\n~s\r\nEND\r\n",
+                                              [Key, Flags, size(Value), Value])),
+                    ok;
+                ?MARKED_EXPIRED ->
+                    ok = gen_tcp:send(Sock, "END\r\n");
+                _ ->
+                    case ExpirationTime =< unixtime() of
+                        true ->
+                            enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key),
+                            mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
+                            ok = gen_tcp:send(Sock, "END\r\n");
+                        false ->
+                            ok = gen_tcp:send(Sock, io_lib:format(
+                                                      "VALUE ~s ~s ~w\r\n~s\r\nEND\r\n",
+                                                      [Key, Flags, size(Value), Value]))
+                    end
+            end;
+        {error, not_found} ->
+%%            dynomite_prof:start_prof(send),
+            ok = gen_tcp:send(Sock, "END\r\n")
+%%            dynomite_prof:stop_prof(send)
+    end.
 
-%% enqueue_to_delete(WriteSerializer, Node) ->
-%%     mio_node:set_expire_time_op(Node, -1),
-%%     spawn_link(fun() -> mio_write_serializer:delete_op(WriteSerializer, Node) end).
+filter_expired(Serializer, LocalSetting, StartBucket, Values) ->
+    lists:map(fun({Key, {Value, _ExpirationTime}}) ->
+                 {Key, Value}
+              end,
+              lists:filter(fun({Key, {Value, ExpirationTime}}) ->
+                                   case ExpirationTime of
+                                       ?NEVER_EXPIRE ->
+                                           true;
+                                       ?MARKED_EXPIRED ->
+                                           false;
+                                       _ ->
+                                           case unixtime() < ExpirationTime of
+                                               true ->
+                                                   true;
+                                               false ->
+                                                   enqueue_to_delete(Serializer, LocalSetting, StartBucket, Key),
+                                                   mio_serializer:insert_op(Serializer, StartBucket, Key, Value, ?MARKED_EXPIRED),
+                                                   false
+                                           end
+                                   end
+                           end,
+                           Values)).
 
-%% filter_expired(WriteSerializer, Values) ->
-%%     lists:filter(fun({Node, _, _, ExpireDate}) ->
-%%                          {Expired, NeedEnqueue} = check_expired(ExpireDate),
-%%                          if NeedEnqueue ->
-%%                                  enqueue_to_delete(WriteSerializer, Node);
-%%                             true -> []
-%%                          end,
-%%                          not Expired
-%%                  end, Values).
-
-process_range_search_asc(Sock, StartNode, Key1, Key2, Limit) ->
-    Values = mio_skip_graph:range_search_asc_op(StartNode, Key1, Key2, Limit),
-    P = process_values(Values),
+process_range_search_asc(Sock, StartBucket, Serializer, LocalSetting, Key1, Key2, Limit) ->
+    mio_stats:inc_cmd_get_multi(LocalSetting),
+    Values = mio_skip_graph:range_search_asc_op(StartBucket, Key1, Key2, Limit),
+    P = process_values(filter_expired(Serializer, LocalSetting, StartBucket, Values)),
     ok = gen_tcp:send(Sock, P).
 
-process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
+process_range_search_desc(Sock, StartNode, Serializer, LocalSetting, Key1, Key2, Limit) ->
+    mio_stats:inc_cmd_get_multi(LocalSetting),
     Values = mio_skip_graph:range_search_desc_op(StartNode, Key1, Key2, Limit),
-    P = process_values(Values),
+    P = process_values(filter_expired(Serializer, LocalSetting, StartNode, Values)),
     ok = gen_tcp:send(Sock, P).
 
 
-process_values([{Key, Value} | More]) ->
-    io_lib:format("VALUE ~s 0 ~w\r\n~s\r\n~s",
-                  [Key, size(Value), Value, process_values(More)]);
+process_values([{Key, {Flags, Value}} | More]) ->
+    io_lib:format("VALUE ~s ~s ~w\r\n~s\r\n~s",
+                  [Key, Flags, size(Value), Value, process_values(More)]);
 process_values([]) ->
     "END\r\n".
 
-%% process_range_search_desc(Sock, StartNode, Key1, Key2, Limit) ->
-%%     exit({todo, ?LINE}).
-%% %%     Values = mio_node:range_search_desc_op(StartNode, Key1, Key2, Limit),
-%% %%     ActiveValues = filter_expired(WriteSerializer, Values),
-%% %%     P = process_values(ActiveValues),
-%% %%     ok = gen_tcp:send(Sock, P).
+unixtime() ->
+    {Msec, Sec, _} = now(),
+    Msec * 1000 + Sec.
 
-%% %% See expiry format definition on process_get
-process_set(Sock, Introducer, LocalSetting, Key, _Flags, _ExpireDate, Bytes, _MaxLevel, Serializer) ->
+normalize_expiration_time(Time) when Time =:= ?NEVER_EXPIRE ->
+    ?NEVER_EXPIRE;
+normalize_expiration_time(Time) when Time > 60*60*24*30 ->
+    Time;
+normalize_expiration_time(Time) ->
+    unixtime() + Time.
+
+process_set(Sock, Introducer, LocalSetting, Key, Flags, ExpirationTime, Bytes, Serializer) ->
     case gen_tcp:recv(Sock, list_to_integer(Bytes)) of
         {ok, Value} ->
-            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, Value),
+
+            case mio_skip_graph:search_op(Introducer, Key) of
+                {error, not_found} ->
+                    mio_stats:inc_total_items(LocalSetting);
+                _ -> ok
+            end,
+            {ok, NewlyAllocatedBucket} = mio_serializer:insert_op(Serializer, Introducer, Key, {Flags, Value}, normalize_expiration_time(ExpirationTime)),
             ok = gen_tcp:send(Sock, "STORED\r\n"),
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             %% It's preferable that start buckt is local.
             case mio_util:is_local_process(NewlyAllocatedBucket) of
                 true ->
-                    %%            io:format("registered ~p ~p ~p~n", [NewlyAllocatedBucket, node(), node(NewlyAllocatedBucket)]),
-                    ok = mio_local_store:set(LocalSetting, start_bucket, NewlyAllocatedBucket);
+                    case mio_local_store:get(LocalSetting, start_buckets) of
+                        {ok, [BootBucket]} ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [NewlyAllocatedBucket, BootBucket]);
+                        {ok, [_ ,BootBucket]} ->
+                            ok = mio_local_store:set(LocalSetting, start_buckets, [NewlyAllocatedBucket, BootBucket])
+                    end;
                 _ ->
                     []
             end;
@@ -280,7 +392,3 @@ process_set(Sock, Introducer, LocalSetting, Key, _Flags, _ExpireDate, Bytes, _Ma
             {ok, _Data} = gen_tcp:recv(Sock, 2),
             Introducer
     end.
-
-%% unixtime() ->
-%%     {Msec, Sec, _} = now(),
-%%     Msec * 1000 + Sec.

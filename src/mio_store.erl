@@ -41,7 +41,7 @@
 
 %% API
 -export([new/1, set/3, get/2, get_range/4, remove/2, is_full/1, take_smallest/1, take_largest/1,
-         capacity/1, is_empty/1, largest/1, smallest/1, keys/1]).
+         capacity/1, is_empty/1, largest/1, smallest/1, keys/1, foldl/3]).
 
 %%====================================================================
 %% API
@@ -52,8 +52,15 @@
 %% Description: make a store
 %%--------------------------------------------------------------------
 new(Capacity) ->
-    Ets = ets:new(store, [private, ordered_set]),
+    Ets = ets:new(store, [public, ordered_set]),
     #store{capacity=Capacity, ets=Ets}.
+
+%%--------------------------------------------------------------------
+%% Function: foldl/2
+%% Description: foldl
+%%--------------------------------------------------------------------
+foldl(Fun, Accum0, Store) ->
+    ets:foldl(Fun, Accum0, Store#store.ets).
 
 %%--------------------------------------------------------------------
 %% Function: keys/1
@@ -103,12 +110,18 @@ get(Key, Store) ->
     end.
 
 get_range(KeyA, KeyB, Limit, Store) when KeyA =< KeyB ->
-    case ets:lookup(Store#store.ets, KeyA) of
-        [] ->
-            lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
-        [{KeyA, Value}] ->
-            lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
+    case ets:select(Store#store.ets, [{{'$1','$2'},[{'and', {'>=','$1', KeyA}, {'=<','$1', KeyB}}],['$$']}], Limit) of
+        '$end_of_table' ->
+            [];
+        {KeyValues, _} ->
+            lists:map(fun([Key, Value]) -> {Key, Value} end, KeyValues)
     end;
+    %% case ets:lookup(Store#store.ets, KeyA) of
+    %%     [] ->
+    %%         lists:reverse(get_range_rec(KeyA, KeyB, 0, Limit, [], Store));
+    %%     [{KeyA, Value}] ->
+    %%         lists:reverse(get_range_rec(KeyA, KeyB, 1, Limit, [{KeyA, Value}], Store))
+    %% end;
 get_range(KeyA, KeyB, Limit, Store) when KeyA > KeyB ->
     case ets:lookup(Store#store.ets, KeyA) of
         [] ->

@@ -39,15 +39,44 @@
 %% API
 -export([%% random_sleep/1, 
          lists_set_nth/3,%%  do_times_with_index/3,
+         for_better_coverage/2, for_better_coverage/3,
 %%          do_workers/2, do_workers/3,
          do_times/2, do_times/3, is_local_process/1]).
-
+-include_lib("eunit/include/eunit.hrl").
 -include("mio.hrl").
 
 
 %%====================================================================
 %% API
 %%====================================================================
+for_better_coverage(Mod, Pid) ->
+    for_better_coverage(Mod, Pid, false).
+for_better_coverage(Mod, Pid, Fun) ->
+    process_flag(trap_exit, true),
+    spawn_link(fun() ->
+                       c:l(Mod),          %% Moduel:code_change/3
+                       cover:compile(
+                         Mod,
+                         [{i, "include"}
+                         ]),
+                       sys:suspend(Pid),
+                       sys:change_code(Pid, Mod, foo, foo),
+                       sys:resume(Pid),
+                       code:purge(Mod),
+                       gen_server:cast(Pid, hoge),    %% Module:handle_cast/2
+                       Pid ! hoge,                    %% Module:handle_info/2
+                       case Fun of
+                           false -> ok;
+                           _ ->
+                               Fun()
+                       end,
+                       gen_server:call(Pid, stop_op)  %% Module:terminate/2
+               end),
+    receive
+        {'EXIT', _, normal} -> ok;
+        {'EXIT',_ ,{normal,{gen_server,call,[_ ,stop_op]}}} -> ok
+    end.
+
 
 is_local_process([]) ->
     false;

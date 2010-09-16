@@ -1,6 +1,5 @@
-
 -record(node, {store, type, min_key, encompass_min, max_key, encompass_max, left, right, membership_vector, gen_mvector,
-                expire_time, inserted, deleted, allocator
+                expire_time, allocator, path_stat
                }).
 
 
@@ -23,3 +22,5 @@
 -define(WARNF(Msg, Args), error_logger:warn_msg(Msg ++ " ~p:~p~n", Args ++ [?MODULE, ?LINE])).
 -define(WARN(Msg), ?WARNF(Msg, [])).
 
+-define(NEVER_EXPIRE, 0).
+-define(MARKED_EXPIRED, -1).

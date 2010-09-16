@@ -1,7 +1,7 @@
 TARGETS = $(BEAMS) $(TEST_BEAMS) $(APP)
 
 APP_NAME=mio
-VERSION=0.0.1
+VERSION=0.0.2-alpha
 
 SOURCE_DIR=src
 EXT_SOURCE_DIR=$(SOURCE_DIR)/ext
@@ -23,9 +23,8 @@ ERLC_FLAGS=+warn_unused_vars \
            -v \
            +debug_info \
            +bin_opt_info \
-           +no_strict_record_tests
-
-# +native +"{hipe, [o3]}" \
+           +no_strict_record_tests \
+           +native +"{hipe, [o3]}"
 
 TARBALL_NAME=$(APP_NAME)-$(VERSION)
 DIST_TMP_DIR=tmp
@@ -93,10 +92,10 @@ vcheck: all
 test: check
 
 install: all install_dirs
-	cp -rp ebin include $(TARGET_DIR)
+	cp -rfp ebin $(TARGET_DIR)
 	for script in mio mioctl mio-env; do \
 		chmod 0755 scripts/$$scripts; \
-		cp -p scripts/$$script $(TARGET_DIR)/sbin; \
+		cp -f scripts/$$script $(TARGET_DIR)/sbin; \
 		[ -e $(SBIN_DIR)/$$script ] || ln -s $(TARGET_DIR)/sbin/$$script $(SBIN_DIR)/$$script; \
 	done
 
@@ -106,16 +105,17 @@ install_dirs:
 	mkdir -p $(SBIN_DIR)
 	mkdir -p $(TARGET_DIR)/sbin
 
-dist: dist-clean
-	mkdir $(DIST_TARGET)
-	cp -r Makefile ebin src include scripts README test $(DIST_TARGET)
+dist: distclean
+	mkdir -p $(DIST_TARGET)
+	cp -r Makefile ebin src example scripts README.md test $(DIST_TARGET)
 	chmod 0755 $(DIST_TARGET)/scripts/*
-	tar -zcf $(TARBALL_NAME).tar.gz $(DIST_TARGET)
+	(cd $(DIST_TMP_DIR) &&	  tar -zcf ../$(TARBALL_NAME).tar.gz $(TARBALL_NAME))
 	rm -rf $(DIST_TMP_DIR)
 
 distclean: clean
 	rm -f $(LOG_PREFIX)*
-	rm -f *.dump
+	rm -rf src/mio.log.*
+	rm -rf src/Mnesia.*
 	find . -regex '.*\(~\|#\|\.swp\|\.dump\)' -exec rm {} \;
 
 clean:
@@ -127,12 +127,12 @@ clean:
 
 # don't name this target as "dialyzer", which will cause been kill by pkill.
 check-error: all
-	dialyzer -Wno_return -I $(INCLUDE_DIR) -c $(EBIN_DIR)
+	dialyzer -Wno_return -c $(EBIN_DIR)
 
 create_plt:
 	dialyzer --build_plt \
--r /usr/local/lib/erlang/lib/kernel-2.13.5/ebin \
+-r /usr/local/lib/erlang/lib/kernel-2.14/ebin \
 -r /usr/local/lib/erlang/lib/memcached-client-0.0.1/ebin \
--r /usr/local/lib/erlang/lib/mnesia-4.4.13/ebin \
+-r /usr/local/lib/erlang/lib/mnesia-4.4.14/ebin \
 -r /usr/local/lib/erlang/lib/os_mon-2.2.5/ebin \
--r /usr/local/lib/erlang/lib/stdlib-1.16.5/ebin
+-r /usr/local/lib/erlang/lib/stdlib-1.17/ebin

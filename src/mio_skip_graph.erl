@@ -36,30 +36,58 @@
 %%%-------------------------------------------------------------------
 -module(mio_skip_graph).
 -include("mio.hrl").
+-include("mio_path_stats.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([search_op/2, search_op/3,
+-export([search_op/2, search_op/3, delete_op/2,
          range_search_asc_op/4,
          range_search_desc_op/4,
          get_key_op/1,
-         insert_op/3,
+         insert_op/3, insert_op/4,
          buddy_op/4,
          dump_op/1,
          link_right_op/3, link_left_op/3,
-
+         link_two_nodes/3,
          link_three_nodes/4,
-         link_on_level_ge1/2
+         link_on_level_ge1/2,
+         get_local_buckets/1
         ]).
 
 %% Exported for handle_call
--export([search_op_call/5,
-         insert_op_call/4,
+-export([search_to_call/7,
+         insert_op_call/5,
          buddy_op_call/6,
          dump_op_call/1,
-
+         delete_op_call/4,
          get_key/1
         ]).
+
+get_local_buckets_left([]) ->
+    [];
+get_local_buckets_left(Bucket) ->
+    case mio_util:is_local_process(Bucket) of
+        true ->
+            [Bucket | get_local_buckets_left(mio_bucket:get_left_op(Bucket))];
+        false ->
+            get_local_buckets_left(mio_bucket:get_left_op(Bucket))
+    end.
+
+get_local_buckets_right([]) ->
+    [];
+get_local_buckets_right(Bucket) ->
+    case mio_util:is_local_process(Bucket) of
+        true ->
+            [Bucket | get_local_buckets_right(mio_bucket:get_right_op(Bucket))];
+        false ->
+            get_local_buckets_right(mio_bucket:get_right_op(Bucket))
+    end.
+
+get_local_buckets(Bucket) ->
+    Left = lists:reverse(get_local_buckets_left(Bucket)),
+    Right = get_local_buckets_right(mio_bucket:get_right_op(Bucket)),
+    Left ++ Right.
+
 %%--------------------------------------------------------------------
 %%  accessors
 %%--------------------------------------------------------------------
@@ -69,33 +97,72 @@ get_key_op(Bucket) ->
 %%--------------------------------------------------------------------
 %%  Dump operation for Debug.
 %%--------------------------------------------------------------------
-dump_op(StartBucket) ->
-    gen_server:call(StartBucket, skip_graph_dump_op).
+get_most_left(Bucket) ->
+    case mio_bucket:get_left_op(Bucket) of
+        [] ->
+             Bucket;
+        Left ->
+            get_most_left(Left)
+    end.
 
+dump_op(StartBucket) ->
+    MostLeft = get_most_left(StartBucket),
+    gen_server:call(MostLeft, skip_graph_dump_op).
+
+dump_op1(StartBucket) ->
+    gen_server:call(StartBucket, skip_graph_dump_op).
 
 dump_op_call(State) ->
     Key = get_key(State),
-    ?INFOF("===========================================~nBucket: ~p<~p>:~p~n", [Key, State#node.type, mio_bucket:get_range(State)]),
-    lists:foreach(fun(K) ->
-                          ?INFOF("    ~p~n", [K])
-                  end, mio_store:keys(State#node.store)),
+    ?INFOF("===========================================~nBucket: ~p<~p>:~p ~p~n", [Key, State#node.type, mio_bucket:get_range(State), State#node.membership_vector]),
+    %% lists:foreach(fun(K) ->
+    %%                       ?INFOF("    ~p~n", [K])
+    %%               end, mio_store:keys(State#node.store)),
     case neighbor_node(State, right, 0) of
         [] -> [];
         RightBucket ->
-            dump_op(RightBucket)
+            dump_op1(RightBucket)
     end.
 
 %%--------------------------------------------------------------------
 %%  Insertion operation
 %%--------------------------------------------------------------------
 insert_op(Introducer, Key, Value) ->
-    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value}).
+    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ?NEVER_EXPIRE}).
 
-insert_op_call(From, Self, Key, Value) ->
+insert_op(Introducer, Key, Value, ExpirationTime) ->
+    gen_server:call(Introducer, {skip_graph_insert_op, Key, Value, ExpirationTime}).
+
+insert_op_call(From, Self, Key, Value, ExpirationTime) ->
     StartLevel = [],
     Bucket = search_bucket_op(Self, Key, StartLevel),
-    Ret = mio_bucket:insert_op(Bucket, Key, Value),
+    Ret = mio_bucket:insert_op(Bucket, Key, Value, ExpirationTime),
     gen_server:reply(From, Ret).
+
+%%--------------------------------------------------------------------
+%%  Delete operation
+%%--------------------------------------------------------------------
+delete_op(Introducer, Key) ->
+    gen_server:call(Introducer, {skip_graph_delete_op, Key}).
+
+delete_op_call(From, State, Self, Key) ->
+    Bucket = search_bucket_op(Self, Key),
+    case mio_bucket:delete_op(Bucket, Key) of
+        {error, Reason} ->
+            gen_server:reply(From, {error, Reason});
+        {ok, BucketsToDelete} ->
+            lists:foreach(fun (B) -> delete_loop(B, length(State#node.membership_vector)) end, BucketsToDelete),
+            gen_server:reply(From, {ok, BucketsToDelete})
+    end.
+
+
+delete_loop(_Self, Level) when Level < 0 ->
+    [];
+delete_loop(Self, Level) ->
+    RightBucket = mio_bucket:get_right_op(Self, Level),
+    LeftBucket = mio_bucket:get_left_op(Self, Level),
+    link_two_nodes(LeftBucket, RightBucket, Level),
+    delete_loop(Self, Level - 1).
 
 %%--------------------------------------------------------------------
 %%  Search operation
@@ -128,61 +195,56 @@ insert_op_call(From, Self, Key, Value) ->
 search_op(StartBucket, SearchKey) ->
     search_op(StartBucket, SearchKey, []).
 search_op(StartBucket, SearchKey, StartLevel) ->
-    Bucket = search_bucket_op(StartBucket, SearchKey, StartLevel),
-    mio_bucket:get_op(Bucket, SearchKey).
+    ?MIO_PATH_STATS_PUSH2(SearchKey, {start, case mio_util:is_local_process(StartBucket) of true -> local; _ -> remote end}),
+%%    dynomite_prof:start_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
+    Ret = start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = true), %%search_direct_op(StartBucket, SearchKey, StartLevel),
+%%    dynomite_prof:stop_prof(case mio_util:is_local_process(StartBucket) of true -> search_direct_op_local; _ -> search_direct_op_remote end),
+    ?MIO_PATH_STATS_PUSH2(SearchKey, {result, Ret}),
+    ?MIO_PATH_STATS_SHOW(SearchKey),
+    Ret.
 
+start_search_op(StartBucket, SearchKey, StartLevel, IsDirectSearch) ->
+    gen_server:call(StartBucket, {skip_graph_start_search_op, SearchKey, StartLevel, IsDirectSearch}).
+
+%%
+%%  search_bucket_op returns a bucket which may have the SearchKey.
+%%
 search_bucket_op(StartBucket, SearchKey) ->
     search_bucket_op(StartBucket, SearchKey, []).
 search_bucket_op(StartBucket, SearchKey, StartLevel) ->
-    gen_server:call(StartBucket, {skip_graph_search_op, SearchKey, StartLevel}, infinity).
+    start_search_op(StartBucket, SearchKey, StartLevel, _IsDirectSearch = false).
 
-search_op_call(From, State, Self, SearchKey, Level) ->
+search_to(Neighbor, SearchKey, Level, Direction, IsDirectSearch) ->
+    gen_server:call(Neighbor, {skip_graph_search_to, SearchKey, Level, Direction, IsDirectSearch}).
+
+search_to_call(From, State, Self, SearchKey, Level, Direction, IsDirectSearch) ->
     {{Min, MinEncompass}, {Max, MaxEncompass}} = mio_bucket:get_range(State),
+    StartLevel = start_level(State, Level),
     case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
         %% Key may be found in Self.
         true ->
-            gen_server:reply(From, Self);
+            if IsDirectSearch ->
+                    gen_server:reply(From, mio_bucket:search_on_bucket(State, SearchKey));
+               true ->
+                    gen_server:reply(From, Self)
+            end;
         _ ->
-            StartLevel = start_level(State, Level),
-            case (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) of
-                true ->
-                    gen_server:reply(From, search_to_right(From, State, Self, SearchKey, StartLevel));
-                _ ->
-                    gen_server:reply(From, search_to_left(From, State, Self, SearchKey, StartLevel))
-            end
-    end.
-
-%% coverage says this is not necessary
-%% search_to_right(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-%%     Self;
-search_to_right(From, State, Self, SearchKey, Level) ->
-    case neighbor_node(State, right, Level) of
-        [] ->
-            search_to_right(From, State, Self, SearchKey, Level - 1);
-        Right ->
-            {{RMin, RMinEncompass}, {RMax, RMaxEncompass}} = mio_bucket:get_range_op(Right),
-            case RMax =< SearchKey orelse in_range(SearchKey, RMin, RMinEncompass, RMax, RMaxEncompass) of
-                true ->
-                    search_bucket_op(Right, SearchKey, Level);
-                _ ->
-                    search_to_right(From, State, Self, SearchKey, Level - 1)
-            end
-    end.
-
-%% coverage says this is not necessary
-%% search_to_left(_From, _State, Self, _SearchKey, Level) when Level < 0 ->
-%%     Self;
-search_to_left(From, State, Self, SearchKey, Level) ->
-    case neighbor_node(State, left, Level) of
-        [] ->
-            search_to_left(From, State, Self, SearchKey, Level - 1);
-        Left ->
-            {{LMin, LMinEncompass}, {LMax, LMaxEncompass}} = mio_bucket:get_range_op(Left),
-            case LMax >= SearchKey orelse in_range(SearchKey, LMin, LMinEncompass, LMax, LMaxEncompass) of
-                true ->
-                    search_bucket_op(Left, SearchKey, Level);
-                _ ->
-                    search_to_left(From, State, Self, SearchKey, Level - 1)
+            HavePossibleNeibhor = case Direction of right -> Max =< SearchKey; left -> Max >= SearchKey end,
+            if HavePossibleNeibhor->
+                    case neighbor_node(State, Direction, StartLevel) of
+                        [] ->
+                            search_to_call(From, State, Self, SearchKey, StartLevel - 1, Direction, IsDirectSearch);
+                        Neighbor ->
+                            case search_to(Neighbor, SearchKey, StartLevel, Direction, IsDirectSearch) of
+                                false ->
+                                    %% search key is not in range of neighbor bucket.
+                                    search_to_call(From, State, Self, SearchKey, StartLevel - 1, Direction, IsDirectSearch);
+                                Result ->
+                                    gen_server:reply(From, Result)
+                            end
+                    end;
+               true ->
+                    gen_server:reply(From, false)
             end
     end.
 
@@ -234,9 +296,22 @@ range_search_desc_rec(Bucket, Key1, Key2, Accum, Count, Limit) ->
 %%--------------------------------------------------------------------
 %%  link operation
 %%--------------------------------------------------------------------
-%% coverage says this is not necessary
-%% link_right_op([], _Level, _Right) ->
-%%     ok;
+is_valid_order(_Left, []) ->
+    true;
+is_valid_order([], _Right)->
+    true;
+is_valid_order(Left, Right) ->
+    {_, {LMax, _}} = mio_bucket:get_range_op(Left),
+    {{RMin, _}, _} = mio_bucket:get_range_op(Right),
+    case {LMax, RMin} of
+        {[], _} -> true;
+        {_, []} -> true;
+        _ ->
+            LMax =< RMin
+    end.
+
+link_right_op([], _Level, _Right) ->
+    ok;
 link_right_op(Node, Level, Right) ->
     gen_server:call(Node, {link_right_op, Level, Right}).
 
@@ -256,11 +331,9 @@ buddy_op(Node, MembershipVector, Direction, Level) ->
 
 buddy_op_call(From, State, Self, MembershipVector, Direction, Level) ->
     IsSameMV = mio_mvector:eq(Level, MembershipVector, State#node.membership_vector),
-    %% N.B.
-    %%   We have to check whether this node is inserted on this Level, if not this node can't be buddy.
-    IsInserted = node_on_level(State#node.inserted, Level),
+%    ?debugFmt("buddy_op to ~p ~p MV=~p ", [Direction, {Self, mio_bucket:get_range_op(Self)}, {MembershipVector, State#node.membership_vector}]),
     if
-        IsSameMV andalso IsInserted ->
+        IsSameMV ->
             MyKey = mio_bucket:my_key(State),
             ReverseDirection = reverse_direction(Direction),
             MyNeighbor = neighbor_node(State, ReverseDirection, Level),
@@ -286,9 +359,9 @@ buddy_op_proxy(LeftOnLower, [], MyMV, Level) ->
 buddy_op_proxy([], RightOnLower, MyMV, Level) ->
     case buddy_op(RightOnLower, MyMV, right, Level) of
         not_found ->
-            not_found
-%%         {ok, Buddy, BuddyKey, BuddyLeft} ->
-%%             {ok, right, Buddy, BuddyKey, BuddyLeft}
+            not_found;
+        {ok, Buddy, BuddyKey, BuddyLeft} ->
+            {ok, right, Buddy, BuddyKey, BuddyLeft}
     end;
 buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) ->
     case buddy_op_proxy(LeftOnLower, [], MyMV, Level) of
@@ -332,6 +405,7 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
     {_MyKey, _MyValue, MyMV, MyLeft, MyRight} = gen_server:call(Self, get_op),
     LeftOnLower = node_on_level(MyLeft, Level - 1),
     RightOnLower = node_on_level(MyRight, Level - 1),
+%    ?debugFmt("LeftOnLower=~p Self=~p RightOnLower=~p", [{LeftOnLower, mio_bucket:get_range_op(LeftOnLower)}, {Self, mio_bucket:get_range_op(Self)}, {RightOnLower, mio_bucket:get_range_op(RightOnLower)}]),
     case buddy_op_proxy(LeftOnLower, RightOnLower, MyMV, Level) of
         not_found ->
             %% We have no buddy on this level.
@@ -340,16 +414,26 @@ link_on_level_ge1(Self, Level, MaxLevel) ->
             [];
         %% [Buddy] <-> [NodeToInsert] <-> [BuddyRight]
         {ok, left, Buddy, _BuddyKey, BuddyRight} ->
-            do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left)
-%%         %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
-%%         {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
-%%             do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right)
+            case is_valid_order(Buddy, Self) andalso is_valid_order(Self, BuddyRight) of
+                true ->
+                    do_link_level_ge1(Self, Buddy, BuddyRight, Level, MaxLevel, left);
+                _ ->
+                    throw({"skip graph is broken ~p ~p ~p ~p on Level ~p", [{is_valid_order(Buddy, Self), is_valid_order(Self, BuddyRight)}, mio_bucket:get_range_op(Buddy), mio_bucket:get_range_op(Self), mio_bucket:get_range_op(BuddyRight), Level]})
+            end;
+        %% [BuddyLeft] <-> [NodeToInsert] <-> [Buddy]
+        {ok, right, Buddy, _BuddyKey, BuddyLeft} ->
+            case is_valid_order(BuddyLeft, Self) andalso is_valid_order(Self, Buddy) of
+                true ->
+                    do_link_level_ge1(Self, Buddy, BuddyLeft, Level, MaxLevel, right);
+                _ ->
+                    throw({"skip graph is broken ~p ~p ~p ~p on Level ~p", [{is_valid_order(Buddy, Self), is_valid_order(Self, BuddyLeft)}, mio_bucket:get_range_op(Buddy), mio_bucket:get_range_op(Self), mio_bucket:get_range_op(BuddyLeft), Level]})
+            end
     end.
 
 do_link_level_ge1(Self, Buddy, BuddyNeighbor, Level, MaxLevel, Direction) ->
     case Direction of
-%%         right ->
-%%             link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
+        right ->
+            link_three_nodes(BuddyNeighbor, Self, Buddy, Level);
         left ->
             link_three_nodes(Buddy, Self, BuddyNeighbor, Level)
     end,
@@ -389,11 +473,15 @@ neighbor_node(State, Direction, Level) ->
 
 reverse_direction(Direction) ->
     case Direction of
-%%         right ->
-%%              left;
+        right ->
+             left;
         left ->
             right
     end.
+
+link_two_nodes(LeftNode, RightNode, Level) ->
+    link_right_op(LeftNode, Level, RightNode),
+    link_left_op(RightNode, Level, LeftNode).
 
 link_three_nodes(LeftNode, CenterNode, RightNode, Level) ->
     %% [Left] -> [Center]  [Right]

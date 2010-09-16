@@ -81,7 +81,6 @@ make_bucket(Supervisor, Allocator, Capacity, Type, MembershipVector) ->
                                                   {mio_bucket, start_link, [[Allocator, Capacity, Type, MembershipVector]]},
                                                   temporary, brutal_kill, worker, [mio_bucket]}).
 
-
 start_serializer(Sup) ->
     {ok, _} = supervisor:start_child(Sup,
                                      {getRandomId(),
@@ -148,13 +147,23 @@ init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]) ->
             permanent, brutal_kill, worker, [mio_memcached]}]}};
 
 init([]) ->
+    %%
+    %% lg(expected_max_data_count / bucket_size) = maxlevel
+    %%
+    %% maxlevel : Nearly equal to communication count between nodes on search.
+    %%
     {ok, Port} = mio_app:get_env(port, 11211),
-    {ok, MaxLevel} = mio_app:get_env(maxlevel, 10),
-    {ok, BootNode} = mio_app:get_env(boot_node, false),
-    {ok, Capacity} = mio_app:get_env(capacity, 1000),
+    {ok, MaxLevel} = mio_app:get_env(maxlevel, 3),
+    %% mio1@127.0.0.1 is not valid atom literal, so we accept it as string and convert it to atom.
+    {ok, BootNode} = case mio_app:get_env(boot_node, false) of
+                         {ok, false} -> {ok, false};
+                         {ok, StringValue} ->
+                             {ok, list_to_atom(StringValue)}
+                     end,
+    {ok, BucketSize} = mio_app:get_env(bucket_size, 1000000),
     {ok, LogDir} = mio_app:get_env(log_dir, "."),
     {ok, Verbose} = mio_app:get_env(verbose, false),
-    init([Port, MaxLevel, Capacity, BootNode, LogDir, Verbose]).
+    init([Port, MaxLevel, BucketSize, BootNode, LogDir, Verbose]).
 
 
 getRandomId() ->

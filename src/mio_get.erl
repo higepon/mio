@@ -28,79 +28,42 @@
 %%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%%-------------------------------------------------------------------
-%%% File    : mio_control.erl
+%%% File    : mio_get.erl
 %%% Author  : higepon <higepon@labs.cybozu.co.jp>
-%%% Description : Control mio.
+%%% Description : mio stats
 %%%
-%%% Created : 25 Nov 2009 by higepon <higepon@labs.cybozu.co.jp>
+%%% Created : 23 Aug 2010 by higepon <higepon@labs.cybozu.co.jp>
 %%%-------------------------------------------------------------------
--module(mio_control).
--include("mio.hrl").
+-module(mio_get).
 
-%% API
--export([start/0, usage/0]).
+-export([start/0]).
 
-%%====================================================================
-%% API
-%%====================================================================
+get_arg(Key, DefaultValue) ->
+    case init:get_argument(Key) of
+        {ok, [[Value]]} ->
+            Value;
+        _ -> 
+            DefaultValue
+    end.
+
+do_get(Conn, Key, Ntimes) ->
+    do_get(Conn, Key, 0, Ntimes).
+
+do_get(_Conn, _Key, Counter, Ntimes) when Counter =:= Ntimes ->
+    ok;
+do_get(Conn, Key, Counter, Ntimes) ->
+    memcached:get(Conn, Key),
+    do_get(Conn, Key, Counter + 1, Ntimes).
+
 start() ->
-    case init:get_argument(command) of
-        {ok, [["stop"|_]|_]} ->
-            io:format("stopping "),
-            command_stop(),
-            halt();
-        _ ->
-            usage(),
-            halt(1)
-    end.
-
-
-usage() ->
-    io:format("~nUsage:mioctl [-n <node_name>] [-c <cookie>] <command>
-
-Available commands:
-
-  stop      - stops the mio application on <node_name>
-
-"),
-    ok.
-
-
-%%====================================================================
-%% Internal functions
-%%====================================================================
-command_stop() ->
-    case init:get_argument(nodename) of
-        {ok, [[NodeName|_]|_]} ->
-            Node = list_to_atom(NodeName),
-            case call(Node, application, stop, [mio]) of
-                ok -> ok;
-                error ->
-                    halt(1)
-            end,
-            case call(Node, init, stop, []) of
-                ok -> ok;
-                error ->
-                    halt(1)
-            end,
-            io:format("...done~n");
-        _ ->
-            ?ERROR("nodename is not specified~n"),
-            usage()
-    end.
-
-
-call(Node, Module, Func, Args) ->
-    case rpc:call(Node, Module, Func, Args) of
-        ok ->
-            ok;
-        {error, Reason} ->
-            ?ERRORF("Error: ~p", [Reason]),
-            error;
-        {badrpc, Reason} ->
-            ?ERRORF("unable to connect mio node ~w: ~w", [Node, Reason]),
-            error;
-        Other ->
-            ?ERRORF("Error: ~p", [Other]),
-            error
-    end.
+    Port = list_to_integer(get_arg(port, "11211")),
+    Key = get_arg(key, "1"),
+    Ntimes = list_to_integer(get_arg(ntimes, "1")),
+    io:format("~nget ~p times: ", [Ntimes]),
+    {ok, Conn} = memcached:connect("127.0.0.1", Port),
+    statistics(wall_clock),
+    do_get(Conn, Key, Ntimes),
+    {_, Msec} = statistics(wall_clock),
+    io:format("~p msec~n~n", [Msec]),
+    memcached:disconnect(Conn),
+    halt(0).

@@ -25,11 +25,12 @@
 ### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_NODE_NAME=mio1
+#DEFAULT_NODE_NAME=mio1
 DEFAULT_COOKIE_NAME=mio
 DEFAULT_LISTEN_PORT=11211
 DEFAULT_MAX_LEVEL=3
 DEFAULT_LOG_DIR=`pwd`
+DEFAULT_BUCKET_SIZE=10000
 
 . `dirname $0`/mio-env
 MIO_EBIN_ROOT="${MIO_HOME}/ebin"
@@ -42,8 +43,9 @@ opt_introducer=
 opt_verbose=false
 opt_maxlevel=
 opt_detached=
+opt_bucketsize=
 
-while getopts 'dn:p:i:vc:m:l:' OPTION
+while getopts 'dn:p:i:vc:m:l:b:' OPTION
 do
   case $OPTION in
   m)    opt_maxlevel="$OPTARG"
@@ -54,6 +56,8 @@ do
         ;;
   p)    opt_port="$OPTARG"
         ;;
+  b)    opt_bucketsize="$OPTARG"
+        ;;
   l)    opt_log_dir="$OPTARG"
         ;;
   v)    opt_verbose=true
@@ -62,17 +66,17 @@ do
         ;;
   i)    opt_introducer="$OPTARG"
         ;;
-  ?)    printf "Usage: %s: [-n node_name] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
+  ?)    printf "Usage: %s: [-n node_name@FQDN] [-l log_dir] [-v:verbose mode] [-p port] [-i introducer_name@FQDN] [-b bucketsize] [-c cookie] [-m maxlevel] [-d:detached mode]\n" $(basename $0) >&2
         exit 2
         ;;
   esac
 done
 shift $(($OPTIND - 1))
 mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
-mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
-mio_name="${mio_name}@"`hostname -s`".local"
+mio_name=${opt_name:-"mio1@localhost.local"}
 mio_log_dir=${opt_log_dir:-"$DEFAULT_LOG_DIR"}
 mio_port=${opt_port:-"$DEFAULT_LISTEN_PORT"}
+mio_bucketsize=${opt_bucketsize:-"$DEFAULT_BUCKET_SIZE"}
 mio_introducer=${opt_introducer:-"false"}
 mio_maxlevel=${opt_maxlevel:-"$DEFAULT_MAX_LEVEL"}
 mio_verbose=$opt_verbose
@@ -88,7 +92,7 @@ mio_detached=${opt_detached:+"-detached"}
 #   -setcookie $mio_cookie  : Sets the magic cookie of the node to Cookie
 #   -config conf/dev_log    : Sets the config file used to configure applications.
 #    -kernel                : Options to kernel application, which are passed to inet module
-
+echo "starting at $mio_name"
 IS_OSX=`echo "$OSTYPE" | grep darwin`
 # config file path
 if [ "$IS_OSX" != "" ]; then
@@ -107,6 +111,7 @@ erl +K true \
          boot_node $mio_introducer \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
+         bucket_size $mio_bucketsize\
          verbose $mio_verbose
 else
 erl +K true \
@@ -123,8 +128,9 @@ erl +K true \
     ${mio_detached} \
     -mio debug $mio_verbose \
          port $mio_port \
-         boot_node $mio_introducer \
+         boot_node "\"$mio_introducer"\" \
          maxlevel $mio_maxlevel \
          log_dir "\"$mio_log_dir\"" \
+         bucket_size $mio_bucketsize \
          verbose $mio_verbose
 fi

@@ -41,18 +41,23 @@
 
 %% API
 -export([start_link/1,
+         search_on_bucket/2,
+         delete_op/2,
          get_range/1, my_key/1,
          get_range_values_op/4,
          get_left_op/1, get_right_op/1,
          get_left_op/2, get_right_op/2,
-         insert_op/3, just_insert_op/3,
+         insert_op/3, insert_op/4,
+         just_insert_op/3,
          get_type_op/1, set_type_op/2,
          is_empty_op/1, is_full_op/1,
-         take_largest_op/1,
+         take_largest_op/1, take_smallest_op/1,
          get_largest_op/1, get_smallest_op/1,
-         insert_op_call/5,
+         insert_op_call/6,
+         delete_op_call/4,
          get_range_op/1, set_range_op/3,
          set_max_key_op/3, set_min_key_op/3,
+         get_store_op/1,
          %% Skip Graph layer
          get_op/2,
          get_op_call/2,
@@ -135,100 +140,86 @@
 %%      Insertion to C3  : C1-O2$ | C3'-O4
 %%
 %%  Deletion patterns
+%%    following bucket group appears on deletion.
 %%
-%%    (a) C1-O2 | C3-O4
-%%      Deletion from C1 causes O2 -> C1.
-%%        C1'-O2' | C3-O4.
+%%      O, O*, C-O, C-O-C, C-O* and C-O*-C.
 %%
-%%      Deletion from C3. Same as above.
+%%    (a) O1
+%%      O1 -> O2 or O2*
+%%        Range never change.
 %%
-%%    (b) C1-O2 | C3-O4*
-%%      Deletion from C1. Same as (a).
+%%    (b) O*
+%%      O*
+%%        Range never change.
 %%
-%%      Deletion from C3 causes O2 -> C3.
-%%        C1-O2'-C3'
+%%    (c) C1-O2
+%%      Deletion from C1: C1'-O2'
+%%        C1'->max = {moved key, true}.
+%%        O2'->min = {moved key, false}.
+%%      Deletion from O2: C1-O2'
+%%        Range never change.
 %%
-%%    (c) C1-O2 | C3-O4-C5
-%%      Deletion from C1. Same as (a).
+%%    (d) C1-O2-C3
+%%      Deletion from C1: C1'-O2'-C3
+%%        C1'->max = {moved key, true}.
+%%        O2'->min = {moved key, false}.
+%%      Deletion from O2: C1-O2'-C3
+%%        Range never change.
+%%      Deletion from C3: C1-O2'-C3'
+%%        O2'->max = {moved key, false}.
+%%        C3'->min = {moved key, true}.
 %%
-%%      Deletion from C3 causes O4-> C3
-%%        C1-O2 | C3'-O4'-C5
+%%    (e) C1-O2*-C3
+%%      Deletion from C1: C1'-O3'
+%%        C1'->max = {moved key, true}.
+%%        O3'->min = {moved key, false}.
+%%      Deletion from C3: C1-O3'
+%%        C1->max = not(C3'->min)
 %%
-%%      Deletion from C5 causes O4-> C5
-%%        C1-O2 | C3-O4'-C5'
+%%    (f) C1-O2*
+%%      Both left and right not exist: O1
+%%        O1->max = O2*->max
+%%      C-O exists on left or right: C3-O4 | C1'-O2* or C1'-O2* | C5-O6
+%%        C1'->min = {moved_key, true}
+%%        O4->max = {moved_key, false}
+%%                or
+%%        C1'->max = {moved_key, true}
+%%        C5->min = {moved_key, false}
+%%        C5->max = {moved_key2, true}
+%%        O6->minx = {moved_key2, false}
+%%      C-O-C exists on left or right: C3-O4-C5 | C1'-O2* or C1'-O2* | C6-O7-C8
+%%        C1'->min = {moved_key, true}
+%%        C5->max = {moved_key, false}
+%%        C5->min = {moved_key, true}
+%%        O4->max = {moved_key, false}
+%%                or
+%%        C1'->max = {moved_key, true}
+%%        C6->min = {moved_key, false}
+%%        C6->max = {moved_key2, true}
+%%        O7->min = {moved_key2, false}
+%%      C4-O5* exists on left or right: C1'-O3
+%%        C1'->max = O2*->max
+%%        C3->max = C1->min
+%%                or
+%%        C3->max = O4*->max
+%%        C3->min = {moved_key, false}
+%%        C1->max = {moved_key, true}
+%%      C-O*-C exists on left or right: C1'-O3-C4
+%%        C1->max = {moved_key, true}
+%%        O3->min = {moved_key, false}
+%%        C3->max = not(C5)
+%%                or
+%%        C1->max = O2*->max
+%%        C1->min = {moved_key, true}
+%%        C5->max = {moved_key, false}
+%%        C5->min = not(C3->max)
 %%
-%%    (d) C1-O2 | C3-O4*-C5
-%%      Deletion from C1. Same as (a).
-%%
-%%      Deletion from C3 causes C5 to C3.
-%%        C1-O2 | C3'-O5
-%%
-%%      Deletion from C5.
-%%        C1-O2 | C3-O5
-%%
-%%    (e) C1-02* | C3-O4
-%%      Deletion from C1.
-%%        -> O1-O2* | C3-O4 -> C1'-O2* | O3-O4 -> C1'-O2* | C3'-O4'
-%%
-%%      Deletion from C3. Same as (a).
-%%
-%%    (f) C1-O2* | C3-O4*
-%%      This should be never appears. C1-O2*C3.
-%%
-%%    (g) C1-O2* | C3-O4-C5
-%%      Deletion from C1.
-%%        O1-O2* | C3-O4-C5 -> C1'-O2* | O3-O4-C5 -> C1'-O2* | C3'-O4'-C5
-%%
-%%      Deletion from C3 or C5 same as (c).
-%%
-%%    (h) C1-O2* | C3-O4*-C5
-%%      Deletion from C1.
-%%        O1-O2* | C3-O4*-C5 -> C1'-O2* | O3-O4*-C5 -> C1'-O2* | C3'-O5'
-%%
-%%    (i) C1-O2-C3 | C4-O5
-%%       Same as (a) and (c)
-%%
-%%    (j) C1-O2-C3 | C4-O5*
-%%      Deletion from C1 or C3. Same as (c).
-%%
-%%      Deletion from C4
-%%        C1-O2-C3 | O4-O5* -> C1-O2 | C3-O4
-%%
-%%    (k) C-O2-C3 | C4-O5-C6
-%%      Same as (c)
-%%
-%%    (l) C1-O2-C3 | C4-O5*-C6
-%%      Deletion from C1 or C3. Same as (c).
-%%
-%%      Deletion from C4.
-%%        C1-O2-C3 | O4-O5*-C6 -> C1-O2-C3 | C4'-O6
-%%
-%%      Deletion from C6.
-%%        C1-O2-C3 | C4-O5*-O6 -> C1-O2-C3 | C4-O6
-%%
-%%    (m) C1-O2*-C3 | C4-O5
-%%      Deletion from C1.
-%%        O1-O2*-C3 | C4-O5 -> C1'-O3' | C4-O5
-%%
-%%      Deletion from C3.
-%%        C1-O2*-O3 | C4-O5 -> C1-O3 | C4-O5
-%%
-%%    (n) C1-O2*-C3 | C4-O5*
-%%      Deletion from C1 or C3. Same as (m).
-%%
-%%      Deletion from C4.
-%%        C1-O2*-C3 | O4-O5* -> C1-O2* | C3-O4
-%%
-%%    (o) C1-O2*-C3 | C4-O5-C6
-%%      Deletion from C1 or C3. Same as (m)
-%%      Deletion from C4 or C6. Same as (c)
-%%
-%%    (p) C1-O2*-C3 | C4-O5*-C6
-%%      Same as (m)
-
 %%====================================================================
 %% API
 %%====================================================================
+get_store_op(Bucket) ->
+    gen_server:call(Bucket, get_store_op).
+
 set_gen_mvector_op(Bucket, Fun) ->
     gen_server:call(Bucket, {set_gen_mvector_op, Fun}).
 
@@ -247,8 +238,11 @@ get_left_op(Bucket, Level) ->
 get_right_op(Bucket, Level) ->
     gen_server:call(Bucket, {get_right_op, Level}).
 
+%% get_range_op([]) ->
+%%     [];
 get_range_op(Bucket) ->
-    gen_server:call(Bucket, get_range_op).
+    Ret = gen_server:call(Bucket, get_range_op),
+    Ret.
 
 get_type_op(Bucket) ->
     gen_server:call(Bucket, get_type_op).
@@ -265,8 +259,14 @@ set_max_key_op(Bucket, MaxKey, EncompassMax) ->
 set_min_key_op(Bucket, MinKey, EncompassMin) ->
     gen_server:call(Bucket, {set_min_key_op, MinKey, EncompassMin}).
 
+delete_op(Bucket, Key) ->
+    gen_server:call(Bucket, {delete_op, Key}).
+
+insert_op(Bucket, Key, Value, ExpirationTime) ->
+    gen_server:call(Bucket, {insert_op, Key, Value, ExpirationTime}).
+
 insert_op(Bucket, Key, Value) ->
-    gen_server:call(Bucket, {insert_op, Key, Value}).
+    gen_server:call(Bucket, {insert_op, Key, Value, ?NEVER_EXPIRE}).
 
 just_insert_op(Bucket, Key, Value) ->
     gen_server:call(Bucket, {just_insert_op, Key, Value}).
@@ -285,6 +285,9 @@ get_smallest_op(Bucket) ->
 
 take_largest_op(Bucket) ->
     gen_server:call(Bucket, take_largest_op).
+
+take_smallest_op(Bucket) ->
+    gen_server:call(Bucket, take_smallest_op).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -308,14 +311,6 @@ start_link(Args) ->
 init([Allocator, Capacity, Type, MembershipVector]) ->
     Length = length(MembershipVector),
     EmptyNeighbors = lists:duplicate(Length + 1, []), % Level 3, require 0, 1, 2, 3
-    Insereted = case Type of
-                    alone ->
-                        %% set as inserted state
-                        lists:duplicate(Length + 1, true);
-                    _ ->
-                        lists:duplicate(Length + 1, false)
-                end,
-
     {ok, #node{store=mio_store:new(Capacity),
                 type=Type,
                 min_key=?MIN_KEY,
@@ -326,8 +321,6 @@ init([Allocator, Capacity, Type, MembershipVector]) ->
                 right=EmptyNeighbors,
                 membership_vector=MembershipVector,
                 expire_time=0,
-                inserted=Insereted,
-                deleted=false,
                 gen_mvector=fun mio_mvector:generate/1,
                 allocator=Allocator
                }}.
@@ -377,8 +370,301 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-insert_op_call(From, State, Self, Key, Value)  ->
-    InsertState = just_insert_op(Self, Key, Value),
+delete_from_alone(State, Key) ->
+    mio_store:remove(Key, State#node.store),
+    {ok, []}.
+
+delete_from_c_O_l_no_neighbor(Self, RightBucket) ->
+    %% unlink
+    mio_skip_graph:link_right_op(Self, 0, []),
+    set_type_op(Self, alone),
+    {_, {MaxKey, EncompassMax}} = get_range_op(RightBucket),
+    set_max_key_op(Self, MaxKey, EncompassMax),
+    {ok, [RightBucket]}.
+
+delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket) ->
+    {C1, O2, C3, O4, O4Right} = {get_left_op(Left), Left, Self, RightBucket, get_right_op(RightBucket)},
+    {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
+
+    mio_skip_graph:link_two_nodes(C1, C3, 0),
+    mio_skip_graph:link_right_op(C3, 0, O4Right),
+
+    {C3MinKey, _} = get_smallest_op(C3),
+    set_max_key_op(C1, C3MinKey, false),
+    set_range_op(C3, {C3MinKey, true}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
+    set_type_op(C3, c_o_r),
+    {ok, [O2, O4]}.
+
+delete_from_c_O_l_with_left_c_o(Self, Left, MaxKey, MaxValue) ->
+    just_insert_op(Self, MaxKey, MaxValue),
+    set_min_key_op(Self, MaxKey, true),
+    set_max_key_op(Left, MaxKey, false),
+    {ok, []}.
+
+delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right) ->
+    %% C1-O2-C3 | C4-O5*
+    {O2, C3, C4} = {get_left_op(Left), Left, Self},
+    case is_empty_op(O2) of
+        true ->
+            C1 = get_left_op(O2),
+            O5 = RightBucket,
+            O5Right = Right,
+            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+            just_insert_op(C4, C3MaxKey, C3MaxValue),
+
+            {_, {O5MaxKey, O5MaxEncompass}} = get_range_op(O5),
+            {_, {O2MaxKey, O2MaxEncompass}} = get_range_op(O2),
+            set_max_key_op(C1, O2MaxKey, O2MaxEncompass),
+            set_range_op(C3, {O2MaxKey, not O2MaxEncompass}, {C3MaxKey, false}),
+            set_range_op(C4, {C3MaxKey, true}, {O5MaxKey, O5MaxEncompass}),
+            mio_skip_graph:link_three_nodes(C1, C3, C4, 0),
+            mio_skip_graph:link_right_op(C4, 0, O5Right),
+            set_type_op(C3, c_o_c_m),
+            set_type_op(C4, c_o_c_r),
+            {ok, [O2, O5]};
+        false ->
+            {C3MaxKey, C3MaxValue} = take_largest_op(C3),
+            just_insert_op(C4, C3MaxKey, C3MaxValue),
+            set_min_key_op(C4, C3MaxKey, true),
+
+            {O2MaxKey, O2MaxValue} = take_largest_op(O2),
+            just_insert_op(C3, O2MaxKey, O2MaxValue),
+            set_range_op(C3, {O2MaxKey, true}, {C3MaxKey, false}),
+
+            set_max_key_op(O2, O2MaxKey, false),
+            {ok, []}
+    end.
+
+delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right) ->
+    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+    case is_empty_op(O4) of
+        %% C1-O2 | C3-O4*
+        true ->
+            O4Right = get_right_op(O4),
+            {_, {O4RightMaxKey, O4RightMaxKeyEncompass}} = get_range_op(O4Right),
+            mio_skip_graph:link_right_op(C3, 0, O4Right),
+
+            mio_skip_graph:link_two_nodes(C1, C3, 0),
+
+            {C3MinKey, C3MinValue} = get_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+            set_max_key_op(C1, C3MinKey, true),
+            set_range_op(C3, {C3MinKey, false}, {O4RightMaxKey, O4RightMaxKeyEncompass}),
+            set_type_op(C3, c_o_r),
+            {ok, [O2, O4]};
+        %% C1-O2* | C3-O4
+        false ->
+            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+            set_max_key_op(C1, C3MinKey, true),
+
+            {NewC3MinKey, _} = get_smallest_op(C3),
+            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+            {C3MaxKey, C3MaxValue} = take_smallest_op(O4),
+            just_insert_op(C3, C3MaxKey, C3MaxValue),
+            set_range_op(C3, {NewC3MinKey, true}, {C3MaxKey, true}),
+
+            set_min_key_op(O4, C3MaxKey, false),
+            {ok, []}
+    end.
+
+delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right) ->
+    %% C-O-C exists on right
+    {C1, O2, C3, O4} = {Self, RightBucket, Right, get_right_op(Right)},
+    case is_empty_op(O4) of
+        %% C1-O2* | C3 O4* C5
+        true ->
+            C5 = get_right_op(O4),
+            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+
+            set_max_key_op(C1, C3MinKey, true),
+
+            {_, {O4MaxKey, O4MaxEncompass}} = get_range_op(O4),
+            set_range_op(C3, {C3MinKey, false}, {O4MaxKey, O4MaxEncompass}),
+            mio_skip_graph:link_three_nodes(C1, C3, C5, 0),
+            set_type_op(C1, c_o_c_l),
+            set_type_op(C3, c_o_c_m),
+            {ok, [O2, O4]};
+        %% C1-O2* | C3 O4 C5
+        false ->
+            {C3MinKey, C3MinValue} = take_smallest_op(C3),
+            just_insert_op(C1, C3MinKey, C3MinValue),
+            set_max_key_op(C1, C3MinKey, true),
+
+            {NewC3MinKey, _} = get_smallest_op(C3),
+            set_range_op(O2, {C3MinKey, false}, {NewC3MinKey, false}),
+
+            {O4MinKey, O4MinValue} = take_smallest_op(O4),
+            set_min_key_op(O4, O4MinKey, false),
+
+            just_insert_op(C3, O4MinKey, O4MinValue),
+            set_range_op(C3, {NewC3MinKey, true}, {O4MinKey, true}),
+            {ok, []}
+    end.
+
+delete_from_c_O_l(Self, RightBucket) ->
+    case {get_left_op(Self), get_right_op(RightBucket)} of
+        %% C1-O2*
+        %%   Both left and right not exist: O1
+        {[], []}->
+            delete_from_c_O_l_no_neighbor(Self, RightBucket);
+        {[], Right} ->
+            %% C-O exists on right
+            case get_type_op(Right) of
+                c_o_l ->
+                    delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right);
+                %% C-O-C exists on right
+                c_o_c_l ->
+                    delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right)
+            end;
+        {Left, Right} ->
+            case get_type_op(Left) of
+                c_o_r ->
+                    case take_largest_op(Left) of
+                        %% C-O* exists on left
+                        none ->
+                            delete_from_c_O_l_with_left_c_O(Self, Left, RightBucket);
+                        %% C-O exists on left
+                        {MaxKey, MaxValue} ->
+                            delete_from_c_O_l_with_left_c_o(Self, Left, MaxKey, MaxValue)
+                    end;
+                %% C-O-C exists on left
+                c_o_c_r ->
+                    delete_from_c_O_l_with_left_c_o_c(Self, Left, RightBucket, Right);
+                _ ->
+                    %% C-O exists on right
+                    case get_type_op(Right) of
+                        c_o_l ->
+                            delete_from_c_O_l_with_right_c_o(Self, RightBucket, Right);
+                        %% C-O-C exists on right
+                        c_o_c_l ->
+                            delete_from_c_O_l_with_right_c_o_c(Self, RightBucket, Right)
+                    end
+            end
+    end.
+
+delete_from_c_o_l(State, Self, Key) ->
+    mio_store:remove(Key, State#node.store),
+    RightBucket = get_right_op(Self),
+    case take_smallest_op(RightBucket) of
+        %% C1-O2*
+        none ->
+            delete_from_c_O_l(Self, RightBucket);
+        %% C1-O2
+        %%   Deletion from C1: C1'-O2'
+        {MinKey, MinValue} ->
+            just_insert_op(Self, MinKey, MinValue),
+            set_max_key_op(Self, MinKey, true),
+            set_min_key_op(RightBucket, MinKey, false),
+            {ok, []}
+    end.
+
+delete_from_c_o_r(State, Key) ->
+    mio_store:remove(Key, State#node.store),
+    {ok, []}.
+
+delete_from_c_o_c_l(State, Self, Key) ->
+    mio_store:remove(Key, State#node.store),
+    RightBucket = get_right_op(Self),
+    case is_empty_op(RightBucket) of
+        %% C1-O2*-C3
+        %%   Deletion from C1: C1'-O3'
+        true ->
+            MostRightBucket = get_right_op(RightBucket),
+            {MinKey, MinValue} = take_smallest_op(MostRightBucket),
+            just_insert_op(Self, MinKey, MinValue),
+
+            %% link
+            mio_skip_graph:link_two_nodes(Self, MostRightBucket, 0),
+
+            %% type
+            set_type_op(Self, c_o_l),
+            set_type_op(MostRightBucket, c_o_r),
+
+            set_max_key_op(Self, MinKey, true),
+            set_min_key_op(MostRightBucket, MinKey, false),
+            {ok, [RightBucket]};
+        %% C1-O2-C3
+        %%   Deletion from C1: C1'-O2'-C3
+        false ->
+            {MinKey, MinValue} = take_smallest_op(RightBucket),
+            just_insert_op(Self, MinKey, MinValue),
+
+            %% the inserted key becomes largest on C1
+            set_max_key_op(Self, MinKey, true),
+            set_min_key_op(RightBucket, MinKey, false),
+            {ok, []}
+    end.
+
+delete_from_c_o_c_m(State, Key) ->
+    mio_store:remove(Key, State#node.store),
+    {ok, []}.
+
+delete_from_c_o_c_r(State, Self, Key) ->
+    mio_store:remove(Key, State#node.store),
+    LeftBucket = get_left_op(Self),
+    case is_empty_op(LeftBucket) of
+        %% C1-O2*-C3
+        %%   Deletion from C3: C1-O3'
+        true ->
+            MostLeftBucket = get_left_op(LeftBucket),
+            {{MinKey, EncompassMin}, _} = get_range(State),
+            set_max_key_op(MostLeftBucket, MinKey, not EncompassMin),
+
+            %% link
+            mio_skip_graph:link_two_nodes(MostLeftBucket, Self, 0),
+
+            %% type
+            set_type_op(MostLeftBucket, c_o_l),
+            set_type_op(Self, c_o_r),
+
+            {ok, [LeftBucket]};
+        %% C1-O2-C3
+        %%   Deletion from C3: C1-O2'-C3'
+        false ->
+            {MaxKey, MaxValue} = take_largest_op(LeftBucket),
+            just_insert_op(Self, MaxKey, MaxValue),
+            set_max_key_op(LeftBucket, MaxKey, false),
+            set_min_key_op(Self, MaxKey, true),
+            {ok, []}
+    end.
+
+%% pre-condition: Store has the key
+delete(State, Self, Key) ->
+    case State#node.type of
+        %% O1
+        %%   O1 -> O2 or O2*
+        alone ->
+            delete_from_alone(State, Key);
+        c_o_l ->
+            delete_from_c_o_l(State, Self, Key);
+        %% C1-O2
+        %%   Deletion from O2: C1-O2'
+        c_o_r ->
+            delete_from_c_o_r(State, Key);
+        c_o_c_l ->
+            delete_from_c_o_c_l(State, Self, Key);
+        %% C1-O2-C3
+        %%   Deletion from O2: C1-O2'-C3
+        c_o_c_m ->
+            delete_from_c_o_c_m(State, Key);
+        c_o_c_r ->
+            delete_from_c_o_c_r(State, Self, Key)
+    end.
+
+delete_op_call(From, State, Self, Key) ->
+    Ret = case mio_store:get(Key, State#node.store) of
+              {ok, _Value} ->
+                  delete(State, Self, Key);
+              _ ->
+                  {error, not_found}
+          end,
+    gen_server:reply(From, Ret).
+
+insert_op_call(From, State, Self, Key, Value, ExpirationTime)  ->
+    InsertState = just_insert_op(Self, Key, {Value, ExpirationTime}),
     NewlyAllocatedBucket =
     case {State#node.type, InsertState} of
         {c_o_l, overflow} ->
@@ -478,8 +764,7 @@ insert_alone_full(State, Self) ->
     set_type_op(Self, c_o_l),
 
     %% link on Level 0
-    mio_skip_graph:link_right_op(Self, 0, EmptyBucket),
-    mio_skip_graph:link_left_op(EmptyBucket, 0, Self),
+    mio_skip_graph:link_two_nodes(Self, EmptyBucket, 0),
 
     %% range partition
     set_max_key_op(Self, SelfMaxKey, true),
@@ -588,6 +873,16 @@ split_c_o_c_by_r(State, Left, Middle, Right) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+
+%% exposure of store is ugly.
+handle_call(get_store_op, _From, State) ->
+    {reply, State#node.store, State};
+
+handle_call({delete_op, Key}, From, State) ->
+    Self = self(),
+    spawn_link(?MODULE, delete_op_call, [From, State, Self, Key]),
+    {noreply, State};
+
 handle_call(stop_op, _From, State) ->
     {stop, normal, State};
 handle_call(is_empty_op, _From, State) ->
@@ -597,7 +892,8 @@ handle_call(is_full_op, _From, State) ->
     {reply, mio_store:is_full(State#node.store), State};
 
 handle_call({get_op, Key}, _From, State) ->
-    {reply, mio_store:get(Key, State#node.store), State};
+    Ret = mio_store:get(Key, State#node.store),
+    {reply, Ret, State};
 
 handle_call(skip_graph_get_key_op, _From, State) ->
     {reply, mio_skip_graph:get_key(State), State};
@@ -630,8 +926,20 @@ handle_call(get_type_op, _From, State) ->
     {reply, State#node.type, State};
 
 handle_call(take_largest_op, _From, State) ->
-    {Key, Value, NewStore} = mio_store:take_largest(State#node.store),
-    {reply, {Key, Value}, State#node{store=NewStore}};
+    case mio_store:take_largest(State#node.store) of
+        none ->
+            {reply, none, State};
+        {Key, Value, NewStore} ->
+            {reply, {Key, Value}, State#node{store=NewStore}}
+    end;
+
+handle_call(take_smallest_op, _From, State) ->
+    case mio_store:take_smallest(State#node.store) of
+        none ->
+            {reply, none, State};
+        {Key, Value, NewStore} ->
+            {reply, {Key, Value}, State#node{store=NewStore}}
+    end;
 
 handle_call(get_largest_op, _From, State) ->
     {reply, mio_store:largest(State#node.store), State};
@@ -649,14 +957,19 @@ handle_call({just_insert_op, Key, Value}, _From, State) ->
             {reply, ok, State#node{store=NewStore}}
     end;
 
-handle_call({insert_op, Key, Value}, From, State) ->
+handle_call({insert_op, Key, Value, ExpirationTime}, From, State) ->
     Self = self(),
-    spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value]),
+    spawn_link(?MODULE, insert_op_call, [From, State, Self, Key, Value, ExpirationTime]),
     {noreply, State};
 
-handle_call({skip_graph_insert_op, Key, Value}, From, State) ->
+handle_call({skip_graph_insert_op, Key, Value, ExpirationTime}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, insert_op_call, [From, Self, Key, Value]),
+    spawn_link(mio_skip_graph, insert_op_call, [From, Self, Key, Value, ExpirationTime]),
+    {noreply, State};
+
+handle_call({skip_graph_delete_op, Key}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, delete_op_call, [From, State, Self, Key]),
     {noreply, State};
 
 handle_call(get_range_op, _From, State) ->
@@ -665,9 +978,44 @@ handle_call(get_range_op, _From, State) ->
 handle_call({get_range_values_op, Key1, Key2, Limit}, _From, State) ->
     {reply, mio_store:get_range(Key1, Key2, Limit, State#node.store), State};
 
-handle_call({skip_graph_search_op, SearchKey, Level}, From, State) ->
+handle_call({skip_graph_search_op, SearchKey, Level, IsDirectSearch}, From, State) ->
     Self = self(),
-    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level]),
+    spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]),
+    {noreply, State};
+
+handle_call({skip_graph_search_to, SearchKey, Level, Direction, IsDirectSearch}, From, State) ->
+    Self = self(),
+    spawn_link(mio_skip_graph, search_to_call, [From, State, Self, SearchKey, Level, Direction, IsDirectSearch]),
+    {noreply, State};
+
+handle_call({skip_graph_start_search_op, SearchKey, Level, IsDirectSearch}, From, State) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    Self = self(),
+    case in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        true ->
+            if IsDirectSearch ->
+                    gen_server:reply(From, search_on_bucket(State, SearchKey));
+               true ->
+                    gen_server:reply(From, Self)
+            end;
+        _ ->
+            Direction = if (MaxEncompass andalso Max < SearchKey) orelse (not MaxEncompass andalso Max =< SearchKey) -> right; true -> left end,
+            spawn_link(mio_skip_graph, search_to_call, [From, State, Self, SearchKey, Level, Direction, IsDirectSearch])
+    end,
+    {noreply, State};
+
+
+handle_call({skip_graph_try_search_op, Direction, SearchKey, Level, IsDirectSearch}, From, State) ->
+    {{Min, MinEncompass}, {Max, MaxEncompass}} = get_range(State),
+    IsLastBucket = case Direction of right -> Max =< SearchKey; left -> Max >= SearchKey end,
+    case IsLastBucket orelse in_range(SearchKey, Min, MinEncompass, Max, MaxEncompass) of
+        true ->
+            Self = self(),
+            spawn_link(mio_skip_graph, search_op_call, [From, State, Self, SearchKey, Level, IsDirectSearch]);
+        _ ->
+            %% reply immediately
+            gen_server:reply(From, false)
+    end,
     {noreply, State};
 
 handle_call(get_op, From, State) ->
@@ -753,8 +1101,23 @@ my_key(State) ->
     State#node.max_key.
 
 get_op(Bucket, Key) ->
-    gen_server:call(Bucket, {get_op, Key}).
+    case gen_server:call(Bucket, {get_op, Key}) of
+        {ok, {Value, ExpirationTime}} ->
+            {ok, Value, ExpirationTime};
+        Other -> Other
+    end.
 
 get_range(State) ->
     {{State#node.min_key, State#node.encompass_min}, {State#node.max_key, State#node.encompass_max}}.
 
+in_range(Key, Min, MinEncompass, Max, MaxEncompass) ->
+    ((MinEncompass andalso Min =< Key) orelse (not MinEncompass andalso Min < Key))
+      andalso
+    ((MaxEncompass andalso Key =< Max) orelse (not MaxEncompass andalso Key < Max)).
+
+search_on_bucket(State, Key) ->
+    case mio_store:get(Key, State#node.store) of
+        {ok, {Value, ExpirationTime}} ->
+            {ok, Value, ExpirationTime};
+        Other -> Other
+    end.

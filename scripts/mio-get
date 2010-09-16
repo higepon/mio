@@ -1,5 +1,5 @@
 #!/bin/sh
-### ### Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
+### Copyright (C) 2010 Cybozu Labs, Inc., written by Taro Minowa(Higepon) <higepon@labs.cybozu.co.jp>
 ### All rights reserved.
 ###
 ### Redistribution and use in source and binary forms, with or without
@@ -25,33 +25,38 @@
 ### NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ### SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_NODE_NAME=mio1@localhost.local
-DEFAULT_COOKIE_NAME=mio
+### Utility for mio developers.
+
 . `dirname $0`/mio-env
 MIO_EBIN_ROOT="${MIO_HOME}/ebin"
+opt_port=
+opt_key=
+opt_ntimes=
 
-opt_cookie=
-opt_name=
-while getopts 'n:c:' OPTION
+while getopts 'p:n:k:' OPTION
 do
   case $OPTION in
-  c)    opt_cookie="$OPTARG"
+  n)    opt_ntimes="$OPTARG"
         ;;
-  n)    opt_name="$OPTARG"
+  k)    opt_key="$OPTARG"
         ;;
-  ?)    erl -pa ebin -s mio_control usage -s init stop -noinput
-        exit 2
+  p)    opt_port="$OPTARG"
         ;;
   esac
 done
 shift $(($OPTIND - 1))
-mio_cookie=${opt_cookie:-"$DEFAULT_COOKIE_NAME"}
-mio_name=${opt_name:-"$DEFAULT_NODE_NAME"}
-
-erl -pa ${MIO_EBIN_ROOT} \
-    -name mioctrl$$@127.0.0.1 \
+mio_port=${opt_port:-"11211"}
+mio_key=${opt_key:-"1"}
+mio_ntimes=${opt_ntimes:-"1"}
+erl +K true \
+    +P 10000000 \
+    +W w \
+    -noshell \
     -noinput \
-    -s mio_control start \
-    -setcookie $mio_cookie \
-    -nodename $mio_name \
-    -command $@
+    -kernel inet_default_listen_options [{nodelay,true},{sndbuf,16384},{recbuf,4096}] \
+    -kernel inet_default_connect_options [{nodelay,true}] \
+    -pa ${MIO_EBIN_ROOT} \
+    -s mio_get start \
+    -port "$mio_port"  \
+    -ntimes "$mio_ntimes" \
+    -key "$mio_key"
