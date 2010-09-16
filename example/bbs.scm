@@ -30,10 +30,12 @@
 (define max-article-no (make-article-no 999999))
 (define min-article-no (make-article-no 0))
 (define article-num-page (number->string 3))
+(define (dec-article-no no) (make-article-no (+ 1 (string->number (substring no 8 13)))))
 
 (let-values (([get-parameter get-request-method] (cgi:init)))
   (cgi:header)
   (let* ([conn (memcached-connect '(("dorami.local" . "11211")
+;                                    ("dorami.local" . "11311")
 ;                                    ("ubuntu1.local" . "11211")
                                     ))
                                     ]
@@ -82,7 +84,7 @@
                                     (car last-article)
                                     article-num-page)
                             (format "<a style=\"margin:0px\" href=\"?to-ano=~a\">次の~d件&raquo;</a>"
-                                    (car last-article)
+                                    (dec-article-no (car last-article))
                                     article-num-page))))))
 
 ;; #| apache
